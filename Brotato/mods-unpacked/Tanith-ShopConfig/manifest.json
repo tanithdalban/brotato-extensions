@@ -1,0 +1,25 @@
+{
+    "name": "ShopConfig",
+    "namespace": "Tanith",
+    "version_number": "0.1.0",
+    "description": "Écran de configuration du pool du magasin, par joueur, entre sélection perso et arme.",
+    "website_url": "",
+    "dependencies": [],
+    "extra": {
+        "godot": {
+            "authors": ["Tanith"],
+            "tags": ["utility", "ui"],
+            "optional_dependencies": [],
+            "load_before": [],
+            "incompatibilities": [],
+            "compatible_mod_loader_version": [],
+            "compatible_game_version": [],
+            "config_schema": {
+                "type": "object",
+                "properties": {
+                    "debug_log": { "type": "boolean", "description": "Active les logs détaillés de ShopConfig.", "default": false }
+                }
+            }
+        }
+    }
+}
