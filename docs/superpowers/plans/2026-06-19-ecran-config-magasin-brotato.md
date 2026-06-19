@@ -8,9 +8,20 @@
 
 **Tech Stack:** Godot 4, GDScript, Godot ModLoader (script extensions + script hooks), GUT (Godot Unit Test) pour la logique pure, GDRE Tools / gdsdecomp pour décompiler Brotato.
 
+## ⚠️ Correction moteur (2026-06-19) — À LIRE AVANT EXÉCUTION
+
+L'en-tête de `Brotato.pck` révèle que **Brotato tourne sur Godot 3.7** (et non Godot 4). Conséquences qui **invalident une partie du code ci-dessous** (rédigé pour Godot 4) :
+
+- **Pas de script hooks** en Godot 3 → l'intégration native (Phase 5) se fait **uniquement par script extensions** ; supprimer toutes les variantes « hook »/`add_hook`/`ModLoaderHookChain`. Si un script natif a un `class_name` ou est préchargé, trouver un point d'accroche extensible en amont.
+- **GDScript 3** : pas de `static var` (le store et le logger doivent devenir un **autoload Node** instancié, pas des statiques), pas de nœuds `%UniqueName` (utiliser `$Chemin`/`get_node`), `connect("signal", self, "methode")` ancienne forme (pas de `Callable`/lambda), appel du parent via `.methode()` et non `super()`, pas de tableaux typés.
+- **Éditeur** : Godot **3.6** standard (pas .NET). **GUT** version Godot 3.
+- **ModLoader** : écosystème godot-mod-loader **branche Godot 3** (Brotato inclut désormais officiellement un ModLoader — à confirmer dans les sources décompilées).
+
+**Le détail du code Godot 3 sera réécrit après la reconnaissance (Phase 0)**, contre les sources réelles décompilées (API ModLoader exacte + internals du jeu). Les blocs de code Godot 4 ci-dessous restent comme intention/structure, à adapter.
+
 ## Global Constraints
 
-- **Godot 4** + **Godot ModLoader 6.x** (API : `install_script_extension`, `add_hook`, `ModLoaderHookChain`).
+- **Godot 3.7** (build Brotato) — éditeur de dev **Godot 3.6 standard** + **godot-mod-loader (Godot 3)** : API `install_script_extension` (extension only, **pas de hooks**).
 - **Non destructif** : ne jamais écrire dans les données natives du jeu, ni dans la liste d'exclusion native (8 slots). Couche additive uniquement.
 - **3 couches de filtrage** combinées sans interférence : compatibilité perso (natif) → exclusion native (natif) → exclusions de notre écran (mod).
 - **On ne stocke que les exclusions**, par joueur. Aucune persistance entre parties. `reset()` à l'ouverture de l'écran.

@@ -2,7 +2,7 @@
 
 - **Date** : 2026-06-19
 - **Statut** : Design validé, en attente de revue finale
-- **Type** : Mod Brotato (Godot 4 + Brotato ModLoader)
+- **Type** : Mod Brotato (**Godot 3.7** — confirmé via l'en-tête du `.pck` ; éditeur de dev Godot 3.6 ; godot-mod-loader branche Godot 3, **extensions seulement, pas de hooks**)
 - **Distribution** : Usage personnel d'abord, structure prête pour Steam Workshop plus tard
 
 ## 1. Objectif
