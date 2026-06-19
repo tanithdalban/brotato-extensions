@@ -79,8 +79,8 @@ L'écran est placé **après** le choix du personnage : il connaît donc le pers
 ### 4.4 Actions rapides
 
 - « **Tout réinitialiser** » : remet tout le contenu de l'onglet courant dans le pool.
-- « **Exclure tout l'affiché** » : exclut uniquement le sous-ensemble **actuellement filtré** (ex. tout un tier d'un coup). **Désactivé s'il n'y a aucun filtre actif** (pour éviter de tout exclure d'un geste).
-- Il n'existe **pas** de bouton « Tout exclure » (empêche de vider le magasin par accident).
+- « **Tout désélectionner** » : retire tout le contenu de l'onglet courant du pool. Utile pour les **builds précis** (tout exclure puis re-cocher les quelques éléments voulus, plus rapide que décocher un par un). Le risque de magasin vide est couvert par le garde-fou (§4.5) : impossible de valider tant qu'il ne reste rien à acheter.
+- « **Exclure tout l'affiché** » : exclut uniquement le sous-ensemble **actuellement filtré** (ex. filtrer les armes à distance, ou un tier, puis tout exclure d'un coup). **Désactivé s'il n'y a aucun filtre actif**.
 
 ### 4.5 Garde-fou « pas de magasin vide »
 
@@ -168,7 +168,8 @@ Les noms exacts des scripts/fonctions natifs sont à confirmer par exploration d
   - layouts corrects en 1 / 2 / 3 / 4 joueurs, chacun pilotable à la manette ;
   - garde-fou « pas de magasin vide » : bouton Prêt désactivé quand pool vide ;
   - avertissement affiché quand pool réduit mais non vide ;
-  - actions rapides « Tout réinitialiser » et « Exclure tout l'affiché » (désactivée sans filtre) ;
+  - actions rapides « Tout réinitialiser », « Tout désélectionner », et « Exclure tout l'affiché » (désactivée sans filtre) ;
+  - après « Tout désélectionner », le bouton Prêt reste désactivé jusqu'à re-cocher au moins un élément (garde-fou) ;
   - config bien remise à zéro à la partie suivante.
 
 ## 8. Décisions clés (récapitulatif)
@@ -183,6 +184,6 @@ Les noms exacts des scripts/fonctions natifs sont à confirmer par exploration d
 | 6 | **Un pool par joueur**, jusqu'à 4, écran **responsive** (1/2/4), navigation **manette**. |
 | 7 | Filtrage en **3 couches** (compat perso → exclusion native → notre écran), additif, non destructif. |
 | 8 | **Aucune persistance** : reset à chaque partie. |
-| 9 | Pas de bouton « Tout exclure ». Garde-fou **global** contre le magasin vide. |
+| 9 | Trois actions rapides : Tout réinitialiser / Tout désélectionner / Exclure tout l'affiché. Garde-fou **global** contre le magasin vide (impossible de valider un pool vide). |
 | 10 | Approche technique **A** (filtrage à la génération du pool via script extension ModLoader). |
 | 11 | Usage **personnel** d'abord, structure **prête pour le Workshop**. |
