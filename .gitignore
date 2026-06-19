@@ -1,5 +1,9 @@
 # Brotato décompilé (référence locale, ne pas committer — ~200 Mo)
-/Brotato/
+# … sauf le dossier de notre mod, qu'on veut suivre.
+/Brotato/*
+!/Brotato/mods-unpacked/
+/Brotato/mods-unpacked/*
+!/Brotato/mods-unpacked/Tanith-ShopConfig/
 
 # Éditeur Godot local
 /godot/

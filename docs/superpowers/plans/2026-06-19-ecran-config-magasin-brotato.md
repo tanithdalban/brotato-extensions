@@ -6,7 +6,7 @@
 
 **Architecture:** Mod Brotato (**Godot 3.7** + GodotModLoader 6.x bundlé). Modèle = curation du pool : on ne stocke que les exclusions par joueur. Filtrage **borné au magasin** en surchargeant `ItemService.get_pool()`, activé seulement pendant `ItemService.get_player_shop_items()` via un drapeau de contexte. Écran inséré en surchargeant `CharacterSelection._on_selections_completed()`. Logique de filtrage isolée dans une fonction pure testée (GUT, bundlé).
 
-**Tech Stack:** GDScript (Godot 3), GodotModLoader (`res://addons/mod_loader/`), GUT (`res://addons/gut/`). Projet de dev = Brotato décompilé dans `./Brotato/` ; mod sous `./Brotato/mods-unpacked/Tanit-ShopConfig/`.
+**Tech Stack:** GDScript (Godot 3), GodotModLoader (`res://addons/mod_loader/`), GUT (`res://addons/gut/`). Projet de dev = Brotato décompilé dans `./Brotato/` ; mod sous `./Brotato/mods-unpacked/Tanith-ShopConfig/`.
 
 ## Global Constraints
 
@@ -17,8 +17,8 @@
 - **Pas de garantie absolue** : on retire seulement des candidats ; le tier naturel (`get_tier_from_wave`) est intact.
 - **Garde-fou global** : interdiction de valider un pool vide (au moins un élément achetable, objet **ou** arme).
 - **Coop 1-4 joueurs** : un pool par joueur ; layout responsive (1 = plein écran, 2 = moitiés, 3-4 = quarts) ; navigation manette par quadrant.
-- **ID du mod** : `Tanit-ShopConfig` (namespace `Tanit`, nom `ShopConfig`). Racine `res://mods-unpacked/Tanit-ShopConfig/`.
-- **Logger** : tout passe par `ModLog` (namespace `Tanit-ShopConfig`), toggle `debug_log` (config mod, défaut **false**) stocké via `Engine.set_meta` (faute de `static var`). `error` toujours émis.
+- **ID du mod** : `Tanith-ShopConfig` (namespace `Tanith`, nom `ShopConfig`). Racine `res://mods-unpacked/Tanith-ShopConfig/`.
+- **Logger** : tout passe par `ModLog` (namespace `Tanith-ShopConfig`), toggle `debug_log` (config mod, défaut **false**) stocké via `Engine.set_meta` (faute de `static var`). `error` toujours émis.
 
 ## Points d'intégration (depuis `docs/superpowers/notes/integration-points.md`)
 
@@ -33,7 +33,7 @@
 ## File Structure
 
 ```
-Brotato/mods-unpacked/Tanit-ShopConfig/
+Brotato/mods-unpacked/Tanith-ShopConfig/
 ├── manifest.json
 ├── mod_main.gd
 ├── content/logic/
@@ -66,8 +66,8 @@ Brotato/mods-unpacked/Tanit-ShopConfig/
 ### Task 1.1 : Mod minimal qui se charge
 
 **Files:**
-- Create: `Brotato/mods-unpacked/Tanit-ShopConfig/manifest.json`
-- Create: `Brotato/mods-unpacked/Tanit-ShopConfig/mod_main.gd`
+- Create: `Brotato/mods-unpacked/Tanith-ShopConfig/manifest.json`
+- Create: `Brotato/mods-unpacked/Tanith-ShopConfig/mod_main.gd`
 
 **Interfaces:**
 - Produces: mod chargé par le ModLoader ; `mod_main.gd` expose `_init()` comme point d'installation des extensions.
@@ -76,14 +76,14 @@ Brotato/mods-unpacked/Tanit-ShopConfig/
 ```json
 {
     "name": "ShopConfig",
-    "namespace": "Tanit",
+    "namespace": "Tanith",
     "version_number": "0.1.0",
     "description": "Écran de configuration du pool du magasin, par joueur, entre sélection perso et arme.",
     "website_url": "",
     "dependencies": [],
     "extra": {
         "godot": {
-            "authors": ["Tanit"],
+            "authors": ["Tanith"],
             "tags": ["utility", "ui"],
             "optional_dependencies": [],
             "load_before": [],
@@ -105,7 +105,7 @@ Brotato/mods-unpacked/Tanit-ShopConfig/
 ```gdscript
 extends Node
 
-const LOG_NAME := "Tanit-ShopConfig"
+const LOG_NAME := "Tanith-ShopConfig"
 
 func _init() -> void:
     ModLoaderLog.info("init", LOG_NAME)
@@ -115,32 +115,32 @@ func _install_extensions() -> void:
     pass
 ```
 
-- [ ] **Step 3 : Lancer le jeu** — Run : lancer Brotato depuis l'éditeur (ou `Brotato.exe`). Expected : le log liste `Tanit-ShopConfig` chargé et affiche `init`.
+- [ ] **Step 3 : Lancer le jeu** — Run : lancer Brotato depuis l'éditeur (ou `Brotato.exe`). Expected : le log liste `Tanith-ShopConfig` chargé et affiche `init`.
 
 - [ ] **Step 4 : Commit**
 ```bash
-git add Brotato/mods-unpacked/Tanit-ShopConfig/manifest.json Brotato/mods-unpacked/Tanit-ShopConfig/mod_main.gd
+git add Brotato/mods-unpacked/Tanith-ShopConfig/manifest.json Brotato/mods-unpacked/Tanith-ShopConfig/mod_main.gd
 git commit -m "feat: squelette du mod ShopConfig qui se charge"
 ```
-> Note : `Brotato/` est git-ignoré globalement. Forcer l'ajout du sous-dossier mod : `git add -f <paths>` (ou retirer `mods-unpacked` de l'ignore). Adapter le `.gitignore` pour ne suivre que `Brotato/mods-unpacked/Tanit-ShopConfig/`.
+> Note : `Brotato/` est git-ignoré globalement. Forcer l'ajout du sous-dossier mod : `git add -f <paths>` (ou retirer `mods-unpacked` de l'ignore). Adapter le `.gitignore` pour ne suivre que `Brotato/mods-unpacked/Tanith-ShopConfig/`.
 
 ---
 
 ### Task 1.2 : Logger désactivable (TDD via GUT)
 
 **Files:**
-- Create: `Brotato/mods-unpacked/Tanit-ShopConfig/content/logic/mod_log.gd`
-- Modify: `Brotato/mods-unpacked/Tanit-ShopConfig/mod_main.gd`
-- Test: `Brotato/mods-unpacked/Tanit-ShopConfig/test/test_mod_log.gd`
+- Create: `Brotato/mods-unpacked/Tanith-ShopConfig/content/logic/mod_log.gd`
+- Modify: `Brotato/mods-unpacked/Tanith-ShopConfig/mod_main.gd`
+- Test: `Brotato/mods-unpacked/Tanith-ShopConfig/test/test_mod_log.gd`
 
 **Interfaces:**
-- Produces (statique, appelé partout) : `ModLog.set_enabled(v)`, `ModLog.is_enabled()`, `ModLog.info(msg)`, `ModLog.error(msg)`, `ModLog.LOG_NAME == "Tanit-ShopConfig"`. `info` émis seulement si activé ; `error` toujours.
+- Produces (statique, appelé partout) : `ModLog.set_enabled(v)`, `ModLog.is_enabled()`, `ModLog.info(msg)`, `ModLog.error(msg)`, `ModLog.LOG_NAME == "Tanith-ShopConfig"`. `info` émis seulement si activé ; `error` toujours.
 
 - [ ] **Step 1 : Test qui échoue** — `test/test_mod_log.gd` :
 ```gdscript
 extends "res://addons/gut/test.gd"
 
-const ModLog = preload("res://mods-unpacked/Tanit-ShopConfig/content/logic/mod_log.gd")
+const ModLog = preload("res://mods-unpacked/Tanith-ShopConfig/content/logic/mod_log.gd")
 
 func after_each():
     ModLog.set_enabled(false)
@@ -156,7 +156,7 @@ func test_enable_toggle():
     assert_false(ModLog.is_enabled())
 
 func test_log_name():
-    assert_eq(ModLog.LOG_NAME, "Tanit-ShopConfig")
+    assert_eq(ModLog.LOG_NAME, "Tanith-ShopConfig")
 
 func test_methods_do_not_crash():
     ModLog.set_enabled(true)
@@ -167,7 +167,7 @@ func test_methods_do_not_crash():
     assert_true(true)
 ```
 
-- [ ] **Step 2 : Vérifier l'échec** — Run : `godot -s addons/gut/gut_cmdln.gd -gdir=res://mods-unpacked/Tanit-ShopConfig/test -gexit` (depuis `./Brotato/`). Expected : ÉCHEC (mod_log.gd absent).
+- [ ] **Step 2 : Vérifier l'échec** — Run : `godot -s addons/gut/gut_cmdln.gd -gdir=res://mods-unpacked/Tanith-ShopConfig/test -gexit` (depuis `./Brotato/`). Expected : ÉCHEC (mod_log.gd absent).
 
 - [ ] **Step 3 : Implémentation** — `content/logic/mod_log.gd` :
 ```gdscript
@@ -175,8 +175,8 @@ extends Reference
 # Logger propre au mod, désactivable. Godot 3 n'a pas de static var :
 # le drapeau est stocké en méta globale sur Engine.
 
-const LOG_NAME := "Tanit-ShopConfig"
-const _META := "tanit_shopconfig_log_enabled"
+const LOG_NAME := "Tanith-ShopConfig"
+const _META := "tanith_shopconfig_log_enabled"
 
 static func set_enabled(value: bool) -> void:
     Engine.set_meta(_META, value)
@@ -198,8 +198,8 @@ static func error(msg: String) -> void:
 ```gdscript
 extends Node
 
-const LOG_NAME := "Tanit-ShopConfig"
-const ModLog = preload("res://mods-unpacked/Tanit-ShopConfig/content/logic/mod_log.gd")
+const LOG_NAME := "Tanith-ShopConfig"
+const ModLog = preload("res://mods-unpacked/Tanith-ShopConfig/content/logic/mod_log.gd")
 
 func _init() -> void:
     _setup_logging()
@@ -208,7 +208,7 @@ func _init() -> void:
 
 func _setup_logging() -> void:
     var enabled := false
-    var conf = ModLoaderConfig.get_current_config("Tanit-ShopConfig")
+    var conf = ModLoaderConfig.get_current_config("Tanith-ShopConfig")
     if conf != null and conf.data is Dictionary:
         enabled = bool(conf.data.get("debug_log", false))
     ModLog.set_enabled(enabled)
@@ -218,11 +218,11 @@ func _install_extensions() -> void:
 ```
 > `ModLoaderConfig.get_current_config` est l'API bundlée (`res://addons/mod_loader/api/config.gd`). Le défaut (off) doit tenir même si la config est absente.
 
-- [ ] **Step 6 : Vérif manuelle** — lancer avec `debug_log` à false puis true (menu mods du jeu). Expected : à false, aucun log `info` ; à true, `init` + `info` sous `Tanit-ShopConfig`.
+- [ ] **Step 6 : Vérif manuelle** — lancer avec `debug_log` à false puis true (menu mods du jeu). Expected : à false, aucun log `info` ; à true, `init` + `info` sous `Tanith-ShopConfig`.
 
 - [ ] **Step 7 : Commit**
 ```bash
-git add -f Brotato/mods-unpacked/Tanit-ShopConfig/content/logic/mod_log.gd Brotato/mods-unpacked/Tanit-ShopConfig/mod_main.gd Brotato/mods-unpacked/Tanit-ShopConfig/test/test_mod_log.gd
+git add -f Brotato/mods-unpacked/Tanith-ShopConfig/content/logic/mod_log.gd Brotato/mods-unpacked/Tanith-ShopConfig/mod_main.gd Brotato/mods-unpacked/Tanith-ShopConfig/test/test_mod_log.gd
 git commit -m "feat: logger désactivable via config (défaut off)"
 ```
 
@@ -233,8 +233,8 @@ git commit -m "feat: logger désactivable via config (défaut off)"
 ### Task 2.1 : `pool_filter.gd` (TDD via GUT)
 
 **Files:**
-- Create: `Brotato/mods-unpacked/Tanit-ShopConfig/content/logic/pool_filter.gd`
-- Test: `Brotato/mods-unpacked/Tanit-ShopConfig/test/test_pool_filter.gd`
+- Create: `Brotato/mods-unpacked/Tanith-ShopConfig/content/logic/pool_filter.gd`
+- Test: `Brotato/mods-unpacked/Tanith-ShopConfig/test/test_pool_filter.gd`
 
 **Interfaces:**
 - Produces : `PoolFilter.filter(candidates: Array, excluded_ids: Dictionary) -> Array` — garde les candidats dont `.my_id` n'est pas clé de `excluded_ids` ({id: true}). Consommé par Task 4.x (extension item_service).
@@ -243,7 +243,7 @@ git commit -m "feat: logger désactivable via config (défaut off)"
 ```gdscript
 extends "res://addons/gut/test.gd"
 
-const PoolFilter = preload("res://mods-unpacked/Tanit-ShopConfig/content/logic/pool_filter.gd")
+const PoolFilter = preload("res://mods-unpacked/Tanith-ShopConfig/content/logic/pool_filter.gd")
 
 class StubItem:
     extends Reference
@@ -285,7 +285,7 @@ func test_does_not_mutate_input():
     assert_eq(candidates.size(), 2)
 ```
 
-- [ ] **Step 2 : Vérifier l'échec** — Run GUT (`-gdir=res://mods-unpacked/Tanit-ShopConfig/test`). Expected : ÉCHEC.
+- [ ] **Step 2 : Vérifier l'échec** — Run GUT (`-gdir=res://mods-unpacked/Tanith-ShopConfig/test`). Expected : ÉCHEC.
 
 - [ ] **Step 3 : Implémentation** — `content/logic/pool_filter.gd` :
 ```gdscript
@@ -305,7 +305,7 @@ static func filter(candidates: Array, excluded_ids: Dictionary) -> Array:
 
 - [ ] **Step 5 : Commit**
 ```bash
-git add -f Brotato/mods-unpacked/Tanit-ShopConfig/content/logic/pool_filter.gd Brotato/mods-unpacked/Tanit-ShopConfig/test/test_pool_filter.gd
+git add -f Brotato/mods-unpacked/Tanith-ShopConfig/content/logic/pool_filter.gd Brotato/mods-unpacked/Tanith-ShopConfig/test/test_pool_filter.gd
 git commit -m "feat: fonction pure pool_filter + tests GUT"
 ```
 
@@ -316,8 +316,8 @@ git commit -m "feat: fonction pure pool_filter + tests GUT"
 ### Task 3.1 : `shop_config_store.gd` (TDD via GUT)
 
 **Files:**
-- Create: `Brotato/mods-unpacked/Tanit-ShopConfig/singletons/shop_config_store.gd`
-- Test: `Brotato/mods-unpacked/Tanit-ShopConfig/test/test_shop_config_store.gd`
+- Create: `Brotato/mods-unpacked/Tanith-ShopConfig/singletons/shop_config_store.gd`
+- Test: `Brotato/mods-unpacked/Tanith-ShopConfig/test/test_shop_config_store.gd`
 
 **Interfaces:**
 - Produces (instance unique tenue par l'extension ItemService, Task 4.1) :
@@ -329,7 +329,7 @@ git commit -m "feat: fonction pure pool_filter + tests GUT"
 ```gdscript
 extends "res://addons/gut/test.gd"
 
-const Store = preload("res://mods-unpacked/Tanit-ShopConfig/singletons/shop_config_store.gd")
+const Store = preload("res://mods-unpacked/Tanith-ShopConfig/singletons/shop_config_store.gd")
 
 var store
 
@@ -425,7 +425,7 @@ func current_shop_player() -> int:
 
 - [ ] **Step 5 : Commit**
 ```bash
-git add -f Brotato/mods-unpacked/Tanit-ShopConfig/singletons/shop_config_store.gd Brotato/mods-unpacked/Tanit-ShopConfig/test/test_shop_config_store.gd
+git add -f Brotato/mods-unpacked/Tanith-ShopConfig/singletons/shop_config_store.gd Brotato/mods-unpacked/Tanith-ShopConfig/test/test_shop_config_store.gd
 git commit -m "feat: store exclusions + contexte magasin + tests GUT"
 ```
 
@@ -436,8 +436,8 @@ git commit -m "feat: store exclusions + contexte magasin + tests GUT"
 ### Task 4.1 : Filtrer le pool, borné au magasin
 
 **Files:**
-- Create: `Brotato/mods-unpacked/Tanit-ShopConfig/extensions/singletons/item_service.gd`
-- Modify: `Brotato/mods-unpacked/Tanit-ShopConfig/mod_main.gd`
+- Create: `Brotato/mods-unpacked/Tanith-ShopConfig/extensions/singletons/item_service.gd`
+- Modify: `Brotato/mods-unpacked/Tanith-ShopConfig/mod_main.gd`
 
 **Interfaces:**
 - Consumes: `PoolFilter` (2.1), `ShopConfigStore` (3.1).
@@ -447,8 +447,8 @@ git commit -m "feat: store exclusions + contexte magasin + tests GUT"
 ```gdscript
 extends "res://singletons/item_service.gd"
 
-const PoolFilter = preload("res://mods-unpacked/Tanit-ShopConfig/content/logic/pool_filter.gd")
-const ShopConfigStore = preload("res://mods-unpacked/Tanit-ShopConfig/singletons/shop_config_store.gd")
+const PoolFilter = preload("res://mods-unpacked/Tanith-ShopConfig/content/logic/pool_filter.gd")
+const ShopConfigStore = preload("res://mods-unpacked/Tanith-ShopConfig/singletons/shop_config_store.gd")
 
 var _shopconfig_store = ShopConfigStore.new()
 
@@ -474,14 +474,14 @@ func get_pool(item_tier: int, type: int) -> Array:
 - [ ] **Step 2 : Installer l'extension** — dans `mod_main.gd._install_extensions()` :
 ```gdscript
 func _install_extensions() -> void:
-    ModLoaderMod.install_script_extension("res://mods-unpacked/Tanit-ShopConfig/extensions/singletons/item_service.gd")
+    ModLoaderMod.install_script_extension("res://mods-unpacked/Tanith-ShopConfig/extensions/singletons/item_service.gd")
 ```
 
 - [ ] **Step 3 : Vérif manuelle (instrumentée)** — temporairement, dans une partie solo, après le chargement : `ItemService.get_shopconfig_store().set_excluded(0, {"item_piggy_bank": true})` (via la console debug du jeu ou un log au lancement de partie), puis ouvrir le magasin sur plusieurs vagues. Expected : l'objet exclu n'apparaît jamais en boutique ; il peut encore sortir d'une boîte à objets (portée magasin-seul) ; aucune régression du ban natif. Retirer l'instrumentation.
 
 - [ ] **Step 4 : Commit**
 ```bash
-git add -f Brotato/mods-unpacked/Tanit-ShopConfig/extensions/singletons/item_service.gd Brotato/mods-unpacked/Tanit-ShopConfig/mod_main.gd
+git add -f Brotato/mods-unpacked/Tanith-ShopConfig/extensions/singletons/item_service.gd Brotato/mods-unpacked/Tanith-ShopConfig/mod_main.gd
 git commit -m "feat: filtrage du pool magasin borné à la boutique"
 ```
 
@@ -492,8 +492,8 @@ git commit -m "feat: filtrage du pool magasin borné à la boutique"
 ### Task 5.1 : Panneau joueur — grille filtrée par perso + cases icône/infobulle
 
 **Files:**
-- Create: `Brotato/mods-unpacked/Tanit-ShopConfig/scenes/player_shop_config_panel.gd`
-- Create: `Brotato/mods-unpacked/Tanit-ShopConfig/scenes/player_shop_config_panel.tscn`
+- Create: `Brotato/mods-unpacked/Tanith-ShopConfig/scenes/player_shop_config_panel.gd`
+- Create: `Brotato/mods-unpacked/Tanith-ShopConfig/scenes/player_shop_config_panel.tscn`
 
 **Interfaces:**
 - Consumes: `ItemService.items` / `.weapons` + métadonnées (`my_id`, `get_icon()`, `get_name_text()`, `tier`, `type`), `RunData.get_player_effect(...)` (compat perso).
@@ -611,7 +611,7 @@ func is_ready() -> bool:
 
 - [ ] **Step 4 : Commit**
 ```bash
-git add -f Brotato/mods-unpacked/Tanit-ShopConfig/scenes/player_shop_config_panel.gd Brotato/mods-unpacked/Tanit-ShopConfig/scenes/player_shop_config_panel.tscn
+git add -f Brotato/mods-unpacked/Tanith-ShopConfig/scenes/player_shop_config_panel.gd Brotato/mods-unpacked/Tanith-ShopConfig/scenes/player_shop_config_panel.tscn
 git commit -m "feat: panneau joueur (grille filtrée perso, cases icône/infobulle, garde-fou)"
 ```
 
@@ -620,8 +620,8 @@ git commit -m "feat: panneau joueur (grille filtrée perso, cases icône/infobul
 ### Task 5.2 : Panneau joueur — filtres & actions rapides
 
 **Files:**
-- Modify: `Brotato/mods-unpacked/Tanit-ShopConfig/scenes/player_shop_config_panel.gd`
-- Modify: `Brotato/mods-unpacked/Tanit-ShopConfig/scenes/player_shop_config_panel.tscn`
+- Modify: `Brotato/mods-unpacked/Tanith-ShopConfig/scenes/player_shop_config_panel.gd`
+- Modify: `Brotato/mods-unpacked/Tanith-ShopConfig/scenes/player_shop_config_panel.tscn`
 
 **Interfaces:**
 - Produces: filtres de navigation (tier / type d'arme) ; actions `Tout réinitialiser`, `Tout désélectionner`, `Exclure tout l'affiché` (désactivée sans filtre actif).
@@ -680,7 +680,7 @@ func _on_ready_toggled(pressed) -> void:
 
 - [ ] **Step 4 : Commit**
 ```bash
-git add -f Brotato/mods-unpacked/Tanit-ShopConfig/scenes/player_shop_config_panel.gd Brotato/mods-unpacked/Tanit-ShopConfig/scenes/player_shop_config_panel.tscn
+git add -f Brotato/mods-unpacked/Tanith-ShopConfig/scenes/player_shop_config_panel.gd Brotato/mods-unpacked/Tanith-ShopConfig/scenes/player_shop_config_panel.tscn
 git commit -m "feat: filtres de navigation et actions rapides"
 ```
 
@@ -689,8 +689,8 @@ git commit -m "feat: filtres de navigation et actions rapides"
 ### Task 5.3 : Écran responsive + écriture dans le store
 
 **Files:**
-- Create: `Brotato/mods-unpacked/Tanit-ShopConfig/scenes/shop_config_screen.gd`
-- Create: `Brotato/mods-unpacked/Tanit-ShopConfig/scenes/shop_config_screen.tscn`
+- Create: `Brotato/mods-unpacked/Tanith-ShopConfig/scenes/shop_config_screen.gd`
+- Create: `Brotato/mods-unpacked/Tanith-ShopConfig/scenes/shop_config_screen.tscn`
 
 **Interfaces:**
 - Consumes: `PlayerShopConfigPanel` (5.1-5.2), `ItemService.get_shopconfig_store()` (4.1).
@@ -704,7 +704,7 @@ extends Control
 
 signal all_confirmed
 
-const PanelScene = preload("res://mods-unpacked/Tanit-ShopConfig/scenes/player_shop_config_panel.tscn")
+const PanelScene = preload("res://mods-unpacked/Tanith-ShopConfig/scenes/player_shop_config_panel.tscn")
 
 onready var _grid = $PanelsGrid
 var _panels := []
@@ -736,7 +736,7 @@ func _commit_and_advance() -> void:
 
 - [ ] **Step 4 : Commit**
 ```bash
-git add -f Brotato/mods-unpacked/Tanit-ShopConfig/scenes/shop_config_screen.gd Brotato/mods-unpacked/Tanit-ShopConfig/scenes/shop_config_screen.tscn
+git add -f Brotato/mods-unpacked/Tanith-ShopConfig/scenes/shop_config_screen.gd Brotato/mods-unpacked/Tanith-ShopConfig/scenes/shop_config_screen.tscn
 git commit -m "feat: écran responsive multi-joueurs + écriture des exclusions"
 ```
 
@@ -745,8 +745,8 @@ git commit -m "feat: écran responsive multi-joueurs + écriture des exclusions"
 ### Task 5.4 : Insérer l'écran entre sélection perso et arme
 
 **Files:**
-- Create: `Brotato/mods-unpacked/Tanit-ShopConfig/extensions/ui/menus/run/character_selection.gd`
-- Modify: `Brotato/mods-unpacked/Tanit-ShopConfig/mod_main.gd`
+- Create: `Brotato/mods-unpacked/Tanith-ShopConfig/extensions/ui/menus/run/character_selection.gd`
+- Modify: `Brotato/mods-unpacked/Tanith-ShopConfig/mod_main.gd`
 
 **Interfaces:**
 - Consumes: `ShopConfigScreen` (5.3).
@@ -756,7 +756,7 @@ git commit -m "feat: écran responsive multi-joueurs + écriture des exclusions"
 ```gdscript
 extends "res://ui/menus/run/character_selection.gd"
 
-const ScreenScene = preload("res://mods-unpacked/Tanit-ShopConfig/scenes/shop_config_screen.tscn")
+const ScreenScene = preload("res://mods-unpacked/Tanith-ShopConfig/scenes/shop_config_screen.tscn")
 
 func _on_selections_completed() -> void:
     if ProgressData.settings.zone_is_random:
@@ -790,14 +790,14 @@ func _on_shopconfig_confirmed(screen) -> void:
 
 - [ ] **Step 2 : Installer l'extension** — ajouter dans `mod_main.gd._install_extensions()` :
 ```gdscript
-    ModLoaderMod.install_script_extension("res://mods-unpacked/Tanit-ShopConfig/extensions/ui/menus/run/character_selection.gd")
+    ModLoaderMod.install_script_extension("res://mods-unpacked/Tanith-ShopConfig/extensions/ui/menus/run/character_selection.gd")
 ```
 
 - [ ] **Step 3 : Vérif manuelle (end-to-end)** — lancer une partie solo : choisir un perso → l'écran de config apparaît → exclure quelques objets/armes → Prêt → sélection d'arme normale → en jeu, les exclus n'apparaissent pas en boutique. Tester aussi un perso sans arme (flux difficulté).
 
 - [ ] **Step 4 : Commit**
 ```bash
-git add -f Brotato/mods-unpacked/Tanit-ShopConfig/extensions/ui/menus/run/character_selection.gd Brotato/mods-unpacked/Tanit-ShopConfig/mod_main.gd
+git add -f Brotato/mods-unpacked/Tanith-ShopConfig/extensions/ui/menus/run/character_selection.gd Brotato/mods-unpacked/Tanith-ShopConfig/mod_main.gd
 git commit -m "feat: insertion de l'écran de config dans le flux de menus"
 ```
 
@@ -820,7 +820,7 @@ git commit -m "feat: insertion de l'écran de config dans le flux de menus"
 - [ ] « Tout réinitialiser » / « Exclure tout l'affiché » (désactivée sans filtre) conformes.
 - [ ] Config remise à zéro à la partie suivante.
 - [ ] Build précis : tout désélectionner + recocher 3 → seuls ces éléments dominent la boutique.
-- [ ] `debug_log` off = pas de logs info ; on = logs sous `Tanit-ShopConfig`.
+- [ ] `debug_log` off = pas de logs info ; on = logs sous `Tanith-ShopConfig`.
 
 - [ ] **Step 2 : Commit**
 ```bash
