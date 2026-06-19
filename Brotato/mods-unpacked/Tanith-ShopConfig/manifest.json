@@ -12,7 +12,7 @@
             "optional_dependencies": [],
             "load_before": [],
             "incompatibilities": [],
-            "compatible_mod_loader_version": [],
+            "compatible_mod_loader_version": ["6.3.0"],
             "compatible_game_version": [],
             "config_schema": {
                 "type": "object",
