@@ -2,159 +2,77 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Ajouter un écran, entre la sélection du personnage et celle de l'arme de départ, qui permet à chaque joueur de retirer des objets/armes du pool de pioche de son magasin.
+**Goal:** Ajouter un écran, entre la sélection du personnage et celle de l'arme de départ, qui permet à chaque joueur de retirer des objets/armes du pool de pioche de **son magasin** (boutique uniquement).
 
-**Architecture:** Mod Brotato (Godot 4 + Godot ModLoader). Le modèle est une **curation du pool** : on ne stocke que les exclusions par joueur dans un store à variables statiques, et on filtre les candidats du magasin avant la pioche pondérée native (Approche A). L'UI est une scène multi-joueurs responsive injectée dans le flux de menus. La logique de filtrage est isolée dans une fonction pure testable.
+**Architecture:** Mod Brotato (**Godot 3.7** + GodotModLoader 6.x bundlé). Modèle = curation du pool : on ne stocke que les exclusions par joueur. Filtrage **borné au magasin** en surchargeant `ItemService.get_pool()`, activé seulement pendant `ItemService.get_player_shop_items()` via un drapeau de contexte. Écran inséré en surchargeant `CharacterSelection._on_selections_completed()`. Logique de filtrage isolée dans une fonction pure testée (GUT, bundlé).
 
-**Tech Stack:** Godot 4, GDScript, Godot ModLoader (script extensions + script hooks), GUT (Godot Unit Test) pour la logique pure, GDRE Tools / gdsdecomp pour décompiler Brotato.
-
-## ⚠️ Correction moteur (2026-06-19) — À LIRE AVANT EXÉCUTION
-
-L'en-tête de `Brotato.pck` révèle que **Brotato tourne sur Godot 3.7** (et non Godot 4). Conséquences qui **invalident une partie du code ci-dessous** (rédigé pour Godot 4) :
-
-- **Pas de script hooks** en Godot 3 → l'intégration native (Phase 5) se fait **uniquement par script extensions** ; supprimer toutes les variantes « hook »/`add_hook`/`ModLoaderHookChain`. Si un script natif a un `class_name` ou est préchargé, trouver un point d'accroche extensible en amont.
-- **GDScript 3** : pas de `static var` (le store et le logger doivent devenir un **autoload Node** instancié, pas des statiques), pas de nœuds `%UniqueName` (utiliser `$Chemin`/`get_node`), `connect("signal", self, "methode")` ancienne forme (pas de `Callable`/lambda), appel du parent via `.methode()` et non `super()`, pas de tableaux typés.
-- **Éditeur** : Godot **3.6** standard (pas .NET). **GUT** version Godot 3.
-- **ModLoader** : écosystème godot-mod-loader **branche Godot 3** (Brotato inclut désormais officiellement un ModLoader — à confirmer dans les sources décompilées).
-
-**Le détail du code Godot 3 sera réécrit après la reconnaissance (Phase 0)**, contre les sources réelles décompilées (API ModLoader exacte + internals du jeu). Les blocs de code Godot 4 ci-dessous restent comme intention/structure, à adapter.
+**Tech Stack:** GDScript (Godot 3), GodotModLoader (`res://addons/mod_loader/`), GUT (`res://addons/gut/`). Projet de dev = Brotato décompilé dans `./Brotato/` ; mod sous `./Brotato/mods-unpacked/Tanit-ShopConfig/`.
 
 ## Global Constraints
 
-- **Godot 3.7** (build Brotato) — éditeur de dev **Godot 3.6 standard** + **godot-mod-loader (Godot 3)** : API `install_script_extension` (extension only, **pas de hooks**).
-- **Non destructif** : ne jamais écrire dans les données natives du jeu, ni dans la liste d'exclusion native (8 slots). Couche additive uniquement.
-- **3 couches de filtrage** combinées sans interférence : compatibilité perso (natif) → exclusion native (natif) → exclusions de notre écran (mod).
-- **On ne stocke que les exclusions**, par joueur. Aucune persistance entre parties. `reset()` à l'ouverture de l'écran.
-- **Pas de garantie absolue** : aucune injection ni manipulation de tier ; on ne fait que retirer des candidats.
-- **Garde-fou global** : interdiction de valider un pool entièrement vide (au moins un élément achetable, objet **ou** arme).
-- **Coop 1-4 joueurs** : un pool par joueur, layout responsive (1 = plein écran, 2 = moitiés, 3-4 = quarts), navigation manette par quadrant.
-- **Conventions ModLoader** : fichiers en `snake_case` ; ID de mod `{namespace}-{name}` ; chemins sous `res://mods-unpacked/{namespace}-{name}/`.
-- **Logging spécifique et désactivable** : tous les logs du mod passent par un wrapper (`ModLog`) sous le namespace `Tanit-ShopConfig` (donc filtrables dans la console ModLoader) ; un drapeau `debug_log` (config du mod, **défaut : false**) active/désactive les logs `info`/`debug`. Les `error` restent toujours émis. Aucun `print()` brut ni `ModLoaderLog` appelé directement ailleurs.
-- **Namespace/nom du mod** : `Tanit-ShopConfig` (ID `Tanit-ShopConfig`). Remplacer `Tanit` par le namespace réel souhaité partout si différent.
+- **Moteur Godot 3.7** → **GDScript 3** : base `Reference` (pas `RefCounted`), **pas de `static var`**, pas de nœuds `%` (utiliser `onready var x = $Chemin`), signaux via `connect("sig", self, "_methode")`, appel parent via `.methode()` (pas `super()`), `instance()` (pas `instantiate()`), pas de tableaux typés ni lambdas. **Pas de script hooks** : intégration par `ModLoaderMod.install_script_extension()` seulement.
+- **Non destructif** : ne jamais écrire dans `RunData.players_data[i].banned_items` (exclusion native 8 slots) ni dans aucune donnée native. Couche additive.
+- **Filtrage borné au magasin** : les exclusions n'affectent QUE la boutique (pas les boîtes à objets). Mécanisme : drapeau de contexte posé autour de `get_player_shop_items`, lu dans `get_pool`.
+- **On ne stocke que les exclusions**, par joueur, `{my_id: true}`. **Reset** à l'ouverture de l'écran. Aucune persistance entre parties.
+- **Pas de garantie absolue** : on retire seulement des candidats ; le tier naturel (`get_tier_from_wave`) est intact.
+- **Garde-fou global** : interdiction de valider un pool vide (au moins un élément achetable, objet **ou** arme).
+- **Coop 1-4 joueurs** : un pool par joueur ; layout responsive (1 = plein écran, 2 = moitiés, 3-4 = quarts) ; navigation manette par quadrant.
+- **ID du mod** : `Tanit-ShopConfig` (namespace `Tanit`, nom `ShopConfig`). Racine `res://mods-unpacked/Tanit-ShopConfig/`.
+- **Logger** : tout passe par `ModLog` (namespace `Tanit-ShopConfig`), toggle `debug_log` (config mod, défaut **false**) stocké via `Engine.set_meta` (faute de `static var`). `error` toujours émis.
+
+## Points d'intégration (depuis `docs/superpowers/notes/integration-points.md`)
+
+- Pool magasin : `ItemService.get_player_shop_items(wave, player_index, args)` (item_service.gd:222) ; chokepoint `ItemService.get_pool(item_tier, type)` (item_service.gd:277, retourne un `.duplicate()`).
+- `item_service.gd` = `extends Node`, **sans class_name** → extension simple.
+- Insertion écran : `CharacterSelection._on_selections_completed()` (character_selection.gd:211 → `_change_scene(MenuData.weapon_selection_scene)` l.220). `CharacterSelection` a un class_name (extension par chemin, à valider au runtime).
+- Data élément (`ItemParentData`) : `my_id:String`, `icon:Texture` (`get_icon()`), `name:String` (`get_name_text()`), `tier:enum`. Listes `ItemService.items` / `ItemService.weapons`. `NB_SHOP_ITEMS = 4`.
+- Compat perso : effets `RunData.get_player_effect(Keys.no_melee_weapons_hash / no_ranged_weapons_hash / remove_shop_items_hash, player_index)` + `weapon.type` (WeaponType.MELEE/RANGED). Perso courant : `RunData.get_player_character(player_index)`.
 
 ---
 
 ## File Structure
 
 ```
-mods-unpacked/Tanit-ShopConfig/
-├── manifest.json                          # métadonnées Thunderstore + compat
-├── mod_main.gd                            # entrée ModLoader : installe extensions/hooks
+Brotato/mods-unpacked/Tanit-ShopConfig/
+├── manifest.json
+├── mod_main.gd
 ├── content/logic/
-│   ├── pool_filter.gd                     # fonction PURE : retire les exclusions des candidats
-│   └── mod_log.gd                         # logger propre au mod, désactivable (défaut off)
+│   ├── pool_filter.gd                     # PUR : retire les exclusions des candidats
+│   └── mod_log.gd                         # logger désactivable (Engine.meta)
 ├── singletons/
-│   └── shop_config_store.gd               # store statique : exclusions par joueur (reset/par run)
+│   └── shop_config_store.gd               # store (exclusions + drapeau contexte magasin)
+├── extensions/
+│   ├── singletons/item_service.gd         # surcharge get_player_shop_items + get_pool
+│   └── ui/menus/run/character_selection.gd# surcharge _on_selections_completed
 ├── scenes/
 │   ├── shop_config_screen.gd / .tscn      # conteneur responsive multi-joueurs
-│   └── player_shop_config_panel.gd / .tscn# un quadrant : grille, filtres, infobulle, Prêt
-├── extensions/                            # script extensions miroir de l'arbo native
-│   └── <rempli en Phase 5 selon recon>
-└── hooks installés dans mod_main.gd       # si points natifs en class_name/préchargés
-
-docs/superpowers/notes/
-└── integration-points.md                  # SORTIE de la Phase 0 : chemins/signatures natifs
-```
-
-Fichiers de test (dans le projet de dev décompilé) :
-```
-test/unit/test_pool_filter.gd              # GUT
-test/unit/test_shop_config_store.gd        # GUT
+│   └── player_shop_config_panel.gd / .tscn# un quadrant
+└── test/
+    ├── test_pool_filter.gd                # GUT
+    ├── test_shop_config_store.gd          # GUT
+    └── test_mod_log.gd                    # GUT
 ```
 
 ---
 
-## Phase 0 — Environnement & reconnaissance
+## Phase 0 — Reconnaissance — ✅ FAIT
 
-> Cette phase est **investigatrice**, pas TDD. Son livrable est `docs/superpowers/notes/integration-points.md` rempli avec des valeurs concrètes que les phases suivantes consomment. Une tâche est « terminée » quand chaque champ du document a une réponse vérifiée dans le code décompilé.
-
-### Task 0.1 : Mettre en place l'environnement de dev modding
-
-**Files:**
-- Create: (aucun fichier de code ; mise en place d'outils et du projet)
-
-**Interfaces:**
-- Produces: un projet Godot 4 ouvrable contenant les sources **décompilées** de Brotato, avec **Godot ModLoader** installé et le jeu lançable depuis l'éditeur.
-
-- [ ] **Step 1 : Installer les outils**
-
-Installer Godot 4 (version correspondant à celle de Brotato — à confirmer dans `project.godot` après décompilation) et GDRE Tools (gdsdecomp) pour décompiler le jeu.
-
-- [ ] **Step 2 : Décompiler Brotato**
-
-Avec GDRE Tools, ouvrir le `Brotato.exe` / `.pck` et extraire le projet vers un dossier de travail (ex. `~/brotato-decomp/`).
-
-- [ ] **Step 3 : Installer Godot ModLoader dans le projet décompilé**
-
-Suivre le guide d'installation du ModLoader (https://wiki.godotmodding.com/) : ajouter l'autoload `ModLoaderStore` et `ModLoader`, et le dossier `addons/mod_loader`.
-
-- [ ] **Step 4 : Vérifier que le jeu se lance depuis l'éditeur**
-
-Run : lancer la scène principale depuis l'éditeur Godot.
-Expected : le jeu démarre, et la console affiche les logs d'init du ModLoader (aucun mod chargé pour l'instant).
-
-- [ ] **Step 5 : Noter la version exacte**
-
-Relever dans `project.godot` / logs : version de Godot, version de Brotato, version de ModLoader. Les reporter dans `docs/superpowers/notes/integration-points.md` (section « Versions »).
+`docs/superpowers/notes/integration-points.md` rempli. ModLoader + GUT bundlés (rien à installer). Environnement : Brotato décompilé dans `./Brotato/`, éditeur Godot 3.6.2.
 
 ---
 
-### Task 0.2 : Localiser et documenter les points d'intégration natifs
-
-**Files:**
-- Create: `docs/superpowers/notes/integration-points.md`
-
-**Interfaces:**
-- Consumes: projet décompilé (Task 0.1).
-- Produces: document avec, pour **chaque** champ ci-dessous, un chemin `res://...`, un nom de méthode/propriété exact, et la mention **extension vs hook** (hook obligatoire si le script vanilla a un `class_name`). Ces valeurs sont consommées par les Tasks 4.x et 5.x.
-
-Champs à remplir (chacun avec sa réponse vérifiée) :
-
-- [ ] **Step 1 : `CONTENT_LIST` — accès à la liste vivante des objets et armes**
-
-Trouver comment obtenir tous les objets et toutes les armes avec, pour chacun : identifiant (probablement `my_id`), icône, nom, description, **tier**, **tags**, et (pour les armes) **type/classe d'arme**.
-Chercher dans le code décompilé : `ItemService`, `WeaponService`, `items`, `weapons`, `my_id`, `tier`, `tags`.
-Documenter : le chemin du service, la propriété/fonction d'accès, et le nom **exact** de la propriété d'ID.
-
-- [ ] **Step 2 : `CHAR_COMPAT` — compatibilité objet/arme ↔ personnage**
-
-Trouver la fonction native qui détermine si un objet/arme est disponible pour un personnage donné (restrictions de classe d'armes, items interdits par perso).
-Chercher : `get_shop_items`, `can_appear`, `is_*_compatible`, références au personnage / `character_id`, listes d'items interdits sur la `CharacterData`.
-Documenter : chemin + signature exacte de la fonction de compatibilité réutilisable.
-
-- [ ] **Step 3 : `SHOP_POOL` — génération du pool du magasin par joueur**
-
-Trouver le script + la méthode qui construit la liste des candidats dans laquelle le magasin pioche, **par joueur**.
-Chercher : `shop`, `_get_shop_items`, `get_items`, `roll`, `weighted`, `tier_weights`, références au `player_index`.
-Documenter : chemin `res://...`, nom **exact** de la méthode, sa **signature** (paramètres + type de retour), comment le **player_index** y est accessible, et si le script a un `class_name` (→ **hook**) ou non (→ **extension**), et s'il est **préchargé** (préchargé = ni extension ni hook possibles → trouver un point d'accroche alternatif en amont).
-
-- [ ] **Step 4 : `MENU_NAV` — transition sélection perso → sélection arme**
-
-Trouver le script + la méthode qui déclenche le passage de l'écran de sélection de personnage à celui de sélection d'arme de départ.
-Chercher : `character_selection`, `weapon_selection`, `_on_*_ready`, `goto_*`, `change_scene`, `_on_continue_pressed`.
-Documenter : chemin, méthode exacte, signature, `class_name`/préchargé (extension vs hook), et **comment récupérer la liste des joueurs et leur personnage choisi** à ce stade (pour construire la grille filtrée par perso).
-
-- [ ] **Step 5 : Renseigner le document et vérifier la complétude**
-
-Le document `integration-points.md` doit contenir une valeur concrète pour `CONTENT_LIST`, `CHAR_COMPAT`, `SHOP_POOL`, `MENU_NAV`, plus la section « Versions ».
-Expected : aucun champ vide ; chaque champ cite un fichier `res://...` et un symbole exact.
-
----
-
-## Phase 1 — Squelette du mod
+## Phase 1 — Squelette du mod & logger
 
 ### Task 1.1 : Mod minimal qui se charge
 
 **Files:**
-- Create: `mods-unpacked/Tanit-ShopConfig/manifest.json`
-- Create: `mods-unpacked/Tanit-ShopConfig/mod_main.gd`
+- Create: `Brotato/mods-unpacked/Tanit-ShopConfig/manifest.json`
+- Create: `Brotato/mods-unpacked/Tanit-ShopConfig/mod_main.gd`
 
 **Interfaces:**
-- Produces: un mod chargé par le ModLoader, qui logge une ligne d'init. `mod_main.gd` exposera ensuite `_init()` comme point d'installation des extensions/hooks.
+- Produces: mod chargé par le ModLoader ; `mod_main.gd` expose `_init()` comme point d'installation des extensions.
 
-- [ ] **Step 1 : Écrire le manifest**
-
-`mods-unpacked/Tanit-ShopConfig/manifest.json` :
+- [ ] **Step 1 : Manifest** — `manifest.json` :
 ```json
 {
     "name": "ShopConfig",
@@ -170,841 +88,741 @@ Expected : aucun champ vide ; chaque champ cite un fichier `res://...` et un sym
             "optional_dependencies": [],
             "load_before": [],
             "incompatibilities": [],
-            "compatible_mod_loader_version": ["6.2.0"],
+            "compatible_mod_loader_version": [],
             "compatible_game_version": [],
             "config_schema": {
                 "type": "object",
                 "properties": {
-                    "debug_log": {
-                        "type": "boolean",
-                        "description": "Active les logs détaillés de ShopConfig.",
-                        "default": false
-                    }
+                    "debug_log": { "type": "boolean", "description": "Active les logs détaillés de ShopConfig.", "default": false }
                 }
             }
         }
     }
 }
 ```
-(Renseigner `compatible_mod_loader_version` et `compatible_game_version` avec les valeurs relevées en Task 0.1. Le `config_schema` déclare l'interrupteur de log `debug_log`, désactivé par défaut.)
 
-- [ ] **Step 2 : Écrire le mod_main minimal**
-
-`mods-unpacked/Tanit-ShopConfig/mod_main.gd` :
+- [ ] **Step 2 : mod_main minimal** — `mod_main.gd` :
 ```gdscript
 extends Node
 
-const MOD_DIR := "res://mods-unpacked/Tanit-ShopConfig/"
+const LOG_NAME := "Tanit-ShopConfig"
 
 func _init() -> void:
-    ModLoaderLog.info("ShopConfig: init", "Tanit-ShopConfig")
+    ModLoaderLog.info("init", LOG_NAME)
     _install_extensions()
-    _install_hooks()
 
 func _install_extensions() -> void:
     pass
-
-func _install_hooks() -> void:
-    pass
 ```
 
-- [ ] **Step 3 : Lancer le jeu et vérifier le chargement**
-
-Run : lancer le jeu depuis l'éditeur.
-Expected : le log contient `ShopConfig: init` et le ModLoader liste `Tanit-ShopConfig` parmi les mods chargés.
+- [ ] **Step 3 : Lancer le jeu** — Run : lancer Brotato depuis l'éditeur (ou `Brotato.exe`). Expected : le log liste `Tanit-ShopConfig` chargé et affiche `init`.
 
 - [ ] **Step 4 : Commit**
-
 ```bash
-git add mods-unpacked/Tanit-ShopConfig/manifest.json mods-unpacked/Tanit-ShopConfig/mod_main.gd
+git add Brotato/mods-unpacked/Tanit-ShopConfig/manifest.json Brotato/mods-unpacked/Tanit-ShopConfig/mod_main.gd
 git commit -m "feat: squelette du mod ShopConfig qui se charge"
 ```
+> Note : `Brotato/` est git-ignoré globalement. Forcer l'ajout du sous-dossier mod : `git add -f <paths>` (ou retirer `mods-unpacked` de l'ignore). Adapter le `.gitignore` pour ne suivre que `Brotato/mods-unpacked/Tanit-ShopConfig/`.
 
 ---
 
-### Task 1.2 : Logger propre au mod, désactivable (TDD via GUT)
+### Task 1.2 : Logger désactivable (TDD via GUT)
 
 **Files:**
-- Create: `mods-unpacked/Tanit-ShopConfig/content/logic/mod_log.gd`
-- Modify: `mods-unpacked/Tanit-ShopConfig/mod_main.gd`
-- Test: `test/unit/test_mod_log.gd`
+- Create: `Brotato/mods-unpacked/Tanit-ShopConfig/content/logic/mod_log.gd`
+- Modify: `Brotato/mods-unpacked/Tanit-ShopConfig/mod_main.gd`
+- Test: `Brotato/mods-unpacked/Tanit-ShopConfig/test/test_mod_log.gd`
 
 **Interfaces:**
-- Produces (consommé par toutes les phases pour journaliser) :
-  - `ModLog.set_enabled(value: bool) -> void`
-  - `ModLog.is_enabled() -> bool`
-  - `ModLog.info(msg: String) -> void` / `ModLog.debug(msg: String) -> void` (émis seulement si activé)
-  - `ModLog.error(msg: String) -> void` (toujours émis)
-  - Tous sous le namespace `Tanit-ShopConfig`.
+- Produces (statique, appelé partout) : `ModLog.set_enabled(v)`, `ModLog.is_enabled()`, `ModLog.info(msg)`, `ModLog.error(msg)`, `ModLog.LOG_NAME == "Tanit-ShopConfig"`. `info` émis seulement si activé ; `error` toujours.
 
-- [ ] **Step 1 : Écrire le test qui échoue**
-
-`test/unit/test_mod_log.gd` :
+- [ ] **Step 1 : Test qui échoue** — `test/test_mod_log.gd` :
 ```gdscript
-extends GutTest
+extends "res://addons/gut/test.gd"
 
-const ModLog := preload("res://mods-unpacked/Tanit-ShopConfig/content/logic/mod_log.gd")
+const ModLog = preload("res://mods-unpacked/Tanit-ShopConfig/content/logic/mod_log.gd")
 
-func after_each() -> void:
+func after_each():
     ModLog.set_enabled(false)
 
-func test_disabled_by_default() -> void:
+func test_disabled_by_default():
+    ModLog.set_enabled(false)
     assert_false(ModLog.is_enabled())
 
-func test_enable_toggle() -> void:
+func test_enable_toggle():
     ModLog.set_enabled(true)
     assert_true(ModLog.is_enabled())
     ModLog.set_enabled(false)
     assert_false(ModLog.is_enabled())
 
-func test_log_name_is_mod_specific() -> void:
+func test_log_name():
     assert_eq(ModLog.LOG_NAME, "Tanit-ShopConfig")
 
-func test_logging_methods_do_not_crash_when_disabled_or_enabled() -> void:
-    ModLog.set_enabled(false)
-    ModLog.info("muet")
-    ModLog.debug("muet")
+func test_methods_do_not_crash():
     ModLog.set_enabled(true)
     ModLog.info("visible")
     ModLog.error("toujours")
-    assert_true(true)  # aucune exception levée
+    ModLog.set_enabled(false)
+    ModLog.info("muet")
+    assert_true(true)
 ```
 
-- [ ] **Step 2 : Lancer le test et vérifier l'échec**
+- [ ] **Step 2 : Vérifier l'échec** — Run : `godot -s addons/gut/gut_cmdln.gd -gdir=res://mods-unpacked/Tanit-ShopConfig/test -gexit` (depuis `./Brotato/`). Expected : ÉCHEC (mod_log.gd absent).
 
-Run : GUT sur `test/unit/test_mod_log.gd`.
-Expected : ÉCHEC — `mod_log.gd` n'existe pas.
-
-- [ ] **Step 3 : Écrire l'implémentation**
-
-`mods-unpacked/Tanit-ShopConfig/content/logic/mod_log.gd` :
+- [ ] **Step 3 : Implémentation** — `content/logic/mod_log.gd` :
 ```gdscript
-extends RefCounted
-## Logger propre au mod, désactivable. Namespace fixe pour filtrer dans la console.
+extends Reference
+# Logger propre au mod, désactivable. Godot 3 n'a pas de static var :
+# le drapeau est stocké en méta globale sur Engine.
 
 const LOG_NAME := "Tanit-ShopConfig"
-
-static var _enabled: bool = false
+const _META := "tanit_shopconfig_log_enabled"
 
 static func set_enabled(value: bool) -> void:
-    _enabled = value
+    Engine.set_meta(_META, value)
 
 static func is_enabled() -> bool:
-    return _enabled
+    return Engine.has_meta(_META) and Engine.get_meta(_META)
 
 static func info(msg: String) -> void:
-    if _enabled:
+    if is_enabled():
         ModLoaderLog.info(msg, LOG_NAME)
 
-static func debug(msg: String) -> void:
-    if _enabled:
-        ModLoaderLog.debug(msg, LOG_NAME)
-
 static func error(msg: String) -> void:
-    # Les erreurs sont toujours émises, même logs désactivés.
     ModLoaderLog.error(msg, LOG_NAME)
 ```
 
-- [ ] **Step 4 : Lancer le test et vérifier le succès**
+- [ ] **Step 4 : Vérifier le succès** — Run : même commande GUT. Expected : 4 tests passent.
 
-Run : GUT sur `test/unit/test_mod_log.gd`.
-Expected : SUCCÈS — 4 tests passent.
-
-- [ ] **Step 5 : Câbler le drapeau depuis la config du mod dans mod_main**
-
-Remplacer le `mod_main.gd` par :
+- [ ] **Step 5 : Câbler le toggle dans mod_main** — remplacer `mod_main.gd` :
 ```gdscript
 extends Node
 
-const MOD_DIR := "res://mods-unpacked/Tanit-ShopConfig/"
-const ModLog := preload("res://mods-unpacked/Tanit-ShopConfig/content/logic/mod_log.gd")
+const LOG_NAME := "Tanit-ShopConfig"
+const ModLog = preload("res://mods-unpacked/Tanit-ShopConfig/content/logic/mod_log.gd")
 
 func _init() -> void:
     _setup_logging()
     ModLog.info("init")
     _install_extensions()
-    _install_hooks()
 
 func _setup_logging() -> void:
-    # Lit le drapeau debug_log depuis la config du mod (défaut false si indispo).
     var enabled := false
-    var config := ModLoaderConfig.get_current_config("Tanit-ShopConfig")
-    if config != null and config.data is Dictionary:
-        enabled = bool(config.data.get("debug_log", false))
+    var conf = ModLoaderConfig.get_current_config("Tanit-ShopConfig")
+    if conf != null and conf.data is Dictionary:
+        enabled = bool(conf.data.get("debug_log", false))
     ModLog.set_enabled(enabled)
 
 func _install_extensions() -> void:
     pass
-
-func _install_hooks() -> void:
-    pass
 ```
-> L'API exacte de lecture de config (`ModLoaderConfig.get_current_config`) est à confirmer pour la version relevée en Task 0.1 ; le comportement par défaut (logs off) doit rester vrai même si la config est absente.
+> `ModLoaderConfig.get_current_config` est l'API bundlée (`res://addons/mod_loader/api/config.gd`). Le défaut (off) doit tenir même si la config est absente.
 
-- [ ] **Step 6 : Vérification manuelle**
-
-Lancer le jeu avec `debug_log` à false (défaut) puis à true (via le menu de config du mod du ModLoader).
-Expected : à false, aucun log `ShopConfig` hormis les erreurs ; à true, le log `init` et les logs `info` apparaissent sous le namespace `Tanit-ShopConfig`.
+- [ ] **Step 6 : Vérif manuelle** — lancer avec `debug_log` à false puis true (menu mods du jeu). Expected : à false, aucun log `info` ; à true, `init` + `info` sous `Tanit-ShopConfig`.
 
 - [ ] **Step 7 : Commit**
-
 ```bash
-git add mods-unpacked/Tanit-ShopConfig/content/logic/mod_log.gd mods-unpacked/Tanit-ShopConfig/mod_main.gd test/unit/test_mod_log.gd
-git commit -m "feat: logger propre au mod, désactivable via config (défaut off)"
+git add -f Brotato/mods-unpacked/Tanit-ShopConfig/content/logic/mod_log.gd Brotato/mods-unpacked/Tanit-ShopConfig/mod_main.gd Brotato/mods-unpacked/Tanit-ShopConfig/test/test_mod_log.gd
+git commit -m "feat: logger désactivable via config (défaut off)"
 ```
 
 ---
 
 ## Phase 2 — Logique pure de filtrage
 
-### Task 2.1 : `pool_filter.gd` (fonction pure, TDD via GUT)
+### Task 2.1 : `pool_filter.gd` (TDD via GUT)
 
 **Files:**
-- Create: `mods-unpacked/Tanit-ShopConfig/content/logic/pool_filter.gd`
-- Test: `test/unit/test_pool_filter.gd`
+- Create: `Brotato/mods-unpacked/Tanit-ShopConfig/content/logic/pool_filter.gd`
+- Test: `Brotato/mods-unpacked/Tanit-ShopConfig/test/test_pool_filter.gd`
 
 **Interfaces:**
-- Produces: `PoolFilter.filter(candidates: Array, excluded_ids: Dictionary) -> Array` — retourne les candidats dont la propriété `my_id` n'est PAS une clé de `excluded_ids`. `excluded_ids` est utilisé comme un ensemble (`{id: true}`). Consommé par la Task 5.2.
+- Produces : `PoolFilter.filter(candidates: Array, excluded_ids: Dictionary) -> Array` — garde les candidats dont `.my_id` n'est pas clé de `excluded_ids` ({id: true}). Consommé par Task 4.x (extension item_service).
 
-> Prérequis : GUT installé dans le projet de dev (addon `gut`). Si absent : l'installer via l'Asset Library, activer le plugin, créer le dossier `test/unit/`.
-
-- [ ] **Step 1 : Écrire le test qui échoue**
-
-`test/unit/test_pool_filter.gd` :
+- [ ] **Step 1 : Test qui échoue** — `test/test_pool_filter.gd` :
 ```gdscript
-extends GutTest
+extends "res://addons/gut/test.gd"
 
-const PoolFilter := preload("res://mods-unpacked/Tanit-ShopConfig/content/logic/pool_filter.gd")
+const PoolFilter = preload("res://mods-unpacked/Tanit-ShopConfig/content/logic/pool_filter.gd")
 
 class StubItem:
-    var my_id: String
-    func _init(id: String) -> void:
+    extends Reference
+    var my_id := ""
+    func _init(id):
         my_id = id
 
-func _items(ids: Array) -> Array:
-    var out: Array = []
+func _items(ids):
+    var out = []
     for id in ids:
         out.append(StubItem.new(id))
     return out
 
-func _ids(items: Array) -> Array:
-    var out: Array = []
+func _ids(items):
+    var out = []
     for it in items:
         out.append(it.my_id)
     return out
 
-func test_removes_excluded_ids() -> void:
-    var candidates := _items(["a", "b", "c"])
-    var excluded := {"b": true}
-    var result := PoolFilter.filter(candidates, excluded)
+func test_removes_excluded():
+    var result = PoolFilter.filter(_items(["a", "b", "c"]), {"b": true})
     assert_eq(_ids(result), ["a", "c"])
 
-func test_unknown_excluded_id_is_ignored() -> void:
-    var candidates := _items(["a", "b"])
-    var excluded := {"zzz": true}
-    var result := PoolFilter.filter(candidates, excluded)
+func test_unknown_id_ignored():
+    var result = PoolFilter.filter(_items(["a", "b"]), {"zzz": true})
     assert_eq(_ids(result), ["a", "b"])
 
-func test_empty_exclusions_returns_all() -> void:
-    var candidates := _items(["a", "b"])
-    var result := PoolFilter.filter(candidates, {})
+func test_empty_exclusions_returns_all():
+    var result = PoolFilter.filter(_items(["a", "b"]), {})
     assert_eq(_ids(result), ["a", "b"])
 
-func test_excluding_everything_returns_empty() -> void:
-    var candidates := _items(["a", "b"])
-    var excluded := {"a": true, "b": true}
-    var result := PoolFilter.filter(candidates, excluded)
+func test_excluding_all_returns_empty():
+    var result = PoolFilter.filter(_items(["a", "b"]), {"a": true, "b": true})
     assert_eq(result.size(), 0)
 
-func test_does_not_mutate_input() -> void:
-    var candidates := _items(["a", "b"])
+func test_does_not_mutate_input():
+    var candidates = _items(["a", "b"])
     PoolFilter.filter(candidates, {"a": true})
     assert_eq(candidates.size(), 2)
 ```
 
-- [ ] **Step 2 : Lancer le test et vérifier l'échec**
+- [ ] **Step 2 : Vérifier l'échec** — Run GUT (`-gdir=res://mods-unpacked/Tanit-ShopConfig/test`). Expected : ÉCHEC.
 
-Run : exécuter GUT sur `test/unit/test_pool_filter.gd` (panneau GUT ou ligne de commande `godot -s addons/gut/gut_cmdln.gd -gtest=test/unit/test_pool_filter.gd -gexit`).
-Expected : ÉCHEC — `pool_filter.gd` n'existe pas / `filter` indéfini.
-
-- [ ] **Step 3 : Écrire l'implémentation minimale**
-
-`mods-unpacked/Tanit-ShopConfig/content/logic/pool_filter.gd` :
+- [ ] **Step 3 : Implémentation** — `content/logic/pool_filter.gd` :
 ```gdscript
-extends RefCounted
-## Fonction pure de filtrage du pool. Aucune dépendance au jeu.
+extends Reference
+# Fonction pure : aucune dépendance au jeu.
 
-## Retourne les candidats dont `my_id` n'est pas une clé de `excluded_ids`.
-## `excluded_ids` est utilisé comme un ensemble : {id: true}.
+# Garde les candidats dont `my_id` n'est pas clé de `excluded_ids` (ensemble {id: true}).
 static func filter(candidates: Array, excluded_ids: Dictionary) -> Array:
-    var result: Array = []
+    var result := []
     for candidate in candidates:
         if not excluded_ids.has(candidate.my_id):
             result.append(candidate)
     return result
 ```
 
-- [ ] **Step 4 : Lancer le test et vérifier le succès**
-
-Run : exécuter GUT sur `test/unit/test_pool_filter.gd`.
-Expected : SUCCÈS — 5 tests passent.
+- [ ] **Step 4 : Vérifier le succès** — Run GUT. Expected : 5 tests passent.
 
 - [ ] **Step 5 : Commit**
-
 ```bash
-git add mods-unpacked/Tanit-ShopConfig/content/logic/pool_filter.gd test/unit/test_pool_filter.gd
+git add -f Brotato/mods-unpacked/Tanit-ShopConfig/content/logic/pool_filter.gd Brotato/mods-unpacked/Tanit-ShopConfig/test/test_pool_filter.gd
 git commit -m "feat: fonction pure pool_filter + tests GUT"
 ```
 
 ---
 
-## Phase 3 — Store des exclusions par joueur
+## Phase 3 — Store des exclusions + contexte magasin
 
 ### Task 3.1 : `shop_config_store.gd` (TDD via GUT)
 
 **Files:**
-- Create: `mods-unpacked/Tanit-ShopConfig/singletons/shop_config_store.gd`
-- Test: `test/unit/test_shop_config_store.gd`
+- Create: `Brotato/mods-unpacked/Tanit-ShopConfig/singletons/shop_config_store.gd`
+- Test: `Brotato/mods-unpacked/Tanit-ShopConfig/test/test_shop_config_store.gd`
 
 **Interfaces:**
-- Produces, consommé par Tasks 4.4 et 5.2 :
-  - `ShopConfigStore.reset() -> void`
-  - `ShopConfigStore.set_excluded(player_index: int, excluded_ids: Dictionary) -> void` (stocke une **copie**)
-  - `ShopConfigStore.get_excluded(player_index: int) -> Dictionary` (`{}` si aucun)
-  - `ShopConfigStore.has_any_available(player_index: int, total_count: int) -> bool` (vrai s'il reste ≥ 1 candidat ; garde-fou global)
+- Produces (instance unique tenue par l'extension ItemService, Task 4.1) :
+  - `reset()`, `set_excluded(player_index:int, ids:Dictionary)`, `get_excluded(player_index:int) -> Dictionary`
+  - `has_any_available(player_index:int, total_count:int) -> bool` (garde-fou : exclus < total)
+  - `begin_shop_draw(player_index:int)`, `end_shop_draw()`, `is_shop_draw_active() -> bool`, `current_shop_player() -> int`
 
-- [ ] **Step 1 : Écrire le test qui échoue**
-
-`test/unit/test_shop_config_store.gd` :
+- [ ] **Step 1 : Test qui échoue** — `test/test_shop_config_store.gd` :
 ```gdscript
-extends GutTest
+extends "res://addons/gut/test.gd"
 
-const Store := preload("res://mods-unpacked/Tanit-ShopConfig/singletons/shop_config_store.gd")
+const Store = preload("res://mods-unpacked/Tanit-ShopConfig/singletons/shop_config_store.gd")
 
-func before_each() -> void:
-    Store.reset()
+var store
 
-func test_get_excluded_defaults_empty() -> void:
-    assert_eq(Store.get_excluded(0), {})
+func before_each():
+    store = Store.new()
 
-func test_set_and_get_excluded() -> void:
-    Store.set_excluded(0, {"a": true})
-    assert_eq(Store.get_excluded(0), {"a": true})
+func test_get_excluded_defaults_empty():
+    assert_eq(store.get_excluded(0), {})
 
-func test_players_are_independent() -> void:
-    Store.set_excluded(0, {"a": true})
-    Store.set_excluded(1, {"b": true})
-    assert_eq(Store.get_excluded(0), {"a": true})
-    assert_eq(Store.get_excluded(1), {"b": true})
+func test_set_and_get():
+    store.set_excluded(0, {"a": true})
+    assert_eq(store.get_excluded(0), {"a": true})
 
-func test_set_stores_a_copy() -> void:
-    var src := {"a": true}
-    Store.set_excluded(0, src)
+func test_players_independent():
+    store.set_excluded(0, {"a": true})
+    store.set_excluded(1, {"b": true})
+    assert_eq(store.get_excluded(0), {"a": true})
+    assert_eq(store.get_excluded(1), {"b": true})
+
+func test_set_stores_copy():
+    var src = {"a": true}
+    store.set_excluded(0, src)
     src["b"] = true
-    assert_eq(Store.get_excluded(0), {"a": true})
+    assert_eq(store.get_excluded(0), {"a": true})
 
-func test_reset_clears_all() -> void:
-    Store.set_excluded(0, {"a": true})
-    Store.reset()
-    assert_eq(Store.get_excluded(0), {})
+func test_reset_clears():
+    store.set_excluded(0, {"a": true})
+    store.begin_shop_draw(0)
+    store.reset()
+    assert_eq(store.get_excluded(0), {})
+    assert_false(store.is_shop_draw_active())
 
-func test_has_any_available_true_when_some_remain() -> void:
-    Store.set_excluded(0, {"a": true})
-    assert_true(Store.has_any_available(0, 3))
+func test_has_any_available():
+    store.set_excluded(0, {"a": true})
+    assert_true(store.has_any_available(0, 3))
+    store.set_excluded(0, {"a": true, "b": true})
+    assert_false(store.has_any_available(0, 2))
 
-func test_has_any_available_false_when_all_excluded() -> void:
-    Store.set_excluded(0, {"a": true, "b": true})
-    assert_false(Store.has_any_available(0, 2))
+func test_shop_draw_context():
+    assert_false(store.is_shop_draw_active())
+    store.begin_shop_draw(2)
+    assert_true(store.is_shop_draw_active())
+    assert_eq(store.current_shop_player(), 2)
+    store.end_shop_draw()
+    assert_false(store.is_shop_draw_active())
+    assert_eq(store.current_shop_player(), -1)
 ```
 
-- [ ] **Step 2 : Lancer le test et vérifier l'échec**
+- [ ] **Step 2 : Vérifier l'échec** — Run GUT. Expected : ÉCHEC.
 
-Run : GUT sur `test/unit/test_shop_config_store.gd`.
-Expected : ÉCHEC — `shop_config_store.gd` n'existe pas.
-
-- [ ] **Step 3 : Écrire l'implémentation minimale**
-
-`mods-unpacked/Tanit-ShopConfig/singletons/shop_config_store.gd` :
+- [ ] **Step 3 : Implémentation** — `singletons/shop_config_store.gd` :
 ```gdscript
-extends RefCounted
-## Store des exclusions par joueur pour la partie en cours.
-## Variables statiques : persistent pendant la session, vidées par reset() à chaque run.
+extends Reference
+# Store des exclusions par joueur + contexte de pioche magasin.
+# Instance unique tenue par l'extension ItemService. Reset à l'ouverture de l'écran.
 
-static var _excluded_by_player: Dictionary = {}
+var _excluded_by_player := {}   # player_index -> { my_id: true }
+var _shop_draw_active := false
+var _shop_draw_player := -1
 
-static func reset() -> void:
+func reset() -> void:
     _excluded_by_player.clear()
+    _shop_draw_active = false
+    _shop_draw_player = -1
 
-static func set_excluded(player_index: int, excluded_ids: Dictionary) -> void:
-    _excluded_by_player[player_index] = excluded_ids.duplicate(true)
+func set_excluded(player_index: int, excluded_ids: Dictionary) -> void:
+    _excluded_by_player[player_index] = excluded_ids.duplicate()
 
-static func get_excluded(player_index: int) -> Dictionary:
-    return _excluded_by_player.get(player_index, {})
+func get_excluded(player_index: int) -> Dictionary:
+    if _excluded_by_player.has(player_index):
+        return _excluded_by_player[player_index]
+    return {}
 
-## Garde-fou global : reste-t-il au moins un candidat non exclu ?
-## `total_count` = nombre total d'éléments achetables proposés au joueur
-## (objets + armes compatibles avec son perso).
-static func has_any_available(player_index: int, total_count: int) -> bool:
+func has_any_available(player_index: int, total_count: int) -> bool:
     return get_excluded(player_index).size() < total_count
+
+func begin_shop_draw(player_index: int) -> void:
+    _shop_draw_active = true
+    _shop_draw_player = player_index
+
+func end_shop_draw() -> void:
+    _shop_draw_active = false
+    _shop_draw_player = -1
+
+func is_shop_draw_active() -> bool:
+    return _shop_draw_active
+
+func current_shop_player() -> int:
+    return _shop_draw_player
 ```
 
-- [ ] **Step 4 : Lancer le test et vérifier le succès**
-
-Run : GUT sur `test/unit/test_shop_config_store.gd`.
-Expected : SUCCÈS — 7 tests passent.
+- [ ] **Step 4 : Vérifier le succès** — Run GUT. Expected : 7 tests passent.
 
 - [ ] **Step 5 : Commit**
-
 ```bash
-git add mods-unpacked/Tanit-ShopConfig/singletons/shop_config_store.gd test/unit/test_shop_config_store.gd
-git commit -m "feat: store statique des exclusions par joueur + tests GUT"
+git add -f Brotato/mods-unpacked/Tanit-ShopConfig/singletons/shop_config_store.gd Brotato/mods-unpacked/Tanit-ShopConfig/test/test_shop_config_store.gd
+git commit -m "feat: store exclusions + contexte magasin + tests GUT"
 ```
 
 ---
 
-## Phase 4 — Interface (scène & quadrants)
+## Phase 4 — Intégration magasin (extension ItemService)
 
-> L'UI n'est pas testable en TDD automatisé : chaque tâche se termine par une **vérification manuelle** explicite. Le code GDScript est fourni complet ; les appels dépendant du natif référencent les champs de `integration-points.md` (Phase 0), notés `CONTENT_LIST`, `CHAR_COMPAT`, `MENU_NAV`.
-
-### Task 4.1 : Panneau joueur — construire la grille filtrée par perso
+### Task 4.1 : Filtrer le pool, borné au magasin
 
 **Files:**
-- Create: `mods-unpacked/Tanit-ShopConfig/scenes/player_shop_config_panel.gd`
-- Create: `mods-unpacked/Tanit-ShopConfig/scenes/player_shop_config_panel.tscn`
+- Create: `Brotato/mods-unpacked/Tanit-ShopConfig/extensions/singletons/item_service.gd`
+- Modify: `Brotato/mods-unpacked/Tanit-ShopConfig/mod_main.gd`
 
 **Interfaces:**
-- Consumes: `CONTENT_LIST` (accès items/armes + métadonnées), `CHAR_COMPAT` (compat perso) de `integration-points.md`.
-- Produces: `PlayerShopConfigPanel.setup(player_index: int, character_data) -> void` qui peuple deux grilles (objets, armes) avec uniquement les éléments compatibles avec `character_data`. Expose `get_excluded_ids() -> Dictionary` et `get_total_count() -> int`. Consommé par Tasks 4.2–4.4.
+- Consumes: `PoolFilter` (2.1), `ShopConfigStore` (3.1).
+- Produces: `ItemService.get_shopconfig_store()` (instance partagée, lue par l'écran en Task 5.x) ; pendant `get_player_shop_items`, `get_pool` retire les exclusions du joueur courant.
 
-- [ ] **Step 1 : Construire la scène `.tscn`**
+- [ ] **Step 1 : Écrire l'extension** — `extensions/singletons/item_service.gd` :
+```gdscript
+extends "res://singletons/item_service.gd"
 
-Racine `PanelContainer` nommée `PlayerShopConfigPanel`, script attaché. Enfants : `TabContainer` avec deux onglets `Objets` et `Armes`, chacun contenant un `ScrollContainer > GridContainer` (`%ItemsGrid`, `%WeaponsGrid`, marqués « Accès en tant que scène unique »). Ajouter un `Label` `%WarningLabel` (caché) et un `Button` `%ReadyButton`.
+const PoolFilter = preload("res://mods-unpacked/Tanit-ShopConfig/content/logic/pool_filter.gd")
+const ShopConfigStore = preload("res://mods-unpacked/Tanit-ShopConfig/singletons/shop_config_store.gd")
 
-- [ ] **Step 2 : Écrire `setup()` qui peuple les grilles**
+var _shopconfig_store = ShopConfigStore.new()
 
-`player_shop_config_panel.gd` :
+func get_shopconfig_store():
+    return _shopconfig_store
+
+func get_player_shop_items(wave: int, player_index: int, args) -> Array:
+    _shopconfig_store.begin_shop_draw(player_index)
+    var result = .get_player_shop_items(wave, player_index, args)
+    _shopconfig_store.end_shop_draw()
+    return result
+
+func get_pool(item_tier: int, type: int) -> Array:
+    var pool = .get_pool(item_tier, type)
+    if _shopconfig_store.is_shop_draw_active():
+        var excluded = _shopconfig_store.get_excluded(_shopconfig_store.current_shop_player())
+        if excluded.size() > 0:
+            pool = PoolFilter.filter(pool, excluded)
+    return pool
+```
+> `.get_pool(...)` renvoie déjà un `.duplicate()` (item_service.gd:277-278) → filtrage sans risque de muter les données natives. Le ban natif et le tier naturel restent gérés par le code vanilla.
+
+- [ ] **Step 2 : Installer l'extension** — dans `mod_main.gd._install_extensions()` :
+```gdscript
+func _install_extensions() -> void:
+    ModLoaderMod.install_script_extension("res://mods-unpacked/Tanit-ShopConfig/extensions/singletons/item_service.gd")
+```
+
+- [ ] **Step 3 : Vérif manuelle (instrumentée)** — temporairement, dans une partie solo, après le chargement : `ItemService.get_shopconfig_store().set_excluded(0, {"item_piggy_bank": true})` (via la console debug du jeu ou un log au lancement de partie), puis ouvrir le magasin sur plusieurs vagues. Expected : l'objet exclu n'apparaît jamais en boutique ; il peut encore sortir d'une boîte à objets (portée magasin-seul) ; aucune régression du ban natif. Retirer l'instrumentation.
+
+- [ ] **Step 4 : Commit**
+```bash
+git add -f Brotato/mods-unpacked/Tanit-ShopConfig/extensions/singletons/item_service.gd Brotato/mods-unpacked/Tanit-ShopConfig/mod_main.gd
+git commit -m "feat: filtrage du pool magasin borné à la boutique"
+```
+
+---
+
+## Phase 5 — Interface & insertion dans le flux
+
+### Task 5.1 : Panneau joueur — grille filtrée par perso + cases icône/infobulle
+
+**Files:**
+- Create: `Brotato/mods-unpacked/Tanit-ShopConfig/scenes/player_shop_config_panel.gd`
+- Create: `Brotato/mods-unpacked/Tanit-ShopConfig/scenes/player_shop_config_panel.tscn`
+
+**Interfaces:**
+- Consumes: `ItemService.items` / `.weapons` + métadonnées (`my_id`, `get_icon()`, `get_name_text()`, `tier`, `type`), `RunData.get_player_effect(...)` (compat perso).
+- Produces: `setup(player_index:int, character_data) -> void`, `get_excluded_ids() -> Dictionary`, `get_total_count() -> int`, signal `pool_changed`, signal `ready_changed(is_ready)`, `is_ready() -> bool`.
+
+- [ ] **Step 1 : Scène** — racine `PanelContainer` `PlayerShopConfigPanel` (script attaché). Enfants : `TabContainer` (onglets `Objets`/`Armes`) → `ScrollContainer` → `GridContainer` (`ItemsGrid`, `WeaponsGrid`) ; barre de filtres (`OptionButton` tier, `OptionButton` type d'arme) ; `Label` `WarningLabel` (caché) ; `Button` `ResetButton`, `DeselectAllButton`, `ExcludeShownButton` ; `Button` `ReadyButton` (`toggle_mode = true`).
+
+- [ ] **Step 2 : Construire la grille filtrée par perso** — `player_shop_config_panel.gd` :
 ```gdscript
 extends PanelContainer
 
-const PoolFilter := preload("res://mods-unpacked/Tanit-ShopConfig/content/logic/pool_filter.gd")
+signal pool_changed
+signal ready_changed(is_ready)
 
-var _player_index: int = 0
-var _excluded: Dictionary = {}          # {my_id: true}
-var _all_entries: Array = []            # objets+armes compatibles (données natives)
+onready var _items_grid = $TabContainer/Objets/ScrollContainer/ItemsGrid
+onready var _weapons_grid = $TabContainer/Armes/ScrollContainer/WeaponsGrid
+onready var _warning_label = $WarningLabel
+onready var _ready_button = $ReadyButton
 
-## `character_data` : la CharacterData native du joueur (depuis MENU_NAV).
+var _player_index := 0
+var _excluded := {}        # { my_id: true }
+var _all_entries := []     # ItemParentData compatibles
+var _cells := []           # TextureButton
+
 func setup(player_index: int, character_data) -> void:
     _player_index = player_index
-    _excluded.clear()
+    _excluded = {}
     _all_entries = _collect_compatible(character_data)
     _populate_grids()
+    _on_pool_changed()
 
-## Remplit _all_entries via CONTENT_LIST filtré par CHAR_COMPAT.
-## Remplacer les appels <...> par les symboles exacts de integration-points.md.
-func _collect_compatible(character_data) -> Array:
-    var entries: Array = []
-    for item in CONTENT_LIST.get_all_items():        # <CONTENT_LIST: items>
-        if CHAR_COMPAT.is_available(item, character_data):  # <CHAR_COMPAT>
-            entries.append(item)
-    for weapon in CONTENT_LIST.get_all_weapons():    # <CONTENT_LIST: weapons>
-        if CHAR_COMPAT.is_available(weapon, character_data):
-            entries.append(weapon)
+func _collect_compatible(_character_data) -> Array:
+    var entries := []
+    var no_melee = RunData.get_player_effect_bool(Keys.no_melee_weapons_hash, _player_index)
+    var no_ranged = RunData.get_player_effect_bool(Keys.no_ranged_weapons_hash, _player_index)
+    var removed_cats = RunData.get_player_effect(Keys.remove_shop_items_hash, _player_index)
+    var banned = RunData.players_data[_player_index].banned_items
+    for item in ItemService.items:
+        if _is_banned(item, banned):
+            continue
+        if item.is_structure_item() and removed_cats.has(Keys.structure_hash):
+            continue
+        entries.append(item)
+    for weapon in ItemService.weapons:
+        if _is_banned(weapon, banned):
+            continue
+        if no_melee and weapon.type == WeaponType.MELEE:
+            continue
+        if no_ranged and weapon.type == WeaponType.RANGED:
+            continue
+        entries.append(weapon)
     return entries
 
-func _populate_grids() -> void:
-    # créé dans Task 4.2 (cases à cocher) ; ici, vérifier seulement le comptage
-    pass
+func _is_banned(entry, banned) -> bool:
+    for b in banned:
+        if (b is String and b == entry.my_id) or b == entry.my_id_hash:
+            return true
+    return false
 
-func get_excluded_ids() -> Dictionary:
-    return _excluded.duplicate(true)
-
-func get_total_count() -> int:
-    return _all_entries.size()
-```
-> Les jetons `CONTENT_LIST` / `CHAR_COMPAT` correspondent aux symboles natifs documentés en Phase 0. Les remplacer par les chemins/préchargements et noms réels.
-
-- [ ] **Step 3 : Vérification manuelle (instrumentation temporaire)**
-
-Ajouter temporairement dans `setup()` : `ModLog.info("panel total=%d" % get_total_count())` (le logger de la Task 1.2 ; activer `debug_log` le temps du test). Instancier le panneau depuis un script de test rapide avec un `character_data` connu sans restriction.
-Expected : le total loggé correspond au nombre d'objets+armes compatibles attendu (et un perso restreint affiche moins). Retirer l'instrumentation ensuite.
-
-- [ ] **Step 4 : Commit**
-
-```bash
-git add mods-unpacked/Tanit-ShopConfig/scenes/player_shop_config_panel.gd mods-unpacked/Tanit-ShopConfig/scenes/player_shop_config_panel.tscn
-git commit -m "feat: panneau joueur, collecte des éléments compatibles avec le perso"
-```
-
----
-
-### Task 4.2 : Panneau joueur — cases à cocher (icône + infobulle + bascule)
-
-**Files:**
-- Modify: `mods-unpacked/Tanit-ShopConfig/scenes/player_shop_config_panel.gd`
-
-**Interfaces:**
-- Consumes: métadonnées d'un élément (icône, nom, description, `my_id`) via `CONTENT_LIST`.
-- Produces: `_excluded` reflète l'état coché/décoché ; signal `pool_changed` émis à chaque bascule. Consommé par Tasks 4.3 (garde-fou) et 4.4.
-
-- [ ] **Step 1 : Implémenter la création des cases et la bascule**
-
-Remplacer `_populate_grids()` et ajouter le toggle :
-```gdscript
-signal pool_changed
+func _is_weapon(entry) -> bool:
+    return entry is WeaponData
 
 func _populate_grids() -> void:
-    _clear_grid(%ItemsGrid)
-    _clear_grid(%WeaponsGrid)
+    _cells = []
     for entry in _all_entries:
-        var grid: GridContainer = %WeaponsGrid if _is_weapon(entry) else %ItemsGrid
-        grid.add_child(_make_cell(entry))
+        var btn = TextureButton.new()
+        btn.toggle_mode = true
+        btn.pressed = true                     # coché = dans le pool
+        btn.texture_normal = entry.get_icon()
+        btn.hint_tooltip = entry.get_name_text()
+        btn.set_meta("my_id", entry.my_id)
+        btn.connect("toggled", self, "_on_cell_toggled", [entry.my_id, btn])
+        _cells.append(btn)
+        if _is_weapon(entry):
+            _weapons_grid.add_child(btn)
+        else:
+            _items_grid.add_child(btn)
 
-func _make_cell(entry) -> Control:
-    var btn := TextureButton.new()
-    btn.toggle_mode = true
-    btn.button_pressed = true                     # coché = dans le pool par défaut
-    btn.texture_normal = entry.icon               # <CONTENT_LIST: icône>
-    btn.tooltip_text = "%s\n%s" % [entry.name, entry.description]  # <CONTENT_LIST: nom/desc>
-    btn.set_meta("my_id", entry.my_id)
-    btn.toggled.connect(_on_cell_toggled.bind(entry.my_id, btn))
-    return btn
-
-func _on_cell_toggled(is_in_pool: bool, my_id: String, btn: TextureButton) -> void:
+func _on_cell_toggled(is_in_pool, my_id, btn) -> void:
     if is_in_pool:
         _excluded.erase(my_id)
     else:
         _excluded[my_id] = true
     btn.modulate = Color(1, 1, 1) if is_in_pool else Color(0.35, 0.35, 0.35)
-    pool_changed.emit()
+    emit_signal("pool_changed")
+    _on_pool_changed()
 
-func _clear_grid(grid: GridContainer) -> void:
-    for child in grid.get_children():
-        child.queue_free()
+func get_excluded_ids() -> Dictionary:
+    return _excluded.duplicate()
 
-func _is_weapon(entry) -> bool:
-    return CONTENT_LIST.is_weapon(entry)          # <CONTENT_LIST: discriminant arme/objet>
-```
-
-- [ ] **Step 2 : Vérification manuelle**
-
-Instancier le panneau, parcourir à la manette.
-Expected : grille d'icônes, tout coché ; décocher grise la case et ajoute l'ID à `_excluded` ; l'infobulle affiche nom + description au focus ; recocher retire de `_excluded`.
-
-- [ ] **Step 3 : Commit**
-
-```bash
-git add mods-unpacked/Tanit-ShopConfig/scenes/player_shop_config_panel.gd
-git commit -m "feat: cases icône/infobulle et bascule d'exclusion"
-```
-
----
-
-### Task 4.3 : Panneau joueur — filtres, actions rapides, garde-fou, bouton Prêt
-
-**Files:**
-- Modify: `mods-unpacked/Tanit-ShopConfig/scenes/player_shop_config_panel.gd`
-- Modify: `mods-unpacked/Tanit-ShopConfig/scenes/player_shop_config_panel.tscn`
-
-**Interfaces:**
-- Produces: signal `ready_changed(is_ready: bool)` ; méthode `is_ready() -> bool`. La validation respecte le garde-fou global (`ShopConfigStore.has_any_available`). Consommé par Task 4.4.
-
-- [ ] **Step 1 : Ajouter les contrôles à la scène**
-
-Dans le `.tscn`, ajouter une barre de filtres (`OptionButton` tier, `OptionButton` tag, `OptionButton` type d'arme) et trois `Button` : `%ResetButton` (« Tout réinitialiser »), `%DeselectAllButton` (« Tout désélectionner »), `%ExcludeShownButton` (« Exclure tout l'affiché »).
-
-- [ ] **Step 2 : Implémenter filtres + actions + garde-fou**
-
-```gdscript
-signal ready_changed(is_ready: bool)
-
-func _apply_filter() -> void:
-    # Affiche/masque les cases selon tier/tag/type sélectionnés (navigation seulement).
-    for btn in _all_cells():
-        btn.visible = _matches_active_filter(btn.get_meta("my_id"))
-    %ExcludeShownButton.disabled = not _has_active_filter()
-
-func _on_reset_pressed() -> void:                 # tout dans le pool
-    for btn in _all_cells():
-        btn.button_pressed = true
-    _excluded.clear()
-    pool_changed.emit()
-
-func _on_deselect_all_pressed() -> void:          # tout hors du pool
-    for btn in _all_cells():
-        btn.button_pressed = false
-        _excluded[btn.get_meta("my_id")] = true
-    pool_changed.emit()
-
-func _on_exclude_shown_pressed() -> void:         # seulement le sous-ensemble filtré
-    if not _has_active_filter():
-        return
-    for btn in _all_cells():
-        if btn.visible:
-            btn.button_pressed = false
-            _excluded[btn.get_meta("my_id")] = true
-    pool_changed.emit()
-
-# Garde-fou : il doit rester au moins un candidat dans le pool du joueur.
-func _has_any_in_pool() -> bool:
-    return (get_total_count() - _excluded.size()) > 0
+func get_total_count() -> int:
+    return _all_entries.size()
 
 func _on_pool_changed() -> void:
-    var remaining := get_total_count() - _excluded.size()
-    var has_any := _has_any_in_pool()
-    %ReadyButton.disabled = not has_any
+    var remaining = get_total_count() - _excluded.size()
+    var has_any = remaining > 0
+    _ready_button.disabled = not has_any
     if not has_any:
-        %WarningLabel.visible = true
-        %WarningLabel.text = "Garde au moins quelques objets/armes."
-        if %ReadyButton.button_pressed:
-            %ReadyButton.button_pressed = false   # un pool vidé annule l'état Prêt
-        ready_changed.emit(false)
+        _warning_label.visible = true
+        _warning_label.text = "Garde au moins quelques objets/armes."
+        if _ready_button.pressed:
+            _ready_button.pressed = false
+        emit_signal("ready_changed", false)
     else:
-        %WarningLabel.visible = remaining < _shop_size()
-        %WarningLabel.text = "Le magasin proposera moins d'éléments."
-        ready_changed.emit(is_ready())
-
-func _on_ready_button_toggled(pressed: bool) -> void:
-    if pressed and not _has_any_in_pool():
-        %ReadyButton.button_pressed = false       # interdit de valider un pool vide
-        return
-    ready_changed.emit(is_ready())
+        _warning_label.visible = remaining < ItemService.NB_SHOP_ITEMS
+        _warning_label.text = "Le magasin proposera moins d'éléments."
+        emit_signal("ready_changed", is_ready())
 
 func is_ready() -> bool:
-    return %ReadyButton.button_pressed and _has_any_in_pool()
+    return _ready_button.pressed and (get_total_count() - _excluded.size()) > 0
 ```
-> Note : le garde-fou global est la règle `(total - exclus) > 0` (au moins un élément achetable, objet **ou** arme). Le store expose la même règle via `has_any_available()` ; elle est la **source de vérité** au moment de l'écriture (Task 4.4), tandis que le panneau l'évalue localement pour l'UI temps réel (les exclusions ne sont écrites dans le store qu'à la validation). `_shop_size()` lit la taille de magasin native (constante repérée en Phase 0) ; à défaut, valeur de repli `4`.
+> `RunData.get_player_effect_bool` / `Keys.*_hash` / `WeaponType` / `WeaponData` sont natifs (cf. item_service.gd:341-344). Si un nom diffère, l'ajuster d'après le code décompilé.
 
-- [ ] **Step 3 : Câbler les signaux**
+- [ ] **Step 3 : Vérif manuelle** — instancier le panneau (perso sans restriction, puis perso à restriction d'arme), naviguer manette. Expected : grille d'icônes tout coché ; décocher grise + remplit `_excluded` ; infobulle nom au focus ; un perso « no melee » n'affiche aucune arme de mêlée ; les objets bannis (8-slots) absents.
 
-Dans `_ready()` du panneau : connecter `%ResetButton.pressed` → `_on_reset_pressed`, `%DeselectAllButton.pressed` → `_on_deselect_all_pressed`, `%ExcludeShownButton.pressed` → `_on_exclude_shown_pressed`, `%ReadyButton.toggled` → `_on_ready_button_toggled`, le signal `pool_changed` → `_on_pool_changed`, et chaque `OptionButton` de filtre → `_apply_filter`. Rendre `%ReadyButton` à bascule (`toggle_mode = true`).
-
-- [ ] **Step 4 : Vérification manuelle**
-
-Expected :
-- « Tout réinitialiser » recoche tout, `_excluded` vide.
-- « Tout désélectionner » décoche tout ; le bouton Prêt devient **désactivé** et l'avertissement « Garde au moins… » s'affiche ; recocher 1 élément réactive Prêt.
-- « Exclure tout l'affiché » est désactivé sans filtre ; avec un filtre (ex. un tier), il n'exclut que l'affiché.
-- Avertissement discret quand pool réduit mais non vide.
-
-- [ ] **Step 5 : Commit**
-
+- [ ] **Step 4 : Commit**
 ```bash
-git add mods-unpacked/Tanit-ShopConfig/scenes/player_shop_config_panel.gd mods-unpacked/Tanit-ShopConfig/scenes/player_shop_config_panel.tscn
-git commit -m "feat: filtres, actions rapides, garde-fou pool vide, bouton Prêt"
+git add -f Brotato/mods-unpacked/Tanit-ShopConfig/scenes/player_shop_config_panel.gd Brotato/mods-unpacked/Tanit-ShopConfig/scenes/player_shop_config_panel.tscn
+git commit -m "feat: panneau joueur (grille filtrée perso, cases icône/infobulle, garde-fou)"
 ```
 
 ---
 
-### Task 4.4 : Écran conteneur responsive + écriture dans le store
+### Task 5.2 : Panneau joueur — filtres & actions rapides
 
 **Files:**
-- Create: `mods-unpacked/Tanit-ShopConfig/scenes/shop_config_screen.gd`
-- Create: `mods-unpacked/Tanit-ShopConfig/scenes/shop_config_screen.tscn`
+- Modify: `Brotato/mods-unpacked/Tanit-ShopConfig/scenes/player_shop_config_panel.gd`
+- Modify: `Brotato/mods-unpacked/Tanit-ShopConfig/scenes/player_shop_config_panel.tscn`
 
 **Interfaces:**
-- Consumes: `PlayerShopConfigPanel.setup/is_ready/get_excluded_ids` (Tasks 4.1–4.3), `ShopConfigStore` (Task 3.1), liste des joueurs + persos (depuis `MENU_NAV`, fournie par l'appelant en Task 5.1).
-- Produces: `ShopConfigScreen.setup(players: Array) -> void` (chaque entrée : `{index, character_data}`) ; signal `all_confirmed()` émis quand tous les joueurs sont prêts, **après** avoir écrit les exclusions de chaque joueur dans `ShopConfigStore`. Consommé par Task 5.1.
+- Produces: filtres de navigation (tier / type d'arme) ; actions `Tout réinitialiser`, `Tout désélectionner`, `Exclure tout l'affiché` (désactivée sans filtre actif).
 
-- [ ] **Step 1 : Construire la scène responsive**
+- [ ] **Step 1 : Câbler dans `_ready`** :
+```gdscript
+func _ready() -> void:
+    $ResetButton.connect("pressed", self, "_on_reset_pressed")
+    $DeselectAllButton.connect("pressed", self, "_on_deselect_all_pressed")
+    $ExcludeShownButton.connect("pressed", self, "_on_exclude_shown_pressed")
+    $ReadyButton.connect("toggled", self, "_on_ready_toggled")
+    $TierFilter.connect("item_selected", self, "_on_filter_changed")
+    $WeaponTypeFilter.connect("item_selected", self, "_on_filter_changed")
+```
 
-Racine `Control` plein écran nommée `ShopConfigScreen`, avec un `GridContainer` `%PanelsGrid`. Le script règle `columns` selon le nombre de joueurs (1→1, 2→2, 3→2, 4→2) pour obtenir plein écran / moitiés / quarts.
+- [ ] **Step 2 : Filtres & actions** :
+```gdscript
+func _on_filter_changed(_idx = 0) -> void:
+    for btn in _cells:
+        btn.visible = _matches_filter(btn.get_meta("my_id"))
+    $ExcludeShownButton.disabled = not _has_active_filter()
 
-- [ ] **Step 2 : Implémenter setup + agrégation des Prêt**
+func _on_reset_pressed() -> void:
+    for btn in _cells:
+        btn.pressed = true
+    _excluded = {}
+    emit_signal("pool_changed")
+    _on_pool_changed()
 
-`shop_config_screen.gd` :
+func _on_deselect_all_pressed() -> void:
+    for btn in _cells:
+        btn.pressed = false
+        _excluded[btn.get_meta("my_id")] = true
+    emit_signal("pool_changed")
+    _on_pool_changed()
+
+func _on_exclude_shown_pressed() -> void:
+    if not _has_active_filter():
+        return
+    for btn in _cells:
+        if btn.visible:
+            btn.pressed = false
+            _excluded[btn.get_meta("my_id")] = true
+    emit_signal("pool_changed")
+    _on_pool_changed()
+
+func _on_ready_toggled(pressed) -> void:
+    if pressed and (get_total_count() - _excluded.size()) <= 0:
+        $ReadyButton.pressed = false
+        return
+    emit_signal("ready_changed", is_ready())
+```
+> `_matches_filter(my_id)` et `_has_active_filter()` : comparer le tier/type de l'élément (retrouvé via son entrée dans `_all_entries`) aux valeurs sélectionnées dans `TierFilter`/`WeaponTypeFilter` ; « aucun filtre » = options sur « Tous ». Implémenter avec un index `my_id -> entry` construit dans `_populate_grids`.
+
+- [ ] **Step 3 : Vérif manuelle** — Expected : « Tout réinitialiser » recoche tout ; « Tout désélectionner » désactive Prêt + avertissement, recocher 1 réactive ; « Exclure tout l'affiché » désactivé sans filtre, sinon n'exclut que l'affiché ; avertissement quand pool réduit non vide.
+
+- [ ] **Step 4 : Commit**
+```bash
+git add -f Brotato/mods-unpacked/Tanit-ShopConfig/scenes/player_shop_config_panel.gd Brotato/mods-unpacked/Tanit-ShopConfig/scenes/player_shop_config_panel.tscn
+git commit -m "feat: filtres de navigation et actions rapides"
+```
+
+---
+
+### Task 5.3 : Écran responsive + écriture dans le store
+
+**Files:**
+- Create: `Brotato/mods-unpacked/Tanit-ShopConfig/scenes/shop_config_screen.gd`
+- Create: `Brotato/mods-unpacked/Tanit-ShopConfig/scenes/shop_config_screen.tscn`
+
+**Interfaces:**
+- Consumes: `PlayerShopConfigPanel` (5.1-5.2), `ItemService.get_shopconfig_store()` (4.1).
+- Produces: `setup(players: Array) -> void` (entrées `{index, character_data}`) ; signal `all_confirmed` émis quand tous prêts, **après** avoir écrit les exclusions de chaque joueur dans le store.
+
+- [ ] **Step 1 : Scène** — racine `Control` plein écran `ShopConfigScreen` avec `GridContainer` `PanelsGrid` (script règle `columns`).
+
+- [ ] **Step 2 : Logique** — `shop_config_screen.gd` :
 ```gdscript
 extends Control
 
-const Store := preload("res://mods-unpacked/Tanit-ShopConfig/singletons/shop_config_store.gd")
-const PanelScene := preload("res://mods-unpacked/Tanit-ShopConfig/scenes/player_shop_config_panel.tscn")
-
 signal all_confirmed
 
-var _panels: Array = []
+const PanelScene = preload("res://mods-unpacked/Tanit-ShopConfig/scenes/player_shop_config_panel.tscn")
+
+onready var _grid = $PanelsGrid
+var _panels := []
 
 func setup(players: Array) -> void:
-    Store.reset()                                  # nouvelle partie = état neuf
-    %PanelsGrid.columns = 1 if players.size() <= 1 else 2
+    ItemService.get_shopconfig_store().reset()
+    _grid.columns = 1 if players.size() <= 1 else 2
     for p in players:
-        var panel := PanelScene.instantiate()
-        %PanelsGrid.add_child(panel)
+        var panel = PanelScene.instance()
+        _grid.add_child(panel)
         panel.setup(p.index, p.character_data)
-        panel.ready_changed.connect(_on_any_ready_changed)
+        panel.connect("ready_changed", self, "_on_ready_changed")
         _panels.append(panel)
 
-func _on_any_ready_changed(_is_ready: bool) -> void:
+func _on_ready_changed(_is_ready) -> void:
     for panel in _panels:
         if not panel.is_ready():
             return
     _commit_and_advance()
 
 func _commit_and_advance() -> void:
+    var store = ItemService.get_shopconfig_store()
     for panel in _panels:
-        Store.set_excluded(panel._player_index, panel.get_excluded_ids())
-    all_confirmed.emit()
+        store.set_excluded(panel._player_index, panel.get_excluded_ids())
+    emit_signal("all_confirmed")
 ```
 
-- [ ] **Step 3 : Vérification manuelle (1/2/3/4 joueurs)**
-
-Instancier l'écran avec 1, 2, 3 puis 4 entrées factices.
-Expected : layout plein écran / moitiés / quarts ; chaque panneau pilotable indépendamment ; `all_confirmed` n'est émis que lorsque **tous** sont Prêt ; après émission, `Store.get_excluded(i)` contient bien les exclusions de chaque joueur.
+- [ ] **Step 3 : Vérif manuelle (1/2/3/4 joueurs)** — instancier avec 1, 2, 3, 4 entrées factices. Expected : plein écran / moitiés / quarts ; panneaux indépendants ; `all_confirmed` seulement quand tous prêts ; `store.get_excluded(i)` correct après.
 
 - [ ] **Step 4 : Commit**
-
 ```bash
-git add mods-unpacked/Tanit-ShopConfig/scenes/shop_config_screen.gd mods-unpacked/Tanit-ShopConfig/scenes/shop_config_screen.tscn
-git commit -m "feat: écran responsive multi-joueurs + écriture des exclusions dans le store"
+git add -f Brotato/mods-unpacked/Tanit-ShopConfig/scenes/shop_config_screen.gd Brotato/mods-unpacked/Tanit-ShopConfig/scenes/shop_config_screen.tscn
+git commit -m "feat: écran responsive multi-joueurs + écriture des exclusions"
 ```
 
 ---
 
-## Phase 5 — Intégration native
-
-> Pour chaque point : utiliser une **script extension** si le script vanilla n'a pas de `class_name` et n'est pas préchargé ; sinon un **script hook** (`add_hook`). Le choix exact est dans `integration-points.md` (Phase 0).
-
-### Task 5.1 : Insérer l'écran entre sélection perso et sélection arme
+### Task 5.4 : Insérer l'écran entre sélection perso et arme
 
 **Files:**
-- Create: `mods-unpacked/Tanit-ShopConfig/extensions/<MENU_NAV.path miroir>.gd` **ou** hook dans `mod_main.gd`
-- Modify: `mods-unpacked/Tanit-ShopConfig/mod_main.gd`
+- Create: `Brotato/mods-unpacked/Tanit-ShopConfig/extensions/ui/menus/run/character_selection.gd`
+- Modify: `Brotato/mods-unpacked/Tanit-ShopConfig/mod_main.gd`
 
 **Interfaces:**
-- Consumes: `MENU_NAV` (Phase 0), `ShopConfigScreen.setup/all_confirmed` (Task 4.4).
-- Produces: à la fin de la sélection de perso, l'écran de config s'affiche ; sur `all_confirmed`, la navigation native vers la sélection d'arme reprend.
+- Consumes: `ShopConfigScreen` (5.3).
+- Produces: après validation des persos, l'écran de config s'affiche ; sur `all_confirmed`, la navigation native reprend.
 
-- [ ] **Step 1 : Écrire l'interception (variante extension)**
-
-Si `MENU_NAV` est extensible (`res://.../character_selection.gd`, méthode `_on_continue_pressed` p.ex.), créer `extensions/.../character_selection.gd` :
+- [ ] **Step 1 : Extension** — `extensions/ui/menus/run/character_selection.gd` :
 ```gdscript
-extends "res://<MENU_NAV.path>"   # chemin exact depuis integration-points.md
+extends "res://ui/menus/run/character_selection.gd"
 
-const ScreenScene := preload("res://mods-unpacked/Tanit-ShopConfig/scenes/shop_config_screen.tscn")
+const ScreenScene = preload("res://mods-unpacked/Tanit-ShopConfig/scenes/shop_config_screen.tscn")
 
-func _on_continue_pressed() -> void:            # <MENU_NAV.method>
-    var screen := ScreenScene.instantiate()
+func _on_selections_completed() -> void:
+    if ProgressData.settings.zone_is_random:
+        _setup_zone(ProgressData.settings.zone_selected)
+    for player_index in RunData.get_player_count():
+        var character = _player_characters[player_index]
+        RunData.add_character(character, player_index)
+    if Utils.on_nintendo_nx_or_ounce and RunData.is_coop_run:
+        OS.set_max_controller_count(RunData.get_player_count())
+
+    var screen = ScreenScene.instance()
     add_child(screen)
-    screen.setup(_collect_players())            # construit {index, character_data} par joueur
-    screen.all_confirmed.connect(func() -> void:
-        screen.queue_free()
-        super()                                  # reprend la navigation native vers l'arme
-    )
+    screen.setup(_shopconfig_players_info())
+    screen.connect("all_confirmed", self, "_on_shopconfig_confirmed", [screen])
 
-func _collect_players() -> Array:
-    # Construire depuis l'état natif relevé en Phase 0 (joueurs + perso choisi).
-    return _shopconfig_players                   # <MENU_NAV: accès joueurs/persos>
+func _shopconfig_players_info() -> Array:
+    var infos := []
+    for player_index in RunData.get_player_count():
+        infos.append({ "index": player_index, "character_data": RunData.get_player_character(player_index) })
+    return infos
+
+func _on_shopconfig_confirmed(screen) -> void:
+    screen.queue_free()
+    if RunData.some_player_has_weapon_slots():
+        _change_scene(MenuData.weapon_selection_scene)
+    else:
+        RunData.add_starting_items_and_weapons()
+        _change_scene(MenuData.difficulty_selection_scene)
 ```
+> Cette surcharge **reproduit** le corps vanilla de `_on_selections_completed` (character_selection.gd:212-223) en insérant notre écran avant le changement de scène. Risque de dérive si Brotato modifie cette fonction → à revérifier à chaque mise à jour du jeu (noté en risques).
 
-- [ ] **Step 2 : Variante hook (si `class_name`/nécessaire)**
-
-Si extension impossible, dans `mod_main.gd._install_hooks()` :
+- [ ] **Step 2 : Installer l'extension** — ajouter dans `mod_main.gd._install_extensions()` :
 ```gdscript
-ModLoaderMod.add_hook(_hook_after_character_select, "res://<MENU_NAV.path>", "<MENU_NAV.method>")
-```
-et définir `_hook_after_character_select(chain: ModLoaderHookChain, ...)` qui instancie l'écran, puis appelle `chain.execute_next()` seulement sur `all_confirmed`.
-
-- [ ] **Step 3 : Enregistrer l'extension dans mod_main**
-
-Dans `_install_extensions()` (si variante extension) :
-```gdscript
-ModLoaderMod.install_script_extension("res://mods-unpacked/Tanit-ShopConfig/extensions/<MENU_NAV.path miroir>.gd")
+    ModLoaderMod.install_script_extension("res://mods-unpacked/Tanit-ShopConfig/extensions/ui/menus/run/character_selection.gd")
 ```
 
-- [ ] **Step 4 : Vérification manuelle**
+- [ ] **Step 3 : Vérif manuelle (end-to-end)** — lancer une partie solo : choisir un perso → l'écran de config apparaît → exclure quelques objets/armes → Prêt → sélection d'arme normale → en jeu, les exclus n'apparaissent pas en boutique. Tester aussi un perso sans arme (flux difficulté).
 
-Lancer une partie solo.
-Expected : après la sélection du perso, l'écran de config apparaît ; après « Prêt », l'écran de sélection d'arme s'affiche normalement.
-
-- [ ] **Step 5 : Commit**
-
+- [ ] **Step 4 : Commit**
 ```bash
-git add mods-unpacked/Tanit-ShopConfig/extensions mods-unpacked/Tanit-ShopConfig/mod_main.gd
+git add -f Brotato/mods-unpacked/Tanit-ShopConfig/extensions/ui/menus/run/character_selection.gd Brotato/mods-unpacked/Tanit-ShopConfig/mod_main.gd
 git commit -m "feat: insertion de l'écran de config dans le flux de menus"
-```
-
----
-
-### Task 5.2 : Filtrer le pool du magasin avec les exclusions
-
-**Files:**
-- Create: `mods-unpacked/Tanit-ShopConfig/extensions/<SHOP_POOL.path miroir>.gd` **ou** hook dans `mod_main.gd`
-- Modify: `mods-unpacked/Tanit-ShopConfig/mod_main.gd`
-
-**Interfaces:**
-- Consumes: `SHOP_POOL` + `PLAYER_INDEX` (Phase 0), `PoolFilter.filter` (Task 2.1), `ShopConfigStore.get_excluded` (Task 3.1).
-- Produces: la liste des candidats du magasin de chaque joueur est filtrée des exclusions **avant** la pioche pondérée native ; couches compat perso et exclusion native intactes.
-
-- [ ] **Step 1 : Écrire l'extension (variante extension)**
-
-`extensions/.../shop.gd` :
-```gdscript
-extends "res://<SHOP_POOL.path>"   # chemin exact depuis integration-points.md
-
-const PoolFilter := preload("res://mods-unpacked/Tanit-ShopConfig/content/logic/pool_filter.gd")
-const Store := preload("res://mods-unpacked/Tanit-ShopConfig/singletons/shop_config_store.gd")
-
-# Signature EXACTE à reprendre de integration-points.md (SHOP_POOL.method + params).
-func <SHOP_POOL.method>(<SHOP_POOL.params>):
-    var candidates: Array = super(<SHOP_POOL.args>)   # pool natif (compat perso + exclusion native déjà appliquées)
-    var excluded := Store.get_excluded(<PLAYER_INDEX expr>)
-    return PoolFilter.filter(candidates, excluded)
-```
-
-- [ ] **Step 2 : Variante hook (si nécessaire)**
-
-Dans `mod_main.gd._install_hooks()` :
-```gdscript
-ModLoaderMod.add_hook(_hook_filter_shop_pool, "res://<SHOP_POOL.path>", "<SHOP_POOL.method>")
-```
-```gdscript
-func _hook_filter_shop_pool(chain: ModLoaderHookChain, <SHOP_POOL.params>):
-    var candidates = chain.execute_next()             # résultat natif
-    var excluded := Store.get_excluded(<PLAYER_INDEX expr>)
-    return PoolFilter.filter(candidates, excluded)
-```
-
-- [ ] **Step 3 : Enregistrer dans mod_main (si variante extension)**
-
-```gdscript
-ModLoaderMod.install_script_extension("res://mods-unpacked/Tanit-ShopConfig/extensions/<SHOP_POOL.path miroir>.gd")
-```
-
-- [ ] **Step 4 : Vérification manuelle**
-
-Lancer une partie en excluant des objets/armes précis.
-Expected : les éléments exclus n'apparaissent **jamais** dans le magasin sur plusieurs vagues ; les éléments gardés apparaissent selon les tiers/vagues normaux ; l'exclusion native (8 slots) fonctionne toujours et s'additionne.
-
-- [ ] **Step 5 : Commit**
-
-```bash
-git add mods-unpacked/Tanit-ShopConfig/extensions mods-unpacked/Tanit-ShopConfig/mod_main.gd
-git commit -m "feat: filtrage du pool du magasin par les exclusions du joueur"
 ```
 
 ---
 
 ## Phase 6 — Recette end-to-end (manuelle)
 
-### Task 6.1 : Checklist QA complète
+### Task 6.1 : Checklist QA
 
 **Files:**
-- Create: `docs/superpowers/notes/qa-checklist.md` (cocher au fur et à mesure)
+- Create: `docs/superpowers/notes/qa-checklist.md`
 
-- [ ] **Step 1 : Dérouler la checklist (spec §7)**
-
-- [ ] Les éléments exclus n'apparaissent jamais dans le magasin sur ≥ 5 vagues.
-- [ ] L'exclusion native (8 slots) reste pleinement fonctionnelle et indépendante.
-- [ ] Le reroll et le verrouillage (lock) natifs du magasin fonctionnent normalement sur le pool curé.
-- [ ] Les interdits de classe sont absents de la grille (tester un perso à restriction d'arme).
-- [ ] Layouts corrects en 1 / 2 / 3 / 4 joueurs, chacun pilotable à la manette.
-- [ ] Garde-fou : « Tout désélectionner » désactive Prêt ; recocher 1 élément le réactive.
-- [ ] Avertissement affiché quand pool réduit mais non vide.
-- [ ] « Tout réinitialiser » et « Exclure tout l'affiché » (désactivée sans filtre) se comportent comme spécifié.
-- [ ] Garde-fou global : impossible de valider avec pool vide (objet OU arme suffit).
-- [ ] Config remise à zéro à la partie suivante (les exclusions ne persistent pas).
-- [ ] Build précis : tout désélectionner puis re-cocher 3 éléments → seuls ces éléments dominent le magasin.
+- [ ] **Step 1 : Dérouler (spec §7)**
+- [ ] Objets/armes exclus jamais en boutique sur ≥ 5 vagues.
+- [ ] Les exclus peuvent encore sortir d'une boîte à objets (portée magasin-seul confirmée).
+- [ ] Exclusion native (8 slots) toujours fonctionnelle et indépendante ; reroll/lock natifs OK.
+- [ ] Interdits de classe absents de la grille (perso à restriction d'arme).
+- [ ] Layouts 1/2/3/4 joueurs, chacun à la manette.
+- [ ] « Tout désélectionner » désactive Prêt ; recocher 1 réactive ; garde-fou global (objet OU arme).
+- [ ] « Tout réinitialiser » / « Exclure tout l'affiché » (désactivée sans filtre) conformes.
+- [ ] Config remise à zéro à la partie suivante.
+- [ ] Build précis : tout désélectionner + recocher 3 → seuls ces éléments dominent la boutique.
+- [ ] `debug_log` off = pas de logs info ; on = logs sous `Tanit-ShopConfig`.
 
 - [ ] **Step 2 : Commit**
-
 ```bash
 git add docs/superpowers/notes/qa-checklist.md
 git commit -m "test: checklist QA end-to-end renseignée"
@@ -1014,6 +832,8 @@ git commit -m "test: checklist QA end-to-end renseignée"
 
 ## Notes de risques
 
-- **Préchargement** : si `SHOP_POOL` ou `MENU_NAV` sont dans des scripts **préchargés**, ni extension ni hook ne s'appliquent (caveat ModLoader). Plan B (à décider en Phase 0) : s'accrocher à un point **en amont** non préchargé qui appelle ces scripts, ou intercepter la construction de la scène concernée.
-- **Nom de propriété d'ID** : le plan suppose `my_id` (convention Brotato). À confirmer en Phase 0 ; si différent, ajuster `pool_filter` et les tests.
-- **`character_data` au moment du menu** : la disponibilité de l'info perso par joueur à l'étape `MENU_NAV` est à confirmer en Phase 0 ; sinon, récupérer via l'état de run natif.
+- **Extension de `character_selection.gd` (class_name)** : valider au runtime que le ModLoader Brotato applique bien l'extension d'un script à `class_name`. Sinon, replier sur la surcharge de `_change_scene` (intercepter la cible `MenuData.weapon_selection_scene`).
+- **Copie du corps de `_on_selections_completed`** : dérive possible aux mises à jour de Brotato. Revérifier `character_selection.gd:211-223` à chaque maj.
+- **Noms natifs exacts** (`get_player_effect_bool`, `Keys.*_hash`, `WeaponType`, `WeaponData`, `is_structure_item`) : confirmés partiellement via `item_service.gd` ; valider au premier lancement et ajuster si besoin.
+- **Variable d'instance dans l'extension ItemService** (`_shopconfig_store`) : s'assurer que l'extension est installée avant l'instanciation de l'autoload ItemService (installation en `_init` de mod_main = early, OK).
+- **Filtres tier/type** (Task 5.2) : nécessitent un index `my_id -> entry` ; le construire dans `_populate_grids`.
