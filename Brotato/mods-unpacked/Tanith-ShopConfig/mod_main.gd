@@ -23,4 +23,4 @@ func _setup_logging() -> void:
 
 func _install_extensions() -> void:
 	ModLoaderMod.install_script_extension("res://mods-unpacked/Tanith-ShopConfig/extensions/singletons/item_service.gd")
-	# L'extension character_selection (insertion de l'écran) sera ajoutée en Task 5.4.
+	ModLoaderMod.install_script_extension("res://mods-unpacked/Tanith-ShopConfig/extensions/ui/menus/run/character_selection.gd")
