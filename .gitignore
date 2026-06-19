@@ -1,0 +1,9 @@
+# Brotato décompilé (référence locale, ne pas committer — ~200 Mo)
+/Brotato/
+
+# Éditeur Godot local
+/godot/
+
+# Divers
+*.import
+.DS_Store
