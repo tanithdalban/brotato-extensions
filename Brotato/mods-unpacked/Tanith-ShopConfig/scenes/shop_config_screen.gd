@@ -7,6 +7,7 @@ extends Control
 # change_scene.
 
 const PanelScript = preload("res://mods-unpacked/Tanith-ShopConfig/scenes/player_shop_config_panel.gd")
+const InterceptorScript = preload("res://mods-unpacked/Tanith-ShopConfig/scenes/tab_switch_interceptor.gd")
 const ModLog = preload("res://mods-unpacked/Tanith-ShopConfig/content/logic/mod_log.gd")
 
 var _players := []          # défini par set_players() avant entrée dans l'arbre
@@ -88,6 +89,9 @@ func _setup_coop_focus() -> void:
 		emulator.focus_base_data = []   # rempli après l'ajout (cf. ci-dessous)
 		emulator.player_index = i
 		add_child(emulator)
+		# Le panneau a besoin de son emulateur pour deplacer le focus au changement
+		# d'onglet (L1/R1 ou A/E).
+		panel.set_focus_emulator(emulator)
 
 		# Bornes de navigation du joueur : son panneau (+ le bouton Retour pour
 		# le joueur 0). On renseigne les deux tableaux EN PARALLÈLE : la base
@@ -107,6 +111,13 @@ func _setup_coop_focus() -> void:
 			Utils.focus_player_control(control, i, emulator)
 
 		_emulators.append(emulator)
+
+	# Intercepteur clavier A/E ajoute EN DERNIER : il recoit _input avant les
+	# FocusEmulator (ordre inverse de l'arbre) pour que A (= ui_left) ne soit pas
+	# mangee par la navigation coop. cf. tab_switch_interceptor.gd.
+	var interceptor = InterceptorScript.new()
+	interceptor.panels = _panels
+	add_child(interceptor)
 
 
 func _make_base_data(_node):

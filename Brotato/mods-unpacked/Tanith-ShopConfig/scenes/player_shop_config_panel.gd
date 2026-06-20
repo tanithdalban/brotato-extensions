@@ -30,6 +30,12 @@ var _hide_popup := false
 var _focused_entry = null
 var _focused_attach = null
 
+# Changement d'onglet : focus a deplacer dans le nouvel onglet. En coop, on passe
+# par le FocusEmulator du joueur (transmis par l'ecran) ; en solo, grab_focus().
+var _focus_emulator = null
+# Bouton « tout l'affiche » a deux etats : false = exclure, true = inclure.
+var _exclude_shown_is_include := false
+
 var _items_grid
 var _weapons_grid
 var _tabs
@@ -69,6 +75,7 @@ func setup(player_index, character_data) -> void:
 	_build_class_keys_cache()
 	_build_ui()
 	_populate_grids()
+	_update_exclude_shown_button()
 	_refresh_state()
 
 
@@ -238,10 +245,11 @@ func _build_ui() -> void:
 		_class_filter.add_item(_t("Other", "Autre"))
 	_class_filter.connect("item_selected", self, "_on_filter_changed")
 	filter_bar.add_child(_class_filter)
-	# Rappel de la touche pour basculer la popup d'info (mécanique native magasin).
-	var info_hint = Label.new()
-	info_hint.text = _t("[Info] = toggle tooltip", "[Info] = affiche/masque l'infobulle")
-	filter_bar.add_child(info_hint)
+	# Rappel de la touche pour basculer la popup d'info : on affiche l'ICONE reelle
+	# de la touche (ui_info = F clavier / Y manette), suivant le joueur et son
+	# peripherique (helper natif). Fallback texte si pas d'icone.
+	filter_bar.add_child(_make_key_hint("ui_info",
+		_t("= show/hide tooltip", "= affiche/masque l'infobulle"), "[F/Y]"))
 
 	# Actions rapides — juste sous les filtres, au-dessus des onglets.
 	var actions = HBoxContainer.new()
@@ -250,12 +258,9 @@ func _build_ui() -> void:
 	reset_button.text = _t("Reset all", "Tout réinitialiser")
 	reset_button.connect("pressed", self, "_on_reset_pressed")
 	actions.add_child(reset_button)
-	var deselect_button = Button.new()
-	deselect_button.text = _t("Deselect all", "Tout désélectionner")
-	deselect_button.connect("pressed", self, "_on_deselect_all_pressed")
-	actions.add_child(deselect_button)
+	# Bouton a deux etats Exclure <-> Inclure « tout l'affiché » (libelle pilote
+	# par l'etat via _update_exclude_shown_button).
 	_exclude_shown_button = Button.new()
-	_exclude_shown_button.text = _t("Exclude all shown", "Exclure tout l'affiché")
 	_exclude_shown_button.connect("pressed", self, "_on_exclude_shown_pressed")
 	actions.add_child(_exclude_shown_button)
 
@@ -263,8 +268,11 @@ func _build_ui() -> void:
 	# bandeau interne du TabContainer n'est pas navigable au focus/manette (pas
 	# des Control FOCUS_ALL), donc on le masque (tabs_visible = false) et on
 	# pilote current_tab via ces boutons.
+	# Raccourcis d'onglet : L1/R1 manette (icone) ou A/E clavier (texte). On flanque
+	# chaque bouton d'onglet de son hint de touche.
 	var tab_bar = HBoxContainer.new()
 	root.add_child(tab_bar)
+	tab_bar.add_child(_make_key_hint("ltrigger", "", "A"))
 	_items_tab_button = Button.new()
 	_items_tab_button.text = _t("Items", "Objets")
 	_items_tab_button.connect("pressed", self, "_on_tab_button_pressed", [0])
@@ -273,6 +281,7 @@ func _build_ui() -> void:
 	_weapons_tab_button.text = _t("Weapons", "Armes")
 	_weapons_tab_button.connect("pressed", self, "_on_tab_button_pressed", [1])
 	tab_bar.add_child(_weapons_tab_button)
+	tab_bar.add_child(_make_key_hint("rtrigger", "", "E"))
 
 	_tabs = TabContainer.new()
 	_tabs.tabs_visible = false
@@ -303,6 +312,29 @@ func _build_ui() -> void:
 	_popup.hide()
 
 
+# Hint de touche : icone native du peripherique du joueur pour `action`, sinon
+# (pas d'icone, ex. ltrigger/rtrigger au clavier) un libelle texte de repli. Un
+# `suffix` optionnel ajoute un libelle apres l'icone (ex. « = … » pour ui_info).
+func _make_key_hint(action, suffix, text_fallback) -> Control:
+	var box = HBoxContainer.new()
+	var tex = CoopService.get_player_key_texture(action, _player_index)
+	if tex != null:
+		var icon = TextureRect.new()
+		icon.texture = tex
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.rect_min_size = Vector2(28, 28)
+		box.add_child(icon)
+	else:
+		var lbl = Label.new()
+		lbl.text = text_fallback
+		box.add_child(lbl)
+	if suffix != "":
+		var sfx = Label.new()
+		sfx.text = " " + suffix
+		box.add_child(sfx)
+	return box
+
+
 func _make_grid_tab(tabs, title) -> GridContainer:
 	var scroll = ScrollContainer.new()
 	scroll.name = title
@@ -316,6 +348,12 @@ func _make_grid_tab(tabs, title) -> GridContainer:
 	return grid
 
 
+# Transmis par l'ecran en coop (cf. shop_config_screen._setup_coop_focus) pour
+# pouvoir deplacer le focus du joueur lors d'un changement d'onglet.
+func set_focus_emulator(emu) -> void:
+	_focus_emulator = emu
+
+
 func _on_tab_button_pressed(index) -> void:
 	_set_active_tab(index)
 
@@ -325,6 +363,37 @@ func _set_active_tab(index) -> void:
 	_tabs.current_tab = index
 	_items_tab_button.modulate = Color(1, 1, 1, 1) if index == 0 else Color(1, 1, 1, 0.5)
 	_weapons_tab_button.modulate = Color(1, 1, 1, 1) if index == 1 else Color(1, 1, 1, 0.5)
+	_update_exclude_shown_button()
+
+
+# API publique appelee par l'intercepteur clavier coop (cf. tab_switch_interceptor.gd).
+func switch_tab(dir) -> void:
+	_switch_tab(dir)
+
+
+# Bascule d'onglet (dir = -1 / +1) via L1/R1 ou A/E, en deplacant le focus dans
+# le nouvel onglet (sinon le focus reste sur une cellule masquee).
+func _switch_tab(dir) -> void:
+	var index = int(clamp(_tabs.current_tab + dir, 0, 1))
+	if index == _tabs.current_tab:
+		return
+	_set_active_tab(index)
+	var cell = _first_visible_cell_in_tab(index)
+	if cell == null:
+		return
+	if _focus_emulator != null:
+		Utils.focus_player_control(cell, _player_index, _focus_emulator)
+	else:
+		cell.grab_focus()
+
+
+# 1re cellule visible (filtre courant) de l'onglet `index` (0 = objets, 1 = armes).
+func _first_visible_cell_in_tab(index) -> Button:
+	for btn in _cells:
+		var is_weapon = _is_weapon(_entry_by_id[btn.get_meta("my_id")])
+		if btn.visible and is_weapon == (index == 1):
+			return btn
+	return null
 
 
 func _populate_grids() -> void:
@@ -390,6 +459,7 @@ func _make_exclusion_overlay() -> Control:
 
 func _on_cell_pressed(my_id, btn) -> void:
 	_set_cell_excluded(my_id, btn, not _excluded.has(my_id))
+	_update_exclude_shown_button()
 	_refresh_state()
 
 
@@ -401,9 +471,9 @@ func _set_cell_excluded(my_id, btn, excluded) -> void:
 	btn.get_meta("overlay").visible = excluded
 
 
-# Bascule de la popup d'info à la touche ui_info (F / Y manette), par joueur :
-# chaque panneau reçoit l'événement global et ne réagit qu'à SON _player_index
-# (faithful au magasin coop, marche en solo comme en coop).
+# Entrees globales du panneau, par joueur (chaque panneau ne reagit qu'a SON
+# _player_index, faithful au magasin coop) : touche ui_info (F / Y) pour la popup
+# d'info, et changement d'onglet (L1/R1 manette, A/E clavier).
 func _input(event) -> void:
 	if Utils.is_player_info_pressed(event, _player_index):
 		_hide_popup = not _hide_popup
@@ -412,6 +482,27 @@ func _input(event) -> void:
 				_popup.hide()
 		elif _focused_entry != null and _popup != null:
 			_popup.display_item_data(_focused_entry, _focused_attach)
+		return
+	# Changement d'onglet Objets/Armes — manette L1/R1 (par joueur, le FocusEmulator
+	# coop ignore deja ltrigger/rtrigger), clavier A/E pour le joueur au clavier.
+	if Utils.is_player_action_pressed(event, _player_index, "ltrigger"):
+		_switch_tab(-1)
+		get_tree().set_input_as_handled()
+	elif Utils.is_player_action_pressed(event, _player_index, "rtrigger"):
+		_switch_tab(1)
+		get_tree().set_input_as_handled()
+	elif (event is InputEventKey and event.pressed and not event.echo
+			and (not RunData.is_coop_run or not CoopService.is_player_using_gamepad(_player_index))):
+		# On matche le CARACTERE tape (event.unicode), pas le scancode : ce dernier
+		# suit la position US (sur AZERTY, la touche « A » a le scancode du « Q »).
+		# Repli sur scancode pour les cas ou unicode serait absent (QWERTY).
+		var ch = char(event.unicode).to_lower()
+		if ch == "a" or event.scancode == KEY_A:
+			_switch_tab(-1)
+			get_tree().set_input_as_handled()
+		elif ch == "e" or event.scancode == KEY_E:
+			_switch_tab(1)
+			get_tree().set_input_as_handled()
 
 
 func _on_cell_focused(entry, btn) -> void:
@@ -431,22 +522,40 @@ func _on_reset_pressed() -> void:
 	_excluded = {}
 	for btn in _cells:
 		btn.get_meta("overlay").visible = false
+	_update_exclude_shown_button()
 	_refresh_state()
 
 
-func _on_deselect_all_pressed() -> void:
-	for btn in _cells:
-		_set_cell_excluded(btn.get_meta("my_id"), btn, true)
-	_refresh_state()
-
-
+# Bouton a deux etats, borne a l'onglet + filtre courant : exclut tout l'affiche,
+# ou (si tout l'affiche est deja exclu) le re-inclut.
 func _on_exclude_shown_pressed() -> void:
-	if not _has_active_filter():
-		return
+	var target_excluded = not _exclude_shown_is_include
 	for btn in _cells:
-		if btn.visible:
-			_set_cell_excluded(btn.get_meta("my_id"), btn, true)
+		if _cell_shown(btn):
+			_set_cell_excluded(btn.get_meta("my_id"), btn, target_excluded)
+	_update_exclude_shown_button()
 	_refresh_state()
+
+
+# Met a jour libelle/etat du bouton selon l'affiche courant (onglet + filtre) :
+# tout affiche deja exclu -> propose « Inclure » ; sinon « Exclure ». Desactive
+# s'il n'y a rien d'affiche dans l'onglet courant.
+func _update_exclude_shown_button() -> void:
+	if _exclude_shown_button == null:
+		return
+	var shown_count = 0
+	var excluded_count = 0
+	for btn in _cells:
+		if _cell_shown(btn):
+			shown_count += 1
+			if _excluded.has(btn.get_meta("my_id")):
+				excluded_count += 1
+	_exclude_shown_button.disabled = shown_count == 0
+	_exclude_shown_is_include = shown_count > 0 and excluded_count == shown_count
+	if _exclude_shown_is_include:
+		_exclude_shown_button.text = _t("Include all shown", "Inclure tout l'affiché")
+	else:
+		_exclude_shown_button.text = _t("Exclude all shown", "Exclure tout l'affiché")
 
 
 func _on_ready_toggled(pressed) -> void:
@@ -459,7 +568,16 @@ func _on_ready_toggled(pressed) -> void:
 func _on_filter_changed(_idx = 0) -> void:
 	for btn in _cells:
 		btn.visible = _matches_filter(btn.get_meta("my_id"))
-	_exclude_shown_button.disabled = not _has_active_filter()
+	_update_exclude_shown_button()
+
+
+# Une cellule appartient a l'onglet courant (0 = objets, 1 = armes).
+func _cell_in_current_tab(btn) -> bool:
+	return _is_weapon(_entry_by_id[btn.get_meta("my_id")]) == (_tabs.current_tab == 1)
+
+# « Affiche » = visible (filtre tier/classe) ET dans l'onglet courant.
+func _cell_shown(btn) -> bool:
+	return btn.visible and _cell_in_current_tab(btn)
 
 
 # ---------- filtres ----------
@@ -469,9 +587,6 @@ func _on_filter_changed(_idx = 0) -> void:
 func _selected_tier() -> int:
 	var idx = _tier_filter.get_selected()
 	return -1 if idx <= 0 else _TIER_VALUES[idx - 1]
-
-func _has_active_filter() -> bool:
-	return _selected_tier() != -1 or _class_filter.get_selected() > 0
 
 func _matches_filter(my_id) -> bool:
 	var entry = _entry_by_id[my_id]
