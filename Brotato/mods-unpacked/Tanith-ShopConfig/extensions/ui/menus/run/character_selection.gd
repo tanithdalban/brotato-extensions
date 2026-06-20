@@ -21,6 +21,7 @@ func _on_selections_completed() -> void:
 	add_child(screen)
 	screen.setup(_shopconfig_players_info())
 	screen.connect("all_confirmed", self, "_on_shopconfig_confirmed", [screen])
+	screen.connect("back_requested", self, "_on_shopconfig_back", [screen])
 
 
 func _shopconfig_players_info() -> Array:
@@ -37,3 +38,20 @@ func _on_shopconfig_confirmed(screen) -> void:
 	else:
 		RunData.add_starting_items_and_weapons()
 		_change_scene(MenuData.difficulty_selection_scene)
+
+
+# Retour vers la sélection des personnages : on défait l'ajout des persos fait
+# dans _on_selections_completed (même logique que weapon_selection._go_back).
+func _on_shopconfig_back(screen) -> void:
+	screen.queue_free()
+	# Défensif : on vide les exclusions dès le retour (elles seront de toute
+	# façon réinitialisées à la prochaine ouverture de l'écran). Garantit qu'un
+	# changement de perso ne laisse aucune exclusion de l'ancien perso.
+	ItemService.get_shopconfig_store().reset()
+	for player_index in RunData.get_player_count():
+		var character = RunData.get_player_character(player_index)
+		Utils.last_elt_selected[player_index] = character
+		RunData.remove_character(character, player_index)
+	RunData.revert_all_selections()
+	RunData.menu_selection_back = true
+	_change_scene(MenuData.character_selection_scene)

@@ -1,10 +1,12 @@
 extends Control
 # Conteneur responsive : un panneau de config par joueur (1=plein écran,
-# 2=moitiés, 3-4=quarts). Émet all_confirmed quand tous sont prêts, après
-# avoir écrit les exclusions de chaque joueur dans le store de ItemService.
+# 2=moitiés, 3-4=quarts), surmonté d'une barre avec un bouton Retour.
+# Émet all_confirmed quand tous sont prêts (après avoir écrit les exclusions de
+# chaque joueur dans le store), back_requested si on demande le retour.
 # UI construite en code (pas de .tscn).
 
 signal all_confirmed
+signal back_requested
 
 const PanelScript = preload("res://mods-unpacked/Tanith-ShopConfig/scenes/player_shop_config_panel.gd")
 
@@ -21,11 +23,24 @@ func _init() -> void:
 func setup(players) -> void:
 	ItemService.get_shopconfig_store().reset()
 
+	var root = VBoxContainer.new()
+	root.anchor_right = 1.0
+	root.anchor_bottom = 1.0
+	add_child(root)
+
+	# Barre supérieure : bouton Retour (libellé natif du jeu, suit la langue).
+	var topbar = HBoxContainer.new()
+	root.add_child(topbar)
+	var back_button = Button.new()
+	back_button.text = tr("MENU_BACK")
+	back_button.connect("pressed", self, "_on_back_pressed")
+	topbar.add_child(back_button)
+
 	_grid = GridContainer.new()
-	_grid.anchor_right = 1.0
-	_grid.anchor_bottom = 1.0
+	_grid.size_flags_horizontal = SIZE_EXPAND_FILL
+	_grid.size_flags_vertical = SIZE_EXPAND_FILL
 	_grid.columns = 1 if players.size() <= 1 else 2
-	add_child(_grid)
+	root.add_child(_grid)
 
 	for p in players:
 		var panel = PanelScript.new()
@@ -35,6 +50,10 @@ func setup(players) -> void:
 		panel.setup(p.index, p.character_data)
 		panel.connect("ready_changed", self, "_on_ready_changed")
 		_panels.append(panel)
+
+
+func _on_back_pressed() -> void:
+	emit_signal("back_requested")
 
 
 func _on_ready_changed(_is_ready) -> void:
