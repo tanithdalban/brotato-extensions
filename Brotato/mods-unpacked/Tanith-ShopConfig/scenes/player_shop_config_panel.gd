@@ -29,6 +29,8 @@ signal ready_changed(is_ready)
 
 const GRID_COLUMNS := 6
 const CELL_SIZE := Vector2(64, 64)
+# Taille des icônes de rappel de touches (ui_info / onglets). Compact : ~hauteur du texte.
+const KEY_HINT_ICON_SIZE := Vector2(32, 32)
 const MAX_CLASS_OPTIONS := 10   # nb de classes proposées ; le reste -> « Autre »
 # On réutilise le vrai panneau de description du magasin pour l'infobulle riche.
 const ItemPopupScene := preload("res://ui/menus/shop/item_popup.tscn")
@@ -394,7 +396,10 @@ func _make_key_hint(action, suffix, text_fallback) -> Control:
 		var icon = TextureRect.new()
 		icon.texture = tex
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		icon.rect_min_size = Vector2(28, 28)
+		# expand = true : sinon le TextureRect garde la taille NATIVE de la texture
+		# (plus grande) et rect_min_size ne servirait que de plancher sans réduire.
+		icon.expand = true
+		icon.rect_min_size = KEY_HINT_ICON_SIZE
 		box.add_child(icon)
 	else:
 		var lbl = Label.new()
