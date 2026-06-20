@@ -80,8 +80,48 @@ func _setup_focus() -> void:
 
 
 func _setup_coop_focus() -> void:
-	# Implémenté en Task 3.
-	pass
+	_emulators = []
+	for i in _panels.size():
+		var panel = _panels[i]
+		var emulator = FocusEmulator.new()
+		emulator.name = "FocusEmulator%s" % (i + 1)
+		emulator.focus_base_data = []   # rempli après l'ajout (cf. ci-dessous)
+		emulator.player_index = i
+		add_child(emulator)
+
+		# Bornes de navigation du joueur : son panneau (+ le bouton Retour pour
+		# le joueur 0). On renseigne les deux tableaux EN PARALLÈLE : la base
+		# résolue (_focus_base_nodes) et sa donnée (focus_base_data), car
+		# _find_control_base_data les indexe ensemble.
+		var bases = [panel]
+		var datas = [_make_base_data(panel)]
+		if i == 0 and _back_button != null:
+			bases.append(_back_button)
+			datas.append(_make_base_data(_back_button))
+		emulator.focus_base_data = datas
+		emulator._focus_base_nodes = bases
+
+		# Focus initial dans le panneau du joueur.
+		var control = panel.get_initial_focus_control()
+		if control != null:
+			Utils.focus_player_control(control, i, emulator)
+
+		_emulators.append(emulator)
+
+
+func _make_base_data(_node):
+	var bd = FocusEmulatorBaseData.new()
+	bd.path = NodePath()                       # non utilisé (nœuds dynamiques)
+	bd.apply_player_color = true
+	bd.contain_horizontal_focus = false
+	bd.contain_horizontal_focus_exception_paths = []
+	bd.contain_vertical_focus = false
+	bd.require_entry_from_control_paths = []
+	bd.focus_neighbour_top_paths = []
+	bd.focus_neighbour_bottom_paths = []
+	bd.focus_neighbour_left_paths = []
+	bd.focus_neighbour_right_paths = []
+	return bd
 
 
 # En solo uniquement : ui_cancel revient en arrière (en coop, c'est le bouton
