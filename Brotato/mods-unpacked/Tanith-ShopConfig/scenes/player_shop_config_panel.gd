@@ -1,7 +1,29 @@
 extends PanelContainer
-# Un quadrant : grille d'icônes (objets/armes) filtrée par le perso du joueur,
-# filtres de navigation, actions rapides, garde-fou, bouton Prêt.
-# UI construite intégralement en code (pas de .tscn).
+# Un quadrant = un joueur : grille d'icônes (objets/armes) filtrée par son perso,
+# filtres tier/classe, actions rapides, garde-fou, bouton Prêt. UI construite
+# intégralement en code (pas de .tscn). Un panneau de ce type est instancié par
+# joueur dans shop_config_screen.gd.
+#
+# ── CYCLE DE VIE (pour la maintenance) ──────────────────────────────────────
+# setup(player_index, character_data)  ← appelé par l'écran avant l'affichage
+#   1. _collect_compatible()   : liste les objets/armes proposables à ce perso,
+#                                 et déduplique les armes PAR FAMILLE (cf. plus bas)
+#   2. _build_class_keys_cache : indexe les « classes » (stats) de chaque élément
+#   3. _build_ui()             : crée header, filtres, actions, onglets, grilles…
+#   4. _populate_grids()       : une case (Button) par élément collecté
+#   5. _refresh_state()        : état initial du bouton Prêt / avertissements
+#
+# ── INVARIANTS IMPORTANTS ───────────────────────────────────────────────────
+# • Identité d'un élément = `my_id` (String). _excluded, _entry_by_id et les
+#   métadonnées des cases sont tous indexés par ce my_id.
+# • ARMES : une WeaponData distincte existe par tier (même `weapon_id` de famille).
+#   On n'affiche qu'UN représentant par famille (le tier le plus bas) ; exclure ce
+#   représentant exclut TOUTE la famille (tous les tiers) — cf. get_excluded_ids()
+#   et _all_weapon_ids_by_family. Donc tous les comptes (get_total_count, etc.)
+#   raisonnent en « familles », pas en tiers.
+# • Le filtrage réel du pool se fait ailleurs : l'écran lit get_excluded_ids() et
+#   le pousse dans le store ; ItemService (extension) consulte le store à la pioche.
+#   Ce panneau ne fait QUE construire l'ensemble des my_id exclus.
 
 signal ready_changed(is_ready)
 
@@ -68,6 +90,8 @@ const _TIER_VALUES := [
 ]
 
 
+# Point d'entrée unique (appelé par l'écran AVANT l'ajout à l'arbre). Reconstruit
+# tout le panneau pour ce joueur. Voir l'ordre des étapes dans l'en-tête du fichier.
 func setup(player_index, character_data) -> void:
 	_player_index = player_index
 	_excluded = {}
@@ -359,6 +383,9 @@ func _on_tab_button_pressed(index) -> void:
 
 
 # Affiche l'onglet voulu et indique l'onglet actif (l'inactif est atténué).
+# NB : le TabContainer masque la PAGE de l'onglet inactif, mais le `visible` propre
+# de chaque case y reste true — d'où _cell_in_current_tab() pour savoir ce qui est
+# réellement « à l'écran » (cf. bouton « tout l'affiché »).
 func _set_active_tab(index) -> void:
 	_tabs.current_tab = index
 	_items_tab_button.modulate = Color(1, 1, 1, 1) if index == 0 else Color(1, 1, 1, 0.5)
@@ -396,6 +423,9 @@ func _first_visible_cell_in_tab(index) -> Button:
 	return null
 
 
+# Crée une case (Button) par élément collecté et la range dans la grille Objets
+# ou Armes selon son type. Remplit _cells (toutes les cases) et _entry_by_id
+# (my_id -> donnée), les deux index utilisés partout ensuite.
 func _populate_grids() -> void:
 	_cells = []
 	_entry_by_id = {}
@@ -485,6 +515,15 @@ func _input(event) -> void:
 		return
 	# Changement d'onglet Objets/Armes — manette L1/R1 (par joueur, le FocusEmulator
 	# coop ignore deja ltrigger/rtrigger), clavier A/E pour le joueur au clavier.
+	#
+	# MAINTENANCE — pourquoi A/E est gere a DEUX endroits :
+	# En SOLO, pas de FocusEmulator : ce _input voit la touche en premier -> la
+	# branche clavier ci-dessous suffit. En COOP, le FocusEmulator de chaque joueur
+	# CONSOMME les touches de deplacement (A = ui_left) avant nous, donc cette
+	# branche ne verrait jamais le A coop. C'est pourquoi tab_switch_interceptor.gd
+	# (ajoute en dernier dans l'ecran -> recoit _input AVANT les FocusEmulator) gere
+	# le clavier en coop. Les deux ne font jamais double emploi : en coop
+	# l'intercepteur consomme l'event avant que cette branche ne le voie.
 	if Utils.is_player_action_pressed(event, _player_index, "ltrigger"):
 		_switch_tab(-1)
 		get_tree().set_input_as_handled()
@@ -616,7 +655,11 @@ func _has_any_top_key(my_id) -> bool:
 
 
 # ---------- classes (scaling armes / key effets objets) ----------
+# Une « classe » est une stat (ex. "stat_ranged_damage"). Le filtre de classe
+# regroupe armes (par leurs scaling_stats) et objets (par la `key` de leurs effets)
+# sous ces stats. Calculé une fois (cache) au setup, car _all_entries est figé.
 
+# Pré-calcule, pour chaque élément, ses clés de classe (my_id -> [stats]).
 func _build_class_keys_cache() -> void:
 	_class_keys_by_id = {}
 	for entry in _all_entries:
@@ -748,6 +791,8 @@ func get_excluded_ids() -> Dictionary:
 			out[key] = true
 	return out
 
+# Nombre d'éléments proposables = nb d'objets + nb de FAMILLES d'armes (un
+# représentant par famille). Sert au calcul du garde-fou « reste-t-il du stock ? ».
 func get_total_count() -> int:
 	return _all_entries.size()
 
