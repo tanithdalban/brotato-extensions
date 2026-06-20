@@ -12,10 +12,23 @@ const MAX_CLASS_OPTIONS := 10   # nb de classes proposées ; le reste -> « Autr
 const ItemPopupScene := preload("res://ui/menus/shop/item_popup.tscn")
 
 var _player_index := 0
-var _excluded := {}        # { my_id: true }
-var _all_entries := []      # ItemParentData compatibles
+var _excluded := {}        # { my_id: true } (clé = my_id du représentant)
+var _all_entries := []      # ItemParentData compatibles (un représentant/famille d'arme)
 var _cells := []           # Button (un par entrée)
 var _entry_by_id := {}     # my_id -> ItemParentData
+
+# Armes : une WeaponData distincte par tier partage le même weapon_id de famille.
+# On n'affiche qu'un représentant (tier le plus bas) et on aplatit à l'export.
+var _all_weapon_ids_by_family := {}   # fkey -> [tous les my_id de la famille]
+var _repr_by_family := {}             # fkey -> my_id du représentant affiché
+var _starting_weapon_family_keys := {}  # fkey -> true (armes de départ du perso)
+
+# Popup d'info : mécanique native du magasin (touche ui_info F / Y manette), un
+# état par joueur (= par panneau). _focused_* mémorise la case survolée pour
+# pouvoir réafficher la popup quand on la réactive sans changer de case.
+var _hide_popup := false
+var _focused_entry = null
+var _focused_attach = null
 
 var _items_grid
 var _weapons_grid
@@ -67,14 +80,14 @@ func _collect_compatible(character_data) -> Array:
 	var no_ranged = RunData.get_player_effect_bool(Keys.no_ranged_weapons_hash, _player_index)
 	var removed_cats = RunData.get_player_effect(Keys.remove_shop_items_hash, _player_index)
 	var banned = RunData.players_data[_player_index].banned_items
-	var starting_ids = _starting_ids(character_data)
+	var starting_item_ids = _starting_item_ids(character_data)
 	# Sans slot d'arme (ex. Dompteur, effet weapon_slot=0), la boutique ne
 	# propose JAMAIS d'arme (item_service.gd:256) -> on n'affiche aucune arme.
 	var has_weapon_slots = RunData.player_has_weapon_slots(_player_index)
 	for item in ItemService.items:
 		if not item.can_be_looted:
 			continue
-		if starting_ids.has(item.my_id):
+		if starting_item_ids.has(item.my_id):
 			continue
 		if _is_banned(item, banned):
 			continue
@@ -83,12 +96,33 @@ func _collect_compatible(character_data) -> Array:
 		if item.is_structure_item() and removed_cats.has(Keys.structure_hash):
 			continue
 		entries.append(item)
+
+	# --- Armes : déduplication par famille (un weapon_id, un my_id par tier) ---
+	# Map famille -> TOUS ses my_id, en balayant toutes les armes (même tiers non
+	# lootables : les exclure est sans effet et garantit que la famille entière
+	# sort du pool à l'export).
+	_all_weapon_ids_by_family = {}
+	for weapon in ItemService.weapons:
+		var all_fkey = _weapon_family_key(weapon)
+		if not _all_weapon_ids_by_family.has(all_fkey):
+			_all_weapon_ids_by_family[all_fkey] = []
+		_all_weapon_ids_by_family[all_fkey].append(weapon.my_id)
+
+	# Familles d'armes de départ (garde-fou change 4).
+	_starting_weapon_family_keys = {}
+	if character_data != null:
+		for w in character_data.starting_weapons:
+			if w != null:
+				_starting_weapon_family_keys[_weapon_family_key(w)] = true
+
+	# Représentant compatible par famille = le tier le plus bas. Les armes de
+	# départ ne sont PLUS sautées (elles sont cochables, protégées par le garde-fou).
+	_repr_by_family = {}
+	var repr_candidates = {}   # fkey -> WeaponData (tier minimal)
 	for weapon in ItemService.weapons:
 		if not has_weapon_slots:
 			break
 		if not weapon.can_be_looted:
-			continue
-		if starting_ids.has(weapon.my_id):
 			continue
 		if _is_banned(weapon, banned):
 			continue
@@ -98,20 +132,28 @@ func _collect_compatible(character_data) -> Array:
 			continue
 		if no_ranged and weapon.type == WeaponType.RANGED:
 			continue
-		entries.append(weapon)
+		var fkey = _weapon_family_key(weapon)
+		if not repr_candidates.has(fkey) or weapon.tier < repr_candidates[fkey].tier:
+			repr_candidates[fkey] = weapon
+	for fkey in repr_candidates:
+		var rep = repr_candidates[fkey]
+		_repr_by_family[fkey] = rep.my_id
+		entries.append(rep)
 	return entries
 
 
-# my_id des armes/objets de DÉPART de la classe : on ne les propose pas dans la
-# liste de config (cohérence avec le jeu de base : ils sont donnés/choisis au
-# départ, pas filtrables ici).
-func _starting_ids(character_data) -> Dictionary:
+# Clé de famille d'une arme : son weapon_id si défini, sinon son my_id.
+func _weapon_family_key(weapon) -> String:
+	return weapon.weapon_id if weapon.weapon_id != "" else weapon.my_id
+
+
+# my_id des OBJETS de départ de la classe : on ne les propose pas dans la liste
+# (cohérence avec le jeu : donnés au départ, pas filtrables ici). Les ARMES de
+# départ, elles, sont désormais affichées (cf. garde-fou _starting_weapon_ok).
+func _starting_item_ids(character_data) -> Dictionary:
 	var ids := {}
 	if character_data == null:
 		return ids
-	for w in character_data.starting_weapons:
-		if w != null:
-			ids[w.my_id] = true
 	for it in character_data.starting_items:
 		if it != null:
 			ids[it.my_id] = true
@@ -196,6 +238,26 @@ func _build_ui() -> void:
 		_class_filter.add_item(_t("Other", "Autre"))
 	_class_filter.connect("item_selected", self, "_on_filter_changed")
 	filter_bar.add_child(_class_filter)
+	# Rappel de la touche pour basculer la popup d'info (mécanique native magasin).
+	var info_hint = Label.new()
+	info_hint.text = _t("[Info] = toggle tooltip", "[Info] = affiche/masque l'infobulle")
+	filter_bar.add_child(info_hint)
+
+	# Actions rapides — juste sous les filtres, au-dessus des onglets.
+	var actions = HBoxContainer.new()
+	root.add_child(actions)
+	var reset_button = Button.new()
+	reset_button.text = _t("Reset all", "Tout réinitialiser")
+	reset_button.connect("pressed", self, "_on_reset_pressed")
+	actions.add_child(reset_button)
+	var deselect_button = Button.new()
+	deselect_button.text = _t("Deselect all", "Tout désélectionner")
+	deselect_button.connect("pressed", self, "_on_deselect_all_pressed")
+	actions.add_child(deselect_button)
+	_exclude_shown_button = Button.new()
+	_exclude_shown_button.text = _t("Exclude all shown", "Exclure tout l'affiché")
+	_exclude_shown_button.connect("pressed", self, "_on_exclude_shown_pressed")
+	actions.add_child(_exclude_shown_button)
 
 	# Sélecteur d'onglets Objets / Armes : de VRAIS boutons focusables. Le
 	# bandeau interne du TabContainer n'est pas navigable au focus/manette (pas
@@ -220,22 +282,6 @@ func _build_ui() -> void:
 	_items_grid = _make_grid_tab(_tabs, _t("Items", "Objets"))
 	_weapons_grid = _make_grid_tab(_tabs, _t("Weapons", "Armes"))
 	_set_active_tab(0)
-
-	# Actions rapides
-	var actions = HBoxContainer.new()
-	root.add_child(actions)
-	var reset_button = Button.new()
-	reset_button.text = _t("Reset all", "Tout réinitialiser")
-	reset_button.connect("pressed", self, "_on_reset_pressed")
-	actions.add_child(reset_button)
-	var deselect_button = Button.new()
-	deselect_button.text = _t("Deselect all", "Tout désélectionner")
-	deselect_button.connect("pressed", self, "_on_deselect_all_pressed")
-	actions.add_child(deselect_button)
-	_exclude_shown_button = Button.new()
-	_exclude_shown_button.text = _t("Exclude all shown", "Exclure tout l'affiché")
-	_exclude_shown_button.connect("pressed", self, "_on_exclude_shown_pressed")
-	actions.add_child(_exclude_shown_button)
 
 	_warning_label = Label.new()
 	_warning_label.visible = false
@@ -355,12 +401,28 @@ func _set_cell_excluded(my_id, btn, excluded) -> void:
 	btn.get_meta("overlay").visible = excluded
 
 
+# Bascule de la popup d'info à la touche ui_info (F / Y manette), par joueur :
+# chaque panneau reçoit l'événement global et ne réagit qu'à SON _player_index
+# (faithful au magasin coop, marche en solo comme en coop).
+func _input(event) -> void:
+	if Utils.is_player_info_pressed(event, _player_index):
+		_hide_popup = not _hide_popup
+		if _hide_popup:
+			if _popup != null:
+				_popup.hide()
+		elif _focused_entry != null and _popup != null:
+			_popup.display_item_data(_focused_entry, _focused_attach)
+
+
 func _on_cell_focused(entry, btn) -> void:
-	if _popup != null:
+	_focused_entry = entry
+	_focused_attach = btn
+	if _popup != null and not _hide_popup:
 		_popup.display_item_data(entry, btn)
 
 
 func _on_cell_unfocused() -> void:
+	_focused_entry = null
 	if _popup != null:
 		_popup.hide()
 
@@ -388,7 +450,7 @@ func _on_exclude_shown_pressed() -> void:
 
 
 func _on_ready_toggled(pressed) -> void:
-	if pressed and not _has_any_in_pool():
+	if pressed and (not _has_any_in_pool() or not _starting_weapon_ok()):
 		_ready_button.pressed = false
 		return
 	emit_signal("ready_changed", is_ready())
@@ -413,9 +475,12 @@ func _has_active_filter() -> bool:
 
 func _matches_filter(my_id) -> bool:
 	var entry = _entry_by_id[my_id]
-	var tier = _selected_tier()
-	if tier != -1 and entry.tier != tier:
-		return false
+	# Le filtre de tier est ignoré pour les armes (un seul représentant/famille,
+	# raretés confondues) : elles restent toujours visibles. La classe s'applique.
+	if not _is_weapon(entry):
+		var tier = _selected_tier()
+		if tier != -1 and entry.tier != tier:
+			return false
 	return _matches_class(my_id)
 
 # Index 0 = « Toutes classes » ; 1..N = une classe du top N ; dernier (si
@@ -517,24 +582,56 @@ func _has_any_in_pool() -> bool:
 func _refresh_state() -> void:
 	var remaining = get_total_count() - _excluded.size()
 	var has_any = remaining > 0
-	_ready_button.disabled = not has_any
 	if not has_any:
+		_ready_button.disabled = true
 		_warning_label.visible = true
 		_warning_label.text = _t("Keep at least some items/weapons.", "Garde au moins quelques objets/armes.")
 		if _ready_button.pressed:
 			_ready_button.pressed = false
 		emit_signal("ready_changed", false)
+	elif not _starting_weapon_ok():
+		_ready_button.disabled = true
+		_warning_label.visible = true
+		_warning_label.text = _t("Keep at least one of your starting weapons.", "Garde au moins une de tes armes de départ.")
+		if _ready_button.pressed:
+			_ready_button.pressed = false
+		emit_signal("ready_changed", false)
 	else:
+		_ready_button.disabled = false
 		_warning_label.visible = remaining < ItemService.NB_SHOP_ITEMS
 		_warning_label.text = _t("The shop will offer fewer items.", "Le magasin proposera moins d'éléments.")
 		emit_signal("ready_changed", is_ready())
 
 
-func is_ready() -> bool:
-	return _ready_button.pressed and _has_any_in_pool()
+# Garde-fou armes de départ : au moins une famille d'arme de départ doit rester
+# disponible. Famille non affichée (non lootable, etc.) = compte comme dispo.
+func _starting_weapon_ok() -> bool:
+	if _starting_weapon_family_keys.empty():
+		return true
+	for fkey in _starting_weapon_family_keys:
+		if not _repr_by_family.has(fkey):
+			return true
+		if not _excluded.has(_repr_by_family[fkey]):
+			return true
+	return false
 
+
+func is_ready() -> bool:
+	return _ready_button.pressed and _has_any_in_pool() and _starting_weapon_ok()
+
+# Exclusions à plat pour le store/pool : pour une arme, on émet TOUS les my_id de
+# sa famille (tous tiers) ; pour un objet, son my_id tel quel.
 func get_excluded_ids() -> Dictionary:
-	return _excluded.duplicate()
+	var out := {}
+	for key in _excluded:
+		var entry = _entry_by_id.get(key)
+		if entry != null and _is_weapon(entry):
+			var fkey = _weapon_family_key(entry)
+			for mid in _all_weapon_ids_by_family.get(fkey, [entry.my_id]):
+				out[mid] = true
+		else:
+			out[key] = true
+	return out
 
 func get_total_count() -> int:
 	return _all_entries.size()
