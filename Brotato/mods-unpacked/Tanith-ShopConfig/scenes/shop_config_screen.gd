@@ -28,7 +28,10 @@ func set_players(players) -> void:
 
 
 func _ready() -> void:
-	ItemService.get_shopconfig_store().reset()
+	# Pas de reset() ici : le store du singleton ItemService conserve les exclusions
+	# pour toute la SESSION de jeu (mémoire run-à-run, sans disque). Les panneaux se
+	# pré-chargent depuis lui (cf. _build_ui). Le nettoyage est automatique à la
+	# fermeture du jeu (libération mémoire) ; rien n'est écrit sur disque.
 	_build_ui()
 	_setup_focus()
 
@@ -62,12 +65,15 @@ func _build_ui() -> void:
 	panels_box.size_flags_vertical = SIZE_EXPAND_FILL
 	root.add_child(panels_box)
 
+	# Mémoire de session : on pré-charge chaque panneau avec les exclusions déjà
+	# mémorisées pour SON slot (player_index), pour qu'elles soient pré-cochées.
+	var store = ItemService.get_shopconfig_store()
 	for p in _players:
 		var panel = PanelScript.new()
 		panel.size_flags_horizontal = SIZE_EXPAND_FILL
 		panel.size_flags_vertical = SIZE_EXPAND_FILL
 		panels_box.add_child(panel)
-		panel.setup(p.index, p.character_data)
+		panel.setup(p.index, p.character_data, store.get_excluded(p.index))
 		panel.connect("ready_changed", self, "_on_ready_changed")
 		_panels.append(panel)
 
@@ -165,9 +171,9 @@ func _commit_and_advance() -> void:
 
 
 # Retour vers la sélection des personnages : on défait l'ajout des persos
-# (même logique que weapon_selection._go_back) et on vide les exclusions.
+# (même logique que weapon_selection._go_back). On NE vide PAS le store : la
+# mémoire de session des exclusions doit survivre à un aller-retour de menu.
 func _go_back() -> void:
-	ItemService.get_shopconfig_store().reset()
 	for player_index in RunData.get_player_count():
 		var character = RunData.get_player_character(player_index)
 		Utils.last_elt_selected[player_index] = character

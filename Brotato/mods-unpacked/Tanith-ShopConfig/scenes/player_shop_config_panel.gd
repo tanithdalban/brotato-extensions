@@ -32,9 +32,15 @@ const CELL_SIZE := Vector2(64, 64)
 const MAX_CLASS_OPTIONS := 10   # nb de classes proposées ; le reste -> « Autre »
 # On réutilise le vrai panneau de description du magasin pour l'infobulle riche.
 const ItemPopupScene := preload("res://ui/menus/shop/item_popup.tscn")
+# Helpers purs de calcul du carry-over (owned_ids / carried).
+const PoolFilter := preload("res://mods-unpacked/Tanith-ShopConfig/content/logic/pool_filter.gd")
 
 var _player_index := 0
 var _excluded := {}        # { my_id: true } (clé = my_id du représentant)
+# Carry-over : exclusions mémorisées pour ce slot mais NON affichables avec le
+# perso courant (grille filtrée). Gelées ici à l'ouverture (cf. _apply_saved) et
+# re-fusionnées à l'export (get_excluded_ids) pour ne pas les perdre au commit.
+var _carried_excluded := {}  # { my_id: true }
 var _all_entries := []      # ItemParentData compatibles (un représentant/famille d'arme)
 var _cells := []           # Button (un par entrée)
 var _entry_by_id := {}     # my_id -> ItemParentData
@@ -92,15 +98,54 @@ const _TIER_VALUES := [
 
 # Point d'entrée unique (appelé par l'écran AVANT l'ajout à l'arbre). Reconstruit
 # tout le panneau pour ce joueur. Voir l'ordre des étapes dans l'en-tête du fichier.
-func setup(player_index, character_data) -> void:
+# `saved_ids` = exclusions mémorisées pour ce slot (ensemble {my_id: true} à plat,
+# familles d'armes incluses) ; pré-coche les cases correspondantes et gèle le reste.
+func setup(player_index, character_data, saved_ids = {}) -> void:
 	_player_index = player_index
 	_excluded = {}
+	_carried_excluded = {}
 	_all_entries = _collect_compatible(character_data)
 	_build_class_keys_cache()
 	_build_ui()
 	_populate_grids()
+	_apply_saved(saved_ids)
 	_update_exclude_shown_button()
 	_refresh_state()
+
+
+# Restaure les exclusions mémorisées sur la grille du perso courant :
+#  • pré-coche chaque case dont le représentant OU un membre de sa famille est mémorisé ;
+#  • gèle dans _carried_excluded les ids mémorisés non représentables ici (perso
+#    différent → grille différente), pour les conserver au prochain commit.
+func _apply_saved(saved_ids) -> void:
+	if saved_ids == null or saved_ids.empty():
+		return
+	# Ensemble des ids que les cases affichées peuvent représenter (objet = son
+	# my_id ; arme = toute sa famille). Sert à isoler le carry-over.
+	var item_ids := []
+	var weapon_family_id_lists := []
+	for entry in _all_entries:
+		if _is_weapon(entry):
+			var fkey = _weapon_family_key(entry)
+			weapon_family_id_lists.append(_all_weapon_ids_by_family.get(fkey, [entry.my_id]))
+		else:
+			item_ids.append(entry.my_id)
+	var owned = PoolFilter.owned_ids(item_ids, weapon_family_id_lists)
+	_carried_excluded = PoolFilter.carried(saved_ids, owned)
+	# Pré-cochage des cases visibles concernées.
+	for btn in _cells:
+		var my_id = btn.get_meta("my_id")
+		var entry = _entry_by_id.get(my_id)
+		var hit = false
+		if entry != null and _is_weapon(entry):
+			for mid in _all_weapon_ids_by_family.get(_weapon_family_key(entry), [my_id]):
+				if saved_ids.has(mid):
+					hit = true
+					break
+		else:
+			hit = saved_ids.has(my_id)
+		if hit:
+			_set_cell_excluded(my_id, btn, true)
 
 
 # ---------- collecte filtrée par perso ----------
@@ -280,6 +325,9 @@ func _build_ui() -> void:
 	root.add_child(actions)
 	var reset_button = Button.new()
 	reset_button.text = _t("Reset all", "Tout réinitialiser")
+	reset_button.hint_tooltip = _t(
+		"Clear everything and forget the saved config for this slot.",
+		"Tout effacer et oublier la config mémorisée pour ce slot.")
 	reset_button.connect("pressed", self, "_on_reset_pressed")
 	actions.add_child(reset_button)
 	# Bouton a deux etats Exclure <-> Inclure « tout l'affiché » (libelle pilote
@@ -557,8 +605,12 @@ func _on_cell_unfocused() -> void:
 		_popup.hide()
 
 
+# « Repartir de zéro » : vide la sélection courante ET le carry-over mémorisé.
+# Après validation « Prêt », le store mémorise une liste vide pour ce slot = la
+# config sauvegardée de la session est oubliée.
 func _on_reset_pressed() -> void:
 	_excluded = {}
+	_carried_excluded = {}
 	for btn in _cells:
 		btn.get_meta("overlay").visible = false
 	_update_exclude_shown_button()
@@ -789,6 +841,9 @@ func get_excluded_ids() -> Dictionary:
 				out[mid] = true
 		else:
 			out[key] = true
+	# Carry-over : exclusions mémorisées non affichables avec ce perso (déjà à plat).
+	for cid in _carried_excluded:
+		out[cid] = true
 	return out
 
 # Nombre d'éléments proposables = nb d'objets + nb de FAMILLES d'armes (un

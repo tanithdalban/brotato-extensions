@@ -23,6 +23,7 @@ class StubItem:
 func _init():
 	print("=== ShopConfig tests ===")
 	_test_pool_filter()
+	_test_owned_and_carried()
 	_test_store()
 	print("=== %d tests, %d échec(s) ===" % [_count, _failures])
 	quit(_failures)
@@ -59,6 +60,19 @@ func _test_pool_filter():
 	var candidates = _items(["a", "b"])
 	PoolFilter.filter(candidates, {"a": true})
 	_check(candidates.size() == 2, "pool_filter: n'altère pas l'entrée")
+
+
+func _test_owned_and_carried():
+	# owned_ids : objet -> {my_id} ; arme -> tous les ids de la famille.
+	var owned = PoolFilter.owned_ids(["item_a"], [["wpn_t1", "wpn_t2", "wpn_t3"]])
+	_check(owned.hash() == {"item_a": true, "wpn_t1": true, "wpn_t2": true, "wpn_t3": true}.hash(), "owned_ids: objet + famille d'arme aplatie")
+	_check(PoolFilter.owned_ids([], []).hash() == {}.hash(), "owned_ids: vide")
+	# carried : ids mémorisés non affichables -> conservés ; affichables -> écartés.
+	var saved = {"item_a": true, "wpn_t1": true, "wpn_t2": true, "ghost": true}
+	var carried = PoolFilter.carried(saved, owned)
+	_check(carried.hash() == {"ghost": true}.hash(), "carried: garde l'id non affiché, écarte les affichés")
+	_check(PoolFilter.carried({}, owned).hash() == {}.hash(), "carried: rien à reporter si saved vide")
+	_check(PoolFilter.carried(saved, {}).hash() == saved.hash(), "carried: tout reporté si rien d'affiché")
 
 
 func _test_store():
