@@ -1,17 +1,18 @@
 extends Control
-# Conteneur responsive : un panneau de config par joueur (1=plein écran,
-# 2=moitiés, 3-4=quarts), surmonté d'une barre avec un bouton Retour.
-# Émet all_confirmed quand tous sont prêts (après avoir écrit les exclusions de
-# chaque joueur dans le store), back_requested si on demande le retour.
-# UI construite en code (pas de .tscn).
-
-signal all_confirmed
-signal back_requested
+# Scène autonome de config du magasin : maillon entre la sélection du perso et
+# celle de l'arme. Un panneau par joueur en split HORIZONTAL (calqué sur
+# weapon_selection.tscn). En coop, chaque joueur pilote son panneau via un
+# FocusEmulator dédié (cf. _setup_coop_focus). UI construite en code (pas de
+# .tscn). Entrée : swap manuel de current_scene (cf. extension). Sortie :
+# change_scene.
 
 const PanelScript = preload("res://mods-unpacked/Tanith-ShopConfig/scenes/player_shop_config_panel.gd")
+const ModLog = preload("res://mods-unpacked/Tanith-ShopConfig/content/logic/mod_log.gd")
 
+var _players := []          # défini par set_players() avant entrée dans l'arbre
 var _panels := []
-var _grid
+var _back_button
+var _emulators := []        # FocusEmulator par joueur (coop)
 
 
 func _init() -> void:
@@ -20,40 +21,78 @@ func _init() -> void:
 	anchor_bottom = 1.0
 
 
-func setup(players) -> void:
+# Appelé par l'extension AVANT l'ajout au SceneTree.
+func set_players(players) -> void:
+	_players = players
+
+
+func _ready() -> void:
 	ItemService.get_shopconfig_store().reset()
+	_build_ui()
+	_setup_focus()
+
+
+func _build_ui() -> void:
+	# Fond opaque plein écran : la scène n'a rien derrière elle, mais le split
+	# laisse des espaces transparents — ce fond garantit un écran net.
+	var background = ColorRect.new()
+	background.color = Color(0.06, 0.06, 0.08, 1.0)
+	background.anchor_right = 1.0
+	background.anchor_bottom = 1.0
+	add_child(background)
 
 	var root = VBoxContainer.new()
 	root.anchor_right = 1.0
 	root.anchor_bottom = 1.0
 	add_child(root)
 
-	# Barre supérieure : bouton Retour (libellé natif du jeu, suit la langue).
+	# Barre supérieure : bouton Retour (libellé natif, suit la langue).
 	var topbar = HBoxContainer.new()
 	root.add_child(topbar)
-	var back_button = Button.new()
-	back_button.text = tr("MENU_BACK")
-	back_button.connect("pressed", self, "_on_back_pressed")
-	topbar.add_child(back_button)
+	_back_button = Button.new()
+	_back_button.text = tr("MENU_BACK")
+	_back_button.connect("pressed", self, "_on_back_pressed")
+	topbar.add_child(_back_button)
 
-	_grid = GridContainer.new()
-	_grid.size_flags_horizontal = SIZE_EXPAND_FILL
-	_grid.size_flags_vertical = SIZE_EXPAND_FILL
-	_grid.columns = 1 if players.size() <= 1 else 2
-	root.add_child(_grid)
+	# Split HORIZONTAL : un panneau par joueur, côte à côte (comme les
+	# Inventory1..4 de weapon_selection). Chaque panneau s'étire à parts égales.
+	var panels_box = HBoxContainer.new()
+	panels_box.size_flags_horizontal = SIZE_EXPAND_FILL
+	panels_box.size_flags_vertical = SIZE_EXPAND_FILL
+	root.add_child(panels_box)
 
-	for p in players:
+	for p in _players:
 		var panel = PanelScript.new()
 		panel.size_flags_horizontal = SIZE_EXPAND_FILL
 		panel.size_flags_vertical = SIZE_EXPAND_FILL
-		_grid.add_child(panel)
+		panels_box.add_child(panel)
 		panel.setup(p.index, p.character_data)
 		panel.connect("ready_changed", self, "_on_ready_changed")
 		_panels.append(panel)
 
 
+# Focus solo : focus Godot réel. Focus coop : un FocusEmulator par panneau.
+func _setup_focus() -> void:
+	if RunData.is_coop_run:
+		_setup_coop_focus()
+	elif _back_button != null:
+		_back_button.grab_focus()
+
+
+func _setup_coop_focus() -> void:
+	# Implémenté en Task 3.
+	pass
+
+
+# En solo uniquement : ui_cancel revient en arrière (en coop, c'est le bouton
+# Retour, joignable par le joueur 0 — cf. weapon_selection).
+func _input(event: InputEvent) -> void:
+	if not RunData.is_coop_run and event.is_action_released("ui_cancel"):
+		_go_back()
+
+
 func _on_back_pressed() -> void:
-	emit_signal("back_requested")
+	_go_back()
 
 
 func _on_ready_changed(_is_ready) -> void:
@@ -67,4 +106,25 @@ func _commit_and_advance() -> void:
 	var store = ItemService.get_shopconfig_store()
 	for panel in _panels:
 		store.set_excluded(panel.get_player_index(), panel.get_excluded_ids())
-	emit_signal("all_confirmed")
+	if RunData.some_player_has_weapon_slots():
+		_change_scene(MenuData.weapon_selection_scene)
+	else:
+		RunData.add_starting_items_and_weapons()
+		_change_scene(MenuData.difficulty_selection_scene)
+
+
+# Retour vers la sélection des personnages : on défait l'ajout des persos
+# (même logique que weapon_selection._go_back) et on vide les exclusions.
+func _go_back() -> void:
+	ItemService.get_shopconfig_store().reset()
+	for player_index in RunData.get_player_count():
+		var character = RunData.get_player_character(player_index)
+		Utils.last_elt_selected[player_index] = character
+		RunData.remove_character(character, player_index)
+	RunData.revert_all_selections()
+	RunData.menu_selection_back = true
+	_change_scene(MenuData.character_selection_scene)
+
+
+func _change_scene(path: String) -> void:
+	var _error = get_tree().change_scene(path)

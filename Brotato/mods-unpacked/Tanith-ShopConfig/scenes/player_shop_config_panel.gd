@@ -511,3 +511,11 @@ func get_total_count() -> int:
 
 func get_player_index() -> int:
 	return _player_index
+
+
+# Contrôle où ancrer le focus d'un joueur à l'ouverture (sa première case ;
+# le bouton Prêt si le pool est vide). Utilisé par le routage de focus coop.
+func get_initial_focus_control() -> Control:
+	if _cells.size() > 0:
+		return _cells[0]
+	return _ready_button
