@@ -1,8 +1,9 @@
 extends "res://ui/menus/run/character_selection.gd"
 # Insère l'écran de config du magasin entre la sélection du perso et celle de
 # l'arme. Reproduit le corps vanilla de _on_selections_completed
-# (character_selection.gd:211-223) en intercalant notre écran avant le
-# changement de scène. À revérifier si Brotato modifie cette fonction.
+# (character_selection.gd:211-223) mais, au lieu de changer vers la sélection
+# d'arme, on bascule (swap de current_scene) vers NOTRE scène de config.
+# À revérifier si Brotato modifie cette fonction.
 
 const ScreenScript = preload("res://mods-unpacked/Tanith-ShopConfig/scenes/shop_config_screen.gd")
 const ModLog = preload("res://mods-unpacked/Tanith-ShopConfig/content/logic/mod_log.gd")
@@ -16,12 +17,10 @@ func _on_selections_completed() -> void:
 	if Utils.on_nintendo_nx_or_ounce and RunData.is_coop_run:
 		OS.set_max_controller_count(RunData.get_player_count())
 
-	ModLog.info("ouverture de l'écran de config du magasin")
+	ModLog.info("bascule vers la scene de config du magasin")
 	var screen = ScreenScript.new()
-	add_child(screen)
-	screen.setup(_shopconfig_players_info())
-	screen.connect("all_confirmed", self, "_on_shopconfig_confirmed", [screen])
-	screen.connect("back_requested", self, "_on_shopconfig_back", [screen])
+	screen.set_players(_shopconfig_players_info())
+	_change_to_scene_node(screen)
 
 
 func _shopconfig_players_info() -> Array:
@@ -31,27 +30,11 @@ func _shopconfig_players_info() -> Array:
 	return infos
 
 
-func _on_shopconfig_confirmed(screen) -> void:
-	screen.queue_free()
-	if RunData.some_player_has_weapon_slots():
-		_change_scene(MenuData.weapon_selection_scene)
-	else:
-		RunData.add_starting_items_and_weapons()
-		_change_scene(MenuData.difficulty_selection_scene)
-
-
-# Retour vers la sélection des personnages : on défait l'ajout des persos fait
-# dans _on_selections_completed (même logique que weapon_selection._go_back).
-func _on_shopconfig_back(screen) -> void:
-	screen.queue_free()
-	# Défensif : on vide les exclusions dès le retour (elles seront de toute
-	# façon réinitialisées à la prochaine ouverture de l'écran). Garantit qu'un
-	# changement de perso ne laisse aucune exclusion de l'ancien perso.
-	ItemService.get_shopconfig_store().reset()
-	for player_index in RunData.get_player_count():
-		var character = RunData.get_player_character(player_index)
-		Utils.last_elt_selected[player_index] = character
-		RunData.remove_character(character, player_index)
-	RunData.revert_all_selections()
-	RunData.menu_selection_back = true
-	_change_scene(MenuData.character_selection_scene)
+# Bascule vers une scène construite en code (pas de chemin .tscn) : on l'ajoute
+# à la racine, on en fait la current_scene, et on libère la scène courante (la
+# sélection de perso). Plus de superposition : l'ancienne scène est détruite.
+func _change_to_scene_node(node) -> void:
+	var tree = get_tree()
+	tree.get_root().add_child(node)
+	tree.current_scene = node
+	queue_free()
