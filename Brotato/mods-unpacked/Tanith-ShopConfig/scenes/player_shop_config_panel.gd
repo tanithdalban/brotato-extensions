@@ -19,6 +19,9 @@ var _entry_by_id := {}     # my_id -> ItemParentData
 
 var _items_grid
 var _weapons_grid
+var _tabs
+var _items_tab_button
+var _weapons_tab_button
 var _tier_filter
 var _class_filter
 var _exclude_shown_button
@@ -194,13 +197,29 @@ func _build_ui() -> void:
 	_class_filter.connect("item_selected", self, "_on_filter_changed")
 	filter_bar.add_child(_class_filter)
 
-	# Onglets Objets / Armes
-	var tabs = TabContainer.new()
-	tabs.size_flags_horizontal = SIZE_EXPAND_FILL
-	tabs.size_flags_vertical = SIZE_EXPAND_FILL
-	root.add_child(tabs)
-	_items_grid = _make_grid_tab(tabs, _t("Items", "Objets"))
-	_weapons_grid = _make_grid_tab(tabs, _t("Weapons", "Armes"))
+	# Sélecteur d'onglets Objets / Armes : de VRAIS boutons focusables. Le
+	# bandeau interne du TabContainer n'est pas navigable au focus/manette (pas
+	# des Control FOCUS_ALL), donc on le masque (tabs_visible = false) et on
+	# pilote current_tab via ces boutons.
+	var tab_bar = HBoxContainer.new()
+	root.add_child(tab_bar)
+	_items_tab_button = Button.new()
+	_items_tab_button.text = _t("Items", "Objets")
+	_items_tab_button.connect("pressed", self, "_on_tab_button_pressed", [0])
+	tab_bar.add_child(_items_tab_button)
+	_weapons_tab_button = Button.new()
+	_weapons_tab_button.text = _t("Weapons", "Armes")
+	_weapons_tab_button.connect("pressed", self, "_on_tab_button_pressed", [1])
+	tab_bar.add_child(_weapons_tab_button)
+
+	_tabs = TabContainer.new()
+	_tabs.tabs_visible = false
+	_tabs.size_flags_horizontal = SIZE_EXPAND_FILL
+	_tabs.size_flags_vertical = SIZE_EXPAND_FILL
+	root.add_child(_tabs)
+	_items_grid = _make_grid_tab(_tabs, _t("Items", "Objets"))
+	_weapons_grid = _make_grid_tab(_tabs, _t("Weapons", "Armes"))
+	_set_active_tab(0)
 
 	# Actions rapides
 	var actions = HBoxContainer.new()
@@ -249,6 +268,17 @@ func _make_grid_tab(tabs, title) -> GridContainer:
 	grid.size_flags_horizontal = SIZE_EXPAND_FILL
 	scroll.add_child(grid)
 	return grid
+
+
+func _on_tab_button_pressed(index) -> void:
+	_set_active_tab(index)
+
+
+# Affiche l'onglet voulu et indique l'onglet actif (l'inactif est atténué).
+func _set_active_tab(index) -> void:
+	_tabs.current_tab = index
+	_items_tab_button.modulate = Color(1, 1, 1, 1) if index == 0 else Color(1, 1, 1, 0.5)
+	_weapons_tab_button.modulate = Color(1, 1, 1, 1) if index == 1 else Color(1, 1, 1, 0.5)
 
 
 func _populate_grids() -> void:
