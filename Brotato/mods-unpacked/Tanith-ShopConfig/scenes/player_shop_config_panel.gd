@@ -36,6 +36,11 @@ const MAX_CLASS_OPTIONS := 10   # nb de classes proposées ; le reste -> « Autr
 const ItemPopupScene := preload("res://ui/menus/shop/item_popup.tscn")
 # Helpers purs de calcul du carry-over (owned_ids / carried).
 const PoolFilter := preload("res://mods-unpacked/Tanith-ShopConfig/content/logic/pool_filter.gd")
+# Coche verte « prêt » : la MÊME texture que l'état sélectionné des panneaux de
+# sélection de perso (item_panel_ui.tscn) -> rendu cohérent avec le jeu.
+const CheckmarkTexture := preload("res://ui/menus/global/big_checkmark.png")
+# Police plus grande pour le bouton Prêt (CTA mis en avant).
+const ReadyFont := preload("res://resources/fonts/actual/base/font_35_outline.tres")
 
 var _player_index := 0
 var _excluded := {}        # { my_id: true } (clé = my_id du représentant)
@@ -77,6 +82,7 @@ var _exclude_shown_button
 var _ready_button
 var _warning_label
 var _popup            # ItemPopup (description riche style magasin)
+var _checkmark        # TextureRect coche verte affichée quand le joueur est prêt
 
 # Filtre de classe unifié : pour une arme = ses stats de scaling
 # (WeaponData.stats.scaling_stats) ; pour un objet = les `key` de ses effets
@@ -373,8 +379,24 @@ func _build_ui() -> void:
 	_ready_button = Button.new()
 	_ready_button.text = _t("Ready", "Prêt")
 	_ready_button.toggle_mode = true
+	# Bouton mis en avant : police plus grande + hauteur minimale confortable.
+	_ready_button.add_font_override("font", ReadyFont)
+	_ready_button.rect_min_size = Vector2(0, 56)
+	_ready_button.size_flags_horizontal = SIZE_EXPAND_FILL
 	_ready_button.connect("toggled", self, "_on_ready_toggled")
 	root.add_child(_ready_button)
+
+	# Coche verte « prêt » : superposée au panneau (comme l'état sélectionné en
+	# sélection de perso coop). Cachée par défaut, centrée, grande ; le PNG étant
+	# transparent autour du V, la grille reste visible derrière. mouse_filter IGNORE
+	# pour ne pas bloquer les clics. Ajoutée APRÈS root -> dessinée par-dessus.
+	_checkmark = TextureRect.new()
+	_checkmark.texture = CheckmarkTexture
+	_checkmark.expand = true
+	_checkmark.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_checkmark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_checkmark.visible = false
+	add_child(_checkmark)
 
 	# Infobulle riche, sur un calque au-dessus de tout (style magasin).
 	var layer = CanvasLayer.new()
@@ -657,8 +679,16 @@ func _update_exclude_shown_button() -> void:
 func _on_ready_toggled(pressed) -> void:
 	if pressed and (not _has_any_in_pool() or not _starting_weapon_ok()):
 		_ready_button.pressed = false
+		_update_checkmark()
 		return
+	_update_checkmark()
 	emit_signal("ready_changed", is_ready())
+
+
+# Coche verte visible quand (et seulement quand) le joueur est réellement prêt.
+func _update_checkmark() -> void:
+	if _checkmark != null:
+		_checkmark.visible = is_ready()
 
 
 func _on_filter_changed(_idx = 0) -> void:
@@ -816,6 +846,9 @@ func _refresh_state() -> void:
 		_warning_label.visible = remaining < ItemService.NB_SHOP_ITEMS
 		_warning_label.text = _t("The shop will offer fewer items.", "Le magasin proposera moins d'éléments.")
 		emit_signal("ready_changed", is_ready())
+	# Tout changement d'état (exclusions, garde-fou) peut forcer le « non prêt » :
+	# resynchroniser la coche après recalcul.
+	_update_checkmark()
 
 
 # Garde-fou armes de départ : au moins une famille d'arme de départ doit rester
