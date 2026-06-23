@@ -12,6 +12,8 @@ const _BOMB_WEAPONS := [
 	"res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb/bomb_4_data.tres",
 ]
 
+const _BOMBERMAN_CHAR := "res://mods-unpacked/Tanith-Bomberman/content/characters/bomberman/bomberman_data.tres"
+
 func _ready() -> void:
 	# Injecter nos armes dans le pool vanilla avant le recâblage des upgrades.
 	for path in _BOMB_WEAPONS:
@@ -19,5 +21,14 @@ func _ready() -> void:
 		if w != null and not weapons.has(w):
 			weapons.append(w)
 			ModLog.info("arme enregistrée: " + str(w.my_id))
+
+	# Enregistrer le personnage Bomberman dans le pool de personnages.
+	# Doit être fait AVANT ._ready() : ProgressData.add_unlocked_by_default()
+	# itère ItemService.characters et active unlocked_by_default automatiquement.
+	var character = load(_BOMBERMAN_CHAR)
+	if character != null and not characters.has(character):
+		characters.append(character)
+		ModLog.info("perso enregistré: " + str(character.my_id))
+
 	# Le _ready() parent fixe upgrades_into.previous_upgrade pour toutes les armes.
 	._ready()
