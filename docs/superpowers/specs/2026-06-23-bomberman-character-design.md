@@ -33,7 +33,7 @@ FR/EN si besoin, comme le mod ShopConfig.
 | Formation du train | **Traînée naturelle (serpent)** : chaque arme a son cooldown propre et pose à la position courante ; le train émerge du mouvement. Affiné par un **déphasage de cooldown par slot**. |
 | Départ | **1 Bombe** ; progression = acheter d'autres Bombes (jusqu'à 6) et monter les tiers en boutique. |
 | Tiers de la Bombe | **4 tiers (I–IV)** comme une arme normale, pour une vraie montée en puissance en boutique. |
-| Mèche (fuse) | **~1.0 s** par défaut (ajustable). |
+| Mèche (fuse) | **Dépend du tier** : T1 = **2.0 s**, T4 = **1.0 s** (interpolé : T2 ≈ 1.67 s, T3 ≈ 1.33 s). La mèche raccourcit donc avec la montée en tier. Valeurs ajustables. |
 | Pipeline art | **Placeholders jouables** d'abord + **brief IA** ensuite ; l'utilisateur dépose les PNG finaux. |
 
 ## 3. Architecture
@@ -91,7 +91,8 @@ Script custom étendant la classe d'arme vanilla. Deux surcharges clés :
   puis relance le cooldown (`get_next_cooldown()`), sans projectile dirigé.
 
 Appartenance au **set « outil/ingé »** ⇒ l'Ingénierie augmente ses dégâts (modèle Artificer).
-4 tiers (I–IV) via `bomb_stats.tres` distincts (cooldown, dégâts d'explosion de base, taille).
+4 tiers (I–IV) via `bomb_stats.tres` distincts (cooldown, dégâts d'explosion de base, taille,
+**durée de mèche** : 2.0 s en T1 → 1.0 s en T4).
 
 **Déphasage par slot (train net)** : à l'équipement / au début de vague, chaque instance de Bombe
 reçoit un petit décalage de cooldown initial dépendant de son index de slot, afin que les bombes
@@ -101,7 +102,8 @@ helper pur `bomb_timing.gd`.
 ### 4.2 Entité Bombe posée — `bomb_entity`
 
 - À l'apparition : pose le sprite de bombe au sol + (optionnel) animation de mèche.
-- **Timer de mèche (~1.0 s)** ; à échéance : instancie `res://projectiles/explosion.tscn`
+- **Timer de mèche dépendant du tier** (T1 = 2.0 s → T4 = 1.0 s, porté par `bomb_stats.tres`) ;
+  à échéance : instancie `res://projectiles/explosion.tscn`
   (la même explosion que landmines/roquettes), positionnée sur la bombe, puis se libère.
 - L'explosion vanilla applique les dégâts de zone en lisant `explosion_damage` / `explosion_size`
   ⇒ **sensibilité dynamite + pot de miel automatique**, **sans toucher au joueur**.
