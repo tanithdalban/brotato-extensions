@@ -4,6 +4,7 @@
 !/Brotato/mods-unpacked/
 /Brotato/mods-unpacked/*
 !/Brotato/mods-unpacked/Tanith-ShopConfig/
+!/Brotato/mods-unpacked/Tanith-Bomberman/
 
 # Éditeur Godot local & outils
 /godot/
