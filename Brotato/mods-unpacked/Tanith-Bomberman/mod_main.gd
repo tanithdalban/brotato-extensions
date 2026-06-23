@@ -20,5 +20,4 @@ func _setup_logging() -> void:
 	ModLog.set_enabled(enabled)
 
 func _install_extensions() -> void:
-	# Les extensions seront ajoutées aux tâches T5/T6.
-	pass
+	ModLoaderMod.install_script_extension("res://mods-unpacked/Tanith-Bomberman/extensions/singletons/item_service.gd")
