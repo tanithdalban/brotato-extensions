@@ -5,6 +5,7 @@ class_name BombWeapon
 
 const BombEntity = preload("res://mods-unpacked/Tanith-Bomberman/content/entities/bomb_entity.tscn")
 const ModLog = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/mod_log.gd")
+const BombTiming = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_timing.gd")
 
 # Échelle d'explosion de base (équiv. landmine). Ajustable au réglage.
 const EXPLOSION_SCALE := 1.5
@@ -30,3 +31,35 @@ func shoot() -> void:
 	# Utilise `tier` directement (membre de Weapon) — `data` n'existe pas dans weapon.gd.
 	bomb.arm(player_index, current_stats, tier, EXPLOSION_SCALE)
 	_current_cooldown = get_next_cooldown()
+
+
+# --- Déphasage par slot ("train de bombes") ---
+
+# Index de ce slot d'arme parmi les armes du joueur.
+# `weapon_pos` est assigné par player.gd:add_weapon(weapon, pos) avant _ready().
+# Retourne -1 si non initialisé (garde-fou : slot_phase_offset renverra 0).
+func _bomb_slot_index() -> int:
+	return weapon_pos
+
+
+# Nombre d'armes actuellement équipées par le joueur.
+# Retourne 0 si _parent n'est pas encore disponible (garde-fou).
+func _bomb_slot_count() -> int:
+	if not is_instance_valid(_parent):
+		return 0
+	return _parent.get_nb_weapons()
+
+
+# Surcharge de init_stats (Weapon) : après l'init vanilla du cooldown de début
+# de vague, ajoute un déphasage par slot pour égrener les bombes ("train").
+func init_stats(at_wave_begin: bool = true) -> void:
+	.init_stats(at_wave_begin)
+	if at_wave_begin:
+		# Égrener les bombes des différents slots : décaler le 1er cooldown
+		# de chaque arme selon son index, pour former une traînée nette.
+		var phase = BombTiming.slot_phase_offset(
+			_bomb_slot_index(),
+			_bomb_slot_count(),
+			get_next_cooldown(true)
+		)
+		_current_cooldown += phase
