@@ -120,7 +120,8 @@ helper pur `bomb_timing.gd`.
   départ à équilibrer en jeu.
 - **Profil de stats** : proposition de départ inspirée Artificer (léger malus dégâts %/armure
   pour cadrer la puissance des explosions) — **à régler en jeu**.
-- `wanted_tags = [ "explosive" ]` si pertinent (comme Artificer), à confirmer.
+- `wanted_tags = [ "explosive" ]` (comme Artificer) : **conservé**. Ce tag augmente la probabilité
+  d'apparition en boutique des items « explosive » (dynamite, etc.) qui synergisent avec la Bombe.
 - Slots d'arme : on **ne touche pas** au max (6 par défaut).
 
 ### 4.4 Logique pure — `bomb_timing.gd`
