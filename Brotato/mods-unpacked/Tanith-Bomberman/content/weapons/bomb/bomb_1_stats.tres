@@ -33,5 +33,5 @@ piercing_dmg_reduction = 0.5
 bounce = 0
 bounce_dmg_reduction = 0.5
 can_bounce = false
-projectile_speed = 0
+projectile_speed = 3000
 increase_projectile_speed_with_range = false
