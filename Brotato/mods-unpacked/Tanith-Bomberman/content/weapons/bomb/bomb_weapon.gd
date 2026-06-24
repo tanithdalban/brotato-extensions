@@ -4,7 +4,6 @@ class_name BombWeapon
 # le cooldown est prêt. La bombe (entité) gère sa mèche puis explose.
 
 const BombEntity = preload("res://mods-unpacked/Tanith-Bomberman/content/entities/bomb_entity.tscn")
-const ModLog = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/mod_log.gd")
 const BombTiming = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_timing.gd")
 
 # Échelle d'explosion de base (équiv. landmine). Ajustable au réglage.
