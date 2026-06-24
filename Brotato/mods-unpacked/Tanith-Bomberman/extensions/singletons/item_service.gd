@@ -4,6 +4,15 @@ extends "res://singletons/item_service.gd"
 # upgrades, en appelant le _ready() parent après injection.
 
 const ModLog = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/mod_log.gd")
+const ShopPool = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/shop_pool.gd")
+
+const _BOMBERMAN_ID := "character_bomberman"
+
+# Index du joueur dont on tire actuellement la boutique (-1 = aucun tirage).
+# Le tirage du magasin (get_player_shop_items) tire armes ET items via get_pool ;
+# on s'en sert pour ne filtrer le pool d'ARMES QUE pendant ce contexte et QUE
+# pour le bon joueur (coop : un seul des joueurs peut être Bomberman).
+var _shop_draw_player := -1
 
 const _BOMB_WEAPONS := [
 	"res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb/bomb_1_data.tres",
@@ -40,6 +49,39 @@ func _ready() -> void:
 
 	# Le _ready() parent fixe upgrades_into.previous_upgrade pour toutes les armes.
 	._ready()
+
+
+# --- Magasin « Bombe uniquement » pour le Bomberman ---
+#
+# POURQUOI un override : le jeu vanilla ne sait pas bannir une arme du magasin
+# par ID. Dans _get_rand_item_for_wave(), character.banned_items n'est consulté
+# QUE dans la branche ITEMS ; la branche ARMES ne filtre que par
+# players_data[i].banned_items (jetons de ban en run), effets no_melee/no_ranged
+# et biais de set — jamais par ID d'arme. La liste banned_items du perso est donc
+# ignorée pour les armes. On filtre nous-mêmes le pool d'armes.
+#
+# get_player_shop_items tire armes ET items ; on pose un drapeau (joueur courant)
+# pendant ce tirage, et get_pool ne garde que les Bombes quand le pool d'ARMES est
+# tiré pour un joueur Bomberman. Compatible avec l'empilement d'extensions
+# (ShopConfig surcharge aussi get_pool/get_player_shop_items) via les appels `.`.
+func get_player_shop_items(wave: int, player_index: int, args) -> Array:
+	var previous = _shop_draw_player
+	_shop_draw_player = player_index
+	var result = .get_player_shop_items(wave, player_index, args)
+	_shop_draw_player = previous
+	return result
+
+
+func get_pool(item_tier: int, type: int) -> Array:
+	var pool = .get_pool(item_tier, type)
+	if type == TierData.WEAPONS and _shop_draw_player >= 0 and _is_bomberman(_shop_draw_player):
+		pool = ShopPool.keep_only_bombs(pool)
+	return pool
+
+
+func _is_bomberman(player_index: int) -> bool:
+	var character = RunData.get_player_character(player_index)
+	return character != null and character.my_id == _BOMBERMAN_ID
 
 
 # Ajoute nos armes/perso (unlocked_by_default) aux listes de déblocage de

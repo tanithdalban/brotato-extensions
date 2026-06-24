@@ -5,14 +5,22 @@ extends SceneTree
 # On ne teste QUE la logique 100 % pure (pas d'autoload ModLoader/jeu).
 
 const BombTiming = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_timing.gd")
+const ShopPool = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/shop_pool.gd")
 
 var _failures := 0
 var _count := 0
+
+# Faux WeaponData minimal pour les tests purs du filtre de pool.
+class _StubWeapon:
+	var weapon_id
+	func _init(id):
+		weapon_id = id
 
 func _init():
 	print("=== Bomberman tests ===")
 	_test_fuse_seconds()
 	_test_slot_phase_offset()
+	_test_keep_only_bombs()
 	print("=== %d tests, %d échec(s) ===" % [_count, _failures])
 	quit(_failures)
 
@@ -36,6 +44,21 @@ func _test_slot_phase_offset():
 	_check(_approx(BombTiming.slot_phase_offset(2, 4, 60.0), 30.0), "phase: slot 2/4 sur 60 = 30")
 	_check(_approx(BombTiming.slot_phase_offset(0, 1, 60.0), 0.0), "phase: slot unique = 0")
 	_check(_approx(BombTiming.slot_phase_offset(3, 4, 0.0), 0.0), "phase: cooldown 0 => 0")
+
+
+func _test_keep_only_bombs():
+	var bomb1 = _StubWeapon.new("weapon_bomb")
+	var bomb2 = _StubWeapon.new("weapon_bomb")
+	var sword = _StubWeapon.new("weapon_sword_2")
+	var pistol = _StubWeapon.new("weapon_pistol_1")
+	var pool = [sword, bomb1, pistol, bomb2]
+
+	var kept = ShopPool.keep_only_bombs(pool)
+	_check(kept.size() == 2, "shop: garde 2 bombes sur 4")
+	_check(kept.size() == 2 and kept[0] == bomb1 and kept[1] == bomb2, "shop: ne garde que les bombes, dans l'ordre")
+	_check(pool.size() == 4, "shop: n'altère pas la liste d'entrée")
+	_check(ShopPool.keep_only_bombs([]).size() == 0, "shop: pool vide => vide")
+	_check(ShopPool.keep_only_bombs([sword, pistol]).size() == 0, "shop: aucune bombe => vide")
 
 func _check(cond, name):
 	_count += 1
