@@ -9,6 +9,10 @@ const ScreenScript = preload("res://mods-unpacked/Tanith-ShopConfig/scenes/shop_
 const ModLog = preload("res://mods-unpacked/Tanith-ShopConfig/content/logic/mod_log.gd")
 
 func _on_selections_completed() -> void:
+	if not ProgressData.settings.get("tanith_shopconfig_enabled", false):
+		._on_selections_completed()
+		return
+
 	if ProgressData.settings.zone_is_random:
 		_setup_zone(ProgressData.settings.zone_selected)
 	for player_index in RunData.get_player_count():

@@ -22,5 +22,6 @@ func _setup_logging() -> void:
 	ModLog.set_enabled(enabled)
 
 func _install_extensions() -> void:
+	ModLoaderMod.install_script_extension("res://mods-unpacked/Tanith-ShopConfig/extensions/ui/menus/run/run_options_panel.gd")
 	ModLoaderMod.install_script_extension("res://mods-unpacked/Tanith-ShopConfig/extensions/singletons/item_service.gd")
 	ModLoaderMod.install_script_extension("res://mods-unpacked/Tanith-ShopConfig/extensions/ui/menus/run/character_selection.gd")
