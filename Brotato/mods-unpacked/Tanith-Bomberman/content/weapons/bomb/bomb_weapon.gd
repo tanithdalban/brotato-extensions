@@ -30,6 +30,12 @@ func shoot() -> void:
 	# Utilise `tier` directement (membre de Weapon) — `data` n'existe pas dans weapon.gd.
 	bomb.arm(player_index, current_stats, tier, EXPLOSION_SCALE)
 	_current_cooldown = get_next_cooldown()
+	# La bombe n'a pas d'animation de tir : on a "fini de tirer" dès qu'elle est posée.
+	# Sans ce reset, `_is_shooting` resterait `true` à vie (vanilla weapon.gd:201 le pose,
+	# mais seul le ShootingBehavior — qu'on n'utilise pas — le remet à `false`), ce qui
+	# gèlerait le cooldown (weapon.gd:192) et bloquerait should_shoot() : une seule bombe
+	# par partie. On reproduit donc le `set_shooting(false)` de fin d'animation vanilla.
+	set_shooting(false)
 
 
 # --- Déphasage par slot ("train de bombes") ---
