@@ -12,6 +12,8 @@ const EXPLOSION_SCALE := 1.5
 # Surcharge : tirer dès que le cooldown est prêt, SANS exiger de cible/portée.
 # Respecte la règle de mouvement vanilla (immobile, sauf effet "attaque en bougeant").
 func should_shoot() -> bool:
+	if not RunData.wave_in_progress:
+		return false
 	if _is_shooting:
 		return false
 	if _current_cooldown > 0:
