@@ -23,12 +23,42 @@ func _ready() -> void:
 			ModLog.info("arme enregistrée: " + str(w.my_id))
 
 	# Enregistrer le personnage Bomberman dans le pool de personnages.
-	# Doit être fait AVANT ._ready() : ProgressData.add_unlocked_by_default()
-	# itère ItemService.characters et active unlocked_by_default automatiquement.
 	var character = load(_BOMBERMAN_CHAR)
 	if character != null and not characters.has(character):
 		characters.append(character)
 		ModLog.info("perso enregistré: " + str(character.my_id))
 
+	# Débloquer explicitement nos contenus.
+	# ProgressData est un autoload déclaré AVANT ItemService (project.godot),
+	# donc ProgressData._ready() -> add_unlocked_by_default() s'exécute AVANT ce
+	# _ready() : nos armes/perso injectés ici échappent au passage de déblocage
+	# par défaut. Sans ça, l'écran de sélection d'arme (qui filtre les armes de
+	# départ par ProgressData.weapons_unlocked) affiche une liste VIDE -> run
+	# bloquée. (Le perso n'apparaissait que grâce au mod de test DevUnlockAll,
+	# qui ne débloque que les personnages, masquant le même bug côté arme.)
+	_unlock_modded_content()
+
 	# Le _ready() parent fixe upgrades_into.previous_upgrade pour toutes les armes.
 	._ready()
+
+
+# Ajoute nos armes/perso (unlocked_by_default) aux listes de déblocage de
+# ProgressData, manquées par le passage vanilla à cause de l'ordre des autoloads.
+# Idempotent (gardes anti-doublon) ; reproduit la logique de
+# ProgressData.add_unlocked_by_default() bornée à notre contenu.
+func _unlock_modded_content() -> void:
+	for path in _BOMB_WEAPONS:
+		var w = load(path)
+		if w == null:
+			continue
+		w._generate_hashes()
+		if w.unlocked_by_default and not ProgressData.weapons_unlocked.has(w.weapon_id_hash):
+			ProgressData.weapons_unlocked.push_back(w.weapon_id_hash)
+			ModLog.info("arme débloquée: " + str(w.my_id))
+
+	var character = load(_BOMBERMAN_CHAR)
+	if character != null:
+		character._generate_hashes()
+		if character.unlocked_by_default and not ProgressData.characters_unlocked.has(character.my_id_hash):
+			ProgressData.characters_unlocked.push_back(character.my_id_hash)
+			ModLog.info("perso débloqué: " + str(character.my_id))
