@@ -2,11 +2,14 @@ extends Node
 
 const LOG_NAME := "Tanith-Bomberman"
 const ModLog = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/mod_log.gd")
+const BombermanTranslations = preload("res://mods-unpacked/Tanith-Bomberman/content/i18n/bomberman_translations.gd")
 
 func _init() -> void:
 	_setup_logging()
 	ModLog.info("init")
 	_install_extensions()
+	BombermanTranslations.register()
+	ModLog.info("traductions enregistrées")
 
 func _setup_logging() -> void:
 	var enabled := false
