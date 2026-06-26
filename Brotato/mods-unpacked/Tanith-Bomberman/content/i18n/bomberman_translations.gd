@@ -19,12 +19,12 @@ extends Reference
 static func register() -> void:
 	var tr_en := Translation.new()
 	tr_en.locale = "en"
-	tr_en.add_message("CHARACTER_BOMBERMAN", "Bomberman")
+	tr_en.add_message("CHARACTER_BOMBERMAN", "Bombertoe")
 	tr_en.add_message("WEAPON_BOMB", "Bomb")
 	TranslationServer.add_translation(tr_en)
 
 	var tr_fr := Translation.new()
 	tr_fr.locale = "fr"
-	tr_fr.add_message("CHARACTER_BOMBERMAN", "Bomberman")
+	tr_fr.add_message("CHARACTER_BOMBERMAN", "Bombertoe")
 	tr_fr.add_message("WEAPON_BOMB", "Bombe")
 	TranslationServer.add_translation(tr_fr)
