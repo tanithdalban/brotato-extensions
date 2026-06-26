@@ -7,6 +7,14 @@
 # Le dev-only (test/, docs/) est exclu.
 #
 # Usage : powershell -File tools/build-shopconfig.ps1
+#         powershell -File tools/build-shopconfig.ps1 -DeployDir 'X:\...\Brotato\mods-unpacked'
+#
+# Apres le zip, depose le livrable en local pour test : copie le .zip + la
+# preview (preview.png) dans <DeployDir>\Tanith-ShopConfig\. Ignore silencieusement
+# si le dossier Steam n'existe pas (build sur une autre machine / CI).
+param(
+  [string]$DeployDir = 'D:\SteamLibrary\steamapps\common\Brotato\mods-unpacked'
+)
 
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.IO.Compression
@@ -45,3 +53,16 @@ Get-ChildItem $stage -Recurse -File | ForEach-Object {
 }
 $arch.Dispose(); $fs.Close()
 Write-Output ("OK -> {0}  ({1} KB)" -f $outZip, [math]::Round((Get-Item $outZip).Length/1KB, 1))
+
+# --- 3) Depot local (Steam) : zip + preview.png dans mods-unpacked\Tanith-ShopConfig\ ---
+if (Test-Path $DeployDir) {
+  $dest = Join-Path $DeployDir $modName
+  New-Item -ItemType Directory -Force -Path $dest | Out-Null
+  Copy-Item $outZip (Join-Path $dest "$modName.zip") -Force
+  $preview = Join-Path $modSrc 'preview.png'
+  if (Test-Path $preview) { Copy-Item $preview (Join-Path $dest 'preview.png') -Force }
+  else { Write-Warning ("preview introuvable : {0}" -f $preview) }
+  Write-Output ("Depose -> {0}" -f $dest)
+} else {
+  Write-Warning ("Dossier de depot introuvable, etape ignoree : {0}" -f $DeployDir)
+}
