@@ -35,8 +35,8 @@ powershell -File tools/build-bomberman.ps1
 ```
 
 Le script :
-1. **Met en scène** `content/`, `extensions/`, `manifest.json`, `mod_main.gd`
-   dans `%TEMP%\build-Tanith-Bomberman\mods-unpacked\Tanith-Bomberman\`
+1. **Met en scène** `content/`, `extensions/`, `manifest.json`, `mod_main.gd`,
+   `CHANGELOG.md` dans `%TEMP%\build-Tanith-Bomberman\mods-unpacked\Tanith-Bomberman\`
    (exclut `test/`, `docs/`, et les sauvegardes `*.pngold`).
 2. **Embarque le cache d'import** : pour chaque `*.png.import`, lit le nom du
    `.stex` et copie le `.stex` + `.md5` correspondants dans `.import/` à la

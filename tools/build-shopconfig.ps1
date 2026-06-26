@@ -1,7 +1,7 @@
 # Construit le livrable Steam Workshop du mod Tanith-ShopConfig.
 #
 # Structure du .zip (telle que publiée sur l'item Workshop 3748276960) :
-#   manifest.json, mod_main.gd, content/, extensions/, scenes/, singletons/  <- fichiers du mod à la RACINE du zip
+#   manifest.json, mod_main.gd, CHANGELOG.md, content/, extensions/, scenes/, singletons/  <- fichiers du mod à la RACINE du zip
 # Pas de .import : ShopConfig est 100 % GDScript, sans texture à embarquer.
 # Les entrées utilisent des SLASH '/' (Godot/ModLoader résout res:// en slash ; '\' casserait le montage).
 # Le dev-only (test/, docs/) est exclu.
@@ -23,7 +23,7 @@ if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $stage | Out-Null
 
 # Copie le code, en excluant le dev-only (test/, docs/)
-foreach ($item in @('content','extensions','scenes','singletons','manifest.json','mod_main.gd')) {
+foreach ($item in @('content','extensions','scenes','singletons','manifest.json','mod_main.gd','CHANGELOG.md')) {
   Copy-Item (Join-Path $modSrc $item) (Join-Path $stage $item) -Recurse -Force
 }
 $testDir = Join-Path $stage 'test'; if (Test-Path $testDir) { Remove-Item $testDir -Recurse -Force }

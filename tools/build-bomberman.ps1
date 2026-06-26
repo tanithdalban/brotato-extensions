@@ -26,7 +26,7 @@ New-Item -ItemType Directory -Force -Path $modStage | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $stage '.import') | Out-Null
 
 # Copie le code/les assets, en excluant le dev-only (test/, docs/, sauvegardes *.pngold)
-foreach ($item in @('content','extensions','manifest.json','mod_main.gd')) {
+foreach ($item in @('content','extensions','manifest.json','mod_main.gd','CHANGELOG.md')) {
   Copy-Item (Join-Path $modSrc $item) (Join-Path $modStage $item) -Recurse -Force
 }
 Get-ChildItem $modStage -Recurse -Include '*.pngold' | Remove-Item -Force
