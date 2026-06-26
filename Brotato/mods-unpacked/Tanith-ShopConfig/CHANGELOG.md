@@ -6,6 +6,13 @@ never show up in *their own* shop for the run.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.4.3] — 2026-06-27
+
+### Changed
+- The "Shop config" toggle now defaults to **on** (was off). The screen is
+  active unless the player explicitly unchecks it — a safety net in case the
+  checkbox fails to show up in the run options panel.
+
 ## [0.4.2] — 2026-06-27
 
 ### Fixed

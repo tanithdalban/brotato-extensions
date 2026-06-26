@@ -9,7 +9,8 @@ const ScreenScript = preload("res://mods-unpacked/Tanith-ShopConfig/scenes/shop_
 const ModLog = preload("res://mods-unpacked/Tanith-ShopConfig/content/logic/mod_log.gd")
 
 func _on_selections_completed() -> void:
-	if not ProgressData.settings.get("tanith_shopconfig_enabled", false):
+	# Défaut = vrai (cf. run_options_panel) : l'écran s'insère sauf si décoché.
+	if not ProgressData.settings.get("tanith_shopconfig_enabled", true):
 		._on_selections_completed()
 		return
 
