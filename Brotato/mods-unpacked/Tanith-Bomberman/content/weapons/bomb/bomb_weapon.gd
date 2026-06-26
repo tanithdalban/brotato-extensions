@@ -5,9 +5,21 @@ class_name BombWeapon
 
 const BombEntity = preload("res://mods-unpacked/Tanith-Bomberman/content/entities/bomb_entity.tscn")
 const BombTiming = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_timing.gd")
+const BombSkin = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_skin.gd")
 
 # Échelle d'explosion de base (équiv. landmine). Ajustable au réglage.
 const EXPLOSION_SCALE := 1.5
+
+# Surcharge : applique le skin coloré du tier au sprite tenu AVANT le _ready()
+# vanilla, qui capture `sprite.texture` dans `_original_sprite` (ligne 74) et
+# s'en sert pour l'outline. `tier` est déjà renseigné à ce stade (vanilla
+# weapon.gd l'utilise dans update_highlighting() appelé par son _ready()).
+func _ready() -> void:
+	var skin = BombSkin.load_world_texture(tier)
+	if skin != null:
+		sprite.texture = skin
+	._ready()
+
 
 # Surcharge : tirer dès que le cooldown est prêt, SANS exiger de cible/portée.
 # Respecte la règle de mouvement vanilla (immobile, sauf effet "attaque en bougeant").

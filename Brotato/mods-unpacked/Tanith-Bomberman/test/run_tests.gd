@@ -6,6 +6,7 @@ extends SceneTree
 
 const BombTiming = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_timing.gd")
 const ShopPool = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/shop_pool.gd")
+const BombSkin = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_skin.gd")
 
 var _failures := 0
 var _count := 0
@@ -21,6 +22,7 @@ func _init():
 	_test_fuse_seconds()
 	_test_slot_phase_offset()
 	_test_keep_only_bombs()
+	_test_bomb_skin()
 	print("=== %d tests, %d échec(s) ===" % [_count, _failures])
 	quit(_failures)
 
@@ -59,6 +61,21 @@ func _test_keep_only_bombs():
 	_check(pool.size() == 4, "shop: n'altère pas la liste d'entrée")
 	_check(ShopPool.keep_only_bombs([]).size() == 0, "shop: pool vide => vide")
 	_check(ShopPool.keep_only_bombs([sword, pistol]).size() == 0, "shop: aucune bombe => vide")
+
+func _test_bomb_skin():
+	# Mapping tier -> couleur (rareté Brotato).
+	_check(BombSkin.color_for_tier(0) == "gray", "skin: T1 = gray")
+	_check(BombSkin.color_for_tier(1) == "blue", "skin: T2 = blue")
+	_check(BombSkin.color_for_tier(2) == "purple", "skin: T3 = purple")
+	_check(BombSkin.color_for_tier(3) == "red", "skin: T4 = red")
+	# Clamps.
+	_check(BombSkin.color_for_tier(-3) == "gray", "skin: clamp bas = gray")
+	_check(BombSkin.color_for_tier(99) == "red", "skin: clamp haut = red")
+	# Chemins construits : icône 96 vs sprite en jeu 48.
+	_check(BombSkin.texture_path(2).ends_with("/skins/bomb_purple.png"), "skin: icône T3 = bomb_purple.png")
+	_check(BombSkin.world_texture_path(2).ends_with("/skins/bomb_purple_48.png"), "skin: en jeu T3 = bomb_purple_48.png")
+	_check(BombSkin.world_texture_path(0).ends_with("/skins/bomb_gray_48.png"), "skin: en jeu T1 = bomb_gray_48.png")
+
 
 func _check(cond, name):
 	_count += 1

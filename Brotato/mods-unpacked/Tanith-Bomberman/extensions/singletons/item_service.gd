@@ -5,6 +5,7 @@ extends "res://singletons/item_service.gd"
 
 const ModLog = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/mod_log.gd")
 const ShopPool = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/shop_pool.gd")
+const BombSkin = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_skin.gd")
 
 const _BOMBERMAN_ID := "character_bomberman"
 
@@ -27,6 +28,12 @@ func _ready() -> void:
 	# Injecter nos armes dans le pool vanilla avant le recâblage des upgrades.
 	for path in _BOMB_WEAPONS:
 		var w = load(path)
+		if w != null:
+			# Icône colorée par tier (chargée au runtime, hors cache d'import).
+			# On mute la WeaponData partagée : le magasin/inventaire lit son icon.
+			var skin = BombSkin.load_texture(w.tier)
+			if skin != null:
+				w.icon = skin
 		if w != null and not weapons.has(w):
 			weapons.append(w)
 			ModLog.info("arme enregistrée: " + str(w.my_id))

@@ -3,6 +3,7 @@ extends Node2D
 # Aucun auto-dégât joueur : l'explosion vanilla n'affecte pas le joueur.
 
 const BombTiming = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_timing.gd")
+const BombSkin = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_skin.gd")
 
 # Scène d'explosion vanilla réutilisée (dégâts de zone + lecture explosion_damage/size).
 var _explosion_scene: PackedScene = preload("res://projectiles/explosion.tscn")
@@ -16,6 +17,7 @@ var _exploding_effect: ExplodingEffect = null
 var _damage_tracking_key_hash: int = Keys.empty_hash
 
 onready var _fuse_timer: Timer = $FuseTimer
+onready var _sprite: Sprite = $Sprite
 
 func _ready() -> void:
 	# Construit l'effet d'explosion (équivaut au .tres d'effet du landmine).
@@ -34,6 +36,10 @@ func arm(p_player_index: int, p_stats: WeaponStats, p_tier: int, p_explosion_sca
 	_damage_tracking_key_hash = p_damage_tracking_key_hash
 	if _exploding_effect != null:
 		_exploding_effect.scale = _explosion_scale
+	# Skin coloré selon le tier de l'arme (sprite en jeu 48×48, chargé au runtime).
+	var skin = BombSkin.load_world_texture(p_tier)
+	if skin != null and is_instance_valid(_sprite):
+		_sprite.texture = skin
 	_fuse_timer.wait_time = BombTiming.fuse_seconds(p_tier)
 	_fuse_timer.start()
 
