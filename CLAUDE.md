@@ -14,8 +14,13 @@ Tout est écrit en **français** : commentaires, docs, libellés de commits. Les
 
 **Tests unitaires** (runner GDScript autonome, pas de GUI ; code de sortie = nb d'échecs) :
 ```
+# WSL / Linux (recommandé) — wrapper qui pose le bit +x et propage le code de sortie :
+./run-tests.sh
+
+# Windows (cmd/PowerShell) :
 "Godot_v3.6.2-stable_win64.exe/Godot_v3.6.2-stable_win64_console.cmd" --path Brotato --no-window -s res://mods-unpacked/Tanith-ShopConfig/test/run_tests.gd
 ```
+Sous WSL, l'exe Godot Windows livré dans le repo tourne via l'interop (il n'existe pas de build Godot 3.6.2 natif Linux) ; `run-tests.sh` s'en charge. Les erreurs moteur affichées **après** la ligne « N tests, M échec(s) » sont la fermeture des autoloads du jeu (DLC, cursor…) et n'affectent pas le résultat.
 Les tests ne couvrent que la **logique 100 % pure** (`pool_filter.gd`, `shop_config_store.gd`) : tout ce qui touche aux autoloads ModLoader ne peut pas se charger en headless et se vérifie **en jeu**.
 
 **Test en jeu** : copier/symlinker le dossier du mod dans `mods-unpacked/` à côté du `.pck` du jeu, lancer Brotato, vérifier le flux. Le mod `Tanith-DevUnlockAll` déverrouille tous les persos en mémoire pour tester toutes les classes (le supprimer pour revenir à la normale).
