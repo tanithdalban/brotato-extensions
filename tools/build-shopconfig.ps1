@@ -1,7 +1,10 @@
 # Construit le livrable Steam Workshop du mod Tanith-ShopConfig.
 #
-# Structure du .zip (telle que publiée sur l'item Workshop 3748276960) :
-#   manifest.json, mod_main.gd, CHANGELOG.md, content/, extensions/, scenes/, singletons/  <- fichiers du mod à la RACINE du zip
+# Structure du .zip (IMPÉRATIF pour le loader Workshop de ModLoader Godot 3) :
+#   mods-unpacked/Tanith-ShopConfig/...   <- monté à res://mods-unpacked/... ; ModLoader y cherche le mod.
+# ⚠️ Les fichiers NE doivent PAS être à la racine du zip : ModLoader monte l'archive,
+#    cherche res://mods-unpacked/ et rejette le zip (« does not have the correct file
+#    structure », erreur 31) s'il ne le trouve pas. (cf. build-bomberman.ps1, même schéma.)
 # Pas de .import : ShopConfig est 100 % GDScript, sans texture à embarquer.
 # Les entrées utilisent des SLASH '/' (Godot/ModLoader résout res:// en slash ; '\' casserait le montage).
 # Le dev-only (test/, docs/) est exclu.
@@ -26,16 +29,17 @@ $modSrc  = Join-Path $repo "Brotato\mods-unpacked\$modName"
 $stage   = Join-Path $env:TEMP "build-$modName"
 $outZip  = Join-Path $repo "dist\$modName.zip"
 
-# --- 1) Stage propre (fichiers du mod a la racine) ---
+# --- 1) Stage propre (fichiers du mod sous mods-unpacked\<Mod>\) ---
 if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
-New-Item -ItemType Directory -Force -Path $stage | Out-Null
+$modStage = Join-Path $stage "mods-unpacked\$modName"
+New-Item -ItemType Directory -Force -Path $modStage | Out-Null
 
 # Copie le code, en excluant le dev-only (test/, docs/)
 foreach ($item in @('content','extensions','scenes','singletons','manifest.json','mod_main.gd','CHANGELOG.md')) {
-  Copy-Item (Join-Path $modSrc $item) (Join-Path $stage $item) -Recurse -Force
+  Copy-Item (Join-Path $modSrc $item) (Join-Path $modStage $item) -Recurse -Force
 }
-$testDir = Join-Path $stage 'test'; if (Test-Path $testDir) { Remove-Item $testDir -Recurse -Force }
-$docsDir = Join-Path $stage 'docs'; if (Test-Path $docsDir) { Remove-Item $docsDir -Recurse -Force }
+$testDir = Join-Path $modStage 'test'; if (Test-Path $testDir) { Remove-Item $testDir -Recurse -Force }
+$docsDir = Join-Path $modStage 'docs'; if (Test-Path $docsDir) { Remove-Item $docsDir -Recurse -Force }
 
 # --- 2) Zip (entrees en slash '/') ---
 New-Item -ItemType Directory -Force -Path (Split-Path $outZip) | Out-Null
