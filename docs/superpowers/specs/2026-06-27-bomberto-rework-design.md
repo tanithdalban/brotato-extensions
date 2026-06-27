@@ -84,17 +84,29 @@ isolant la donnée d'entrée (pas d'accès autoload dans la logique pure).
 
 ### 3. Armes de départ : bombe forcée + 1 arme choisie
 
-- `bomberman_data.tres` → `starting_weapons` = le **roster accessible en tier 1** :
-  Bombe, Rocket Launcher, Nuclear Launcher, Fireball, Dextroyer, Shredder, Plank,
-  Power Fist, Hand, Spiky Shield, Torch, Wrench. *(Hammer et Plasma Sledgehammer
-  n'ont pas de version tier 1 → absents du choix de départ, mais toujours achetables
-  en boutique.)* La **Bombe reste dans la liste** : un joueur peut donc démarrer avec
-  **2 bombes** s'il le souhaite.
+**Contrainte technique** : l'écran de sélection d'arme utilise des données **tier-0**
+(dossier `1`). Or beaucoup d'armes accessibles n'ont **pas** de version tier-0 (elles
+commencent au tier 2) : Rocket Launcher, Nuclear Launcher, Fireball, Dextroyer,
+Power Fist, Plasma Sledgehammer, Hammer. Elles restent **achetables en boutique**
+(tous tiers) mais **ne peuvent pas** figurer dans le choix de départ.
+
+- `bomberman_data.tres` → `starting_weapons` = le **roster accessible qui possède un
+  tier-0** : **Bombe, Shredder, Plank, Hand, Spiky Shield, Torch, Wrench**. La **Bombe
+  reste dans la liste** : un joueur peut donc démarrer avec **2 bombes** s'il le souhaite.
+  Chemins de données tier-0 :
+  - `res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb/bomb_1_data.tres`
+  - `res://weapons/ranged/shredder/1/shredder_data.tres`
+  - `res://weapons/melee/plank/1/plank_data.tres`
+  - `res://weapons/melee/hand/1/hand_data.tres`
+  - `res://weapons/melee/spiky_shield/1/spiky_shield_data.tres`
+  - `res://weapons/melee/torch/1/torch_data.tres`
+  - `res://weapons/melee/wrench/1/wrench_data.tres`
 - Ajouter un **effet `starting_weapon`** sur le perso (nouveau `.tres`, modèle
   `crazy_effect_3.tres`) accordant `weapon_bomb_1` (`value = 1`). Il force **toujours**
   une Bombe au démarrage, **en plus** du choix de l'écran de sélection.
 
-Résultat : départ garanti avec une Bombe **+** une arme choisie dans le pool accessible.
+Résultat : départ garanti avec une Bombe **+** une arme choisie dans le pool accessible
+disposant d'un tier-0.
 
 ### 4. Buffs du personnage (remplacent l'effet actuel)
 
