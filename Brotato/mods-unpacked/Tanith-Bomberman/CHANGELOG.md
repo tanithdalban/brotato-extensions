@@ -6,6 +6,18 @@ elemental/engineering scaling.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.2.0] — 2026-06-27
+
+### Added
+- "Troll bomb": a placed bomb can randomly (~10%) wake up partway through its
+  fuse, turn into an unstoppable roving hazard, and chase the nearest living
+  player to explode in their face (hits players/allies, never enemies).
+  - Wake telegraph: an alert sound plays and the troll bomb stays still briefly
+    before the chase begins, and it never spawns right on top of a player.
+  - Body color matches the origin bomb's tier, with an angry-face overlay.
+  - Non-lethal: contact and end-of-timer AoE damage are capped so they always
+    leave the player at 1 HP or more.
+
 ## [1.1.0] — 2026-06-26
 
 ### Added
