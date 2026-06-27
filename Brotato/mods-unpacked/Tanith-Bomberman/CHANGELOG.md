@@ -6,6 +6,28 @@ elemental/engineering scaling.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.3.0] — 2026-06-27
+
+### Changed
+- Personnage renommé **Bombertoe → Bomberto**.
+- Boutique élargie : en plus des Bombes, propose désormais les armes du set
+  **explosive** et les armes de mêlée à **fort knockback (≥ 20)** (Hammer, Hand,
+  Spiky Shield, Torch, Wrench…).
+- Armes de départ : on commence **toujours avec une Bombe** (forcée), **plus** une
+  arme choisie parmi le roster accessible disposant d'un tier-0 (Bombe, Shredder,
+  Plank, Hand, Spiky Shield, Torch, Wrench). Choisir la Bombe = démarrer avec 2 bombes.
+- Refonte des buffs : **-75 % dégâts**, **+5 % taille d'explosion par point
+  d'élémentaire**, **+5 % dégâts d'explosion par point d'ingénierie** (effets globaux,
+  s'appliquent aussi aux armes explosives achetées).
+- Arme Bombe : scaling **100 % ingénierie + 150 % élémentaire** (au lieu de 50/50).
+- Bombe posée **1.25× plus grosse** (visuel uniquement).
+
+### Fixed
+- La Bombe bénéficie désormais réellement du bonus de **dégâts d'explosion**
+  (le buff ingénierie l'atteint).
+- **Coop** : une troll bombe ne peut plus **tuer un coéquipier** — le dégât de
+  contact est plafonné au PV minimum de **tous** les joueurs vivants.
+
 ## [1.2.0] — 2026-06-27
 
 ### Added
