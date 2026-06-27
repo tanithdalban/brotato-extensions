@@ -7,6 +7,7 @@ extends SceneTree
 const BombTiming = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_timing.gd")
 const ShopPool = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/shop_pool.gd")
 const BombSkin = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_skin.gd")
+const TrollLogic = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/troll_bomb_logic.gd")
 
 var _failures := 0
 var _count := 0
@@ -23,6 +24,10 @@ func _init():
 	_test_slot_phase_offset()
 	_test_keep_only_bombs()
 	_test_bomb_skin()
+	_test_troll_should_wake()
+	_test_troll_wake_delay()
+	_test_troll_nearest_target()
+	_test_troll_step_velocity()
 	print("=== %d tests, %d échec(s) ===" % [_count, _failures])
 	quit(_failures)
 
@@ -75,6 +80,45 @@ func _test_bomb_skin():
 	_check(BombSkin.texture_path(2).ends_with("/skins/bomb_purple.png"), "skin: icône T3 = bomb_purple.png")
 	_check(BombSkin.world_texture_path(2).ends_with("/skins/bomb_purple_48.png"), "skin: en jeu T3 = bomb_purple_48.png")
 	_check(BombSkin.world_texture_path(0).ends_with("/skins/bomb_gray_48.png"), "skin: en jeu T1 = bomb_gray_48.png")
+
+
+func _test_troll_should_wake():
+	_check(TrollLogic.should_wake(0.0, 0.1) == true, "troll: roll 0.0 < 0.1 => réveil")
+	_check(TrollLogic.should_wake(0.05, 0.1) == true, "troll: roll 0.05 < 0.1 => réveil")
+	_check(TrollLogic.should_wake(0.1, 0.1) == false, "troll: roll 0.1 pas < 0.1 => non")
+	_check(TrollLogic.should_wake(0.5, 0.0) == false, "troll: chance 0 => jamais")
+	_check(TrollLogic.should_wake(0.99, 1.0) == true, "troll: chance 1 => toujours")
+
+
+func _test_troll_wake_delay():
+	_check(_approx(TrollLogic.wake_delay(2.0, 0.5), 1.0), "troll: réveil à 50% de 2.0s = 1.0s")
+	_check(_approx(TrollLogic.wake_delay(1.0, 0.5), 0.5), "troll: réveil à 50% de 1.0s = 0.5s")
+	_check(_approx(TrollLogic.wake_delay(2.0, 0.0), 0.0), "troll: fraction 0 => 0")
+	_check(_approx(TrollLogic.wake_delay(2.0, 2.0), 2.0), "troll: fraction clamp haut => mèche pleine")
+	_check(_approx(TrollLogic.wake_delay(2.0, -1.0), 0.0), "troll: fraction clamp bas => 0")
+
+
+func _test_troll_nearest_target():
+	var from = Vector2(0, 0)
+	var p_far = {"position": Vector2(100, 0), "dead": false, "index": 0}
+	var p_near = {"position": Vector2(10, 0), "dead": false, "index": 1}
+	var r = TrollLogic.nearest_target(from, [p_far, p_near])
+	_check(r["found"] and r["index"] == 1, "troll: cible = joueur le plus proche")
+	var p_dead_near = {"position": Vector2(5, 0), "dead": true, "index": 2}
+	var r2 = TrollLogic.nearest_target(from, [p_dead_near, p_far])
+	_check(r2["found"] and r2["index"] == 0, "troll: ignore le joueur mort")
+	var r3 = TrollLogic.nearest_target(from, [])
+	_check(not r3["found"], "troll: liste vide => aucune cible")
+	var r4 = TrollLogic.nearest_target(from, [p_dead_near])
+	_check(not r4["found"], "troll: tous morts => aucune cible")
+
+
+func _test_troll_step_velocity():
+	var v = TrollLogic.step_velocity(Vector2(0, 0), Vector2(10, 0), 100.0)
+	_check(_approx(v.x, 100.0) and _approx(v.y, 0.0), "troll: déplacement vers la droite = (100,0)")
+	_check(_approx(v.length(), 100.0), "troll: norme du déplacement = vitesse")
+	var z = TrollLogic.step_velocity(Vector2(5, 5), Vector2(5, 5), 100.0)
+	_check(z == Vector2.ZERO, "troll: positions confondues => zéro")
 
 
 func _check(cond, name):
