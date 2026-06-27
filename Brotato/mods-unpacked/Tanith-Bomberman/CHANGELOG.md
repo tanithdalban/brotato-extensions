@@ -21,7 +21,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   d'élémentaire**, **+5 % dégâts d'explosion par point d'ingénierie** (effets globaux,
   s'appliquent aussi aux armes explosives achetées).
 - Arme Bombe : scaling **100 % ingénierie + 150 % élémentaire** (au lieu de 50/50).
-- Bombe posée **1.25× plus grosse** (visuel uniquement).
+- Arme Bombe : l'explosion **enflamme** désormais les ennemis (même brûlure que la
+  **Torch**, progressive par tier : 3 dmg/3 s → 12 dmg/9 s, scaling élémentaire).
+- Bombe posée **1.25× plus grosse** (visuel uniquement) ; la troll bombe aussi.
 
 ### Fixed
 - La Bombe bénéficie désormais réellement du bonus de **dégâts d'explosion**
