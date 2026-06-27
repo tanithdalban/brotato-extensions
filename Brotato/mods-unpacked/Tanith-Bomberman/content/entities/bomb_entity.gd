@@ -49,6 +49,10 @@ func arm(p_player_index: int, p_stats: WeaponStats, p_tier: int, p_explosion_sca
 	var skin = BombSkin.load_world_texture(p_tier)
 	if skin != null and is_instance_valid(_sprite):
 		_sprite.texture = skin
+	# Grossissement purement VISUEL de la bombe posée (n'affecte pas le rayon
+	# d'explosion, géré par _explosion_scale / explosion_size).
+	if is_instance_valid(_sprite):
+		_sprite.scale = Vector2(1.25, 1.25)
 	_tier = p_tier
 	# Tirage unique du réveil. Si elle se réveille, la "mèche" sert de délai
 	# avant la bascule en troll bombe (instant = fraction de la mèche) ; sinon
