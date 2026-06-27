@@ -24,6 +24,7 @@ var _exploding_effect: ExplodingEffect = null
 var _damage_tracking_key_hash: int = Keys.empty_hash
 var _tier: int = 0           # tier de la bombe (pour la couleur de la troll bombe)
 var _will_wake: bool = false # tirage du réveil, décidé à l'armement
+var _explosion_damage_override: int = -1  # dégât d'explosion pré-calculé (-1 = non fourni)
 
 onready var _fuse_timer: Timer = $FuseTimer
 onready var _sprite: Sprite = $Sprite
@@ -38,11 +39,12 @@ func _ready() -> void:
 	var _e = _fuse_timer.connect("timeout", self, "_on_fuse_timeout")
 
 # Appelée juste après instanciation par l'arme.
-func arm(p_player_index: int, p_stats: WeaponStats, p_tier: int, p_explosion_scale: float = 1.75, p_damage_tracking_key_hash: int = Keys.empty_hash) -> void:
+func arm(p_player_index: int, p_stats: WeaponStats, p_tier: int, p_explosion_scale: float = 1.75, p_damage_tracking_key_hash: int = Keys.empty_hash, p_explosion_damage: int = -1) -> void:
 	_player_index = p_player_index
 	_stats = p_stats
 	_explosion_scale = p_explosion_scale
 	_damage_tracking_key_hash = p_damage_tracking_key_hash
+	_explosion_damage_override = p_explosion_damage
 	if _exploding_effect != null:
 		_exploding_effect.scale = _explosion_scale
 	# Skin coloré selon le tier de l'arme (sprite en jeu 48×48, chargé au runtime).
@@ -72,7 +74,7 @@ func _on_fuse_timeout() -> void:
 		queue_free()
 		return
 	_explode_args.pos = global_position
-	_explode_args.damage = _stats.damage
+	_explode_args.damage = _explosion_damage_override if _explosion_damage_override >= 0 else _stats.damage
 	_explode_args.accuracy = _stats.accuracy
 	_explode_args.crit_chance = _stats.crit_chance
 	_explode_args.crit_damage = _stats.crit_damage

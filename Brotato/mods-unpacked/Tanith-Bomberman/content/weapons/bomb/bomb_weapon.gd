@@ -42,7 +42,12 @@ func shoot() -> void:
 	Utils.get_scene_node().add_child(bomb)
 	bomb.global_position = _parent.global_position
 	# Utilise `tier` directement (membre de Weapon) — `data` n'existe pas dans weapon.gd.
-	bomb.arm(player_index, current_stats, tier, EXPLOSION_SCALE)
+	# Dégât d'explosion calculé depuis les stats de BASE (pas current_stats) pour
+	# inclure le bonus explosion_damage (buff ingé) sans double-compter le %Damage.
+	# La Bombe n'a pas d'ExplodingEffect dans ses `effects`, donc current_stats
+	# ne porte pas ce bonus.
+	var explosion_damage = WeaponService.get_explosion_damage(stats, player_index)
+	bomb.arm(player_index, current_stats, tier, EXPLOSION_SCALE, Keys.empty_hash, explosion_damage)
 	_current_cooldown = get_next_cooldown()
 	# La bombe n'a pas d'animation de tir : on a "fini de tirer" dès qu'elle est posée.
 	# Sans ce reset, `_is_shooting` resterait `true` à vie (vanilla weapon.gd:201 le pose,
