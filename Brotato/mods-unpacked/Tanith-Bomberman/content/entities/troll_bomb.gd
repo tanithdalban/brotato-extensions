@@ -130,8 +130,11 @@ func _explode() -> void:
 		_explode_args.accuracy = _stats.accuracy
 		_explode_args.crit_chance = _stats.crit_chance
 		_explode_args.crit_damage = _stats.crit_damage
-		_explode_args.burning_data = _stats.burning_data
 		_explode_args.scaling_stats = _stats.scaling_stats
+	# L'explosion est purement visuelle (damage 0) — on ne propage AUCUN effet
+	# (notamment burning_data) pour ne jamais affecter les ennemis : la brûlure
+	# s'applique indépendamment des dégâts dans unit.gd via la hitbox couche 8.
+	_explode_args.burning_data = null
 	_explode_args.from_player_index = _player_index
 	_explode_args.from = null
 	_explode_args.damage_tracking_key_hash = Keys.empty_hash
