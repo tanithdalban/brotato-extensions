@@ -1,0 +1,25 @@
+{
+    "name": "Bomberman",
+    "namespace": "Tanith",
+    "version_number": "1.1.0",
+    "description": "Bombertoe : personnage qui pose des bombes à mèche (jusqu'à 6), seule arme dispo.",
+    "website_url": "",
+    "dependencies": [],
+    "extra": {
+        "godot": {
+            "authors": ["Tanith"],
+            "tags": ["content", "character", "weapon"],
+            "optional_dependencies": [],
+            "load_before": [],
+            "incompatibilities": [],
+            "compatible_mod_loader_version": ["6.3.0"],
+            "compatible_game_version": [],
+            "config_schema": {
+                "type": "object",
+                "properties": {
+                    "debug_log": { "type": "boolean", "description": "Active les logs détaillés de Bombertoe.", "default": false }
+                }
+            }
+        }
+    }
+}
