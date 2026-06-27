@@ -1,7 +1,8 @@
 # Bomberman — Changelog
 
-A Brotato character mod: "Bombertoe", a bomb-only character paired with a Bomb
-weapon that drops bombs on a cooldown (no targeting) and leans on explosion and
+A Brotato character mod: "Bomberto", a bomb-throwing character whose shop also
+offers explosive and high-knockback melee weapons, paired with a Bomb weapon
+that drops bombs on a cooldown (no targeting) and leans on explosion and
 elemental/engineering scaling.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).

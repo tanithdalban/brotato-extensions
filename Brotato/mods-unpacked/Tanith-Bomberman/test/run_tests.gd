@@ -88,6 +88,7 @@ func _test_keep_allowed_weapons():
 	_check(ShopPool.is_allowed(rocket), "pool: set explosive autorisé")
 	_check(ShopPool.is_allowed(hammer), "pool: knockback 30 mêlée autorisé")
 	_check(ShopPool.is_allowed(hand), "pool: hand (kb 30 mêlée) autorisé")
+	_check(ShopPool.is_allowed(_StubWeapon.new("weapon_wrench", [], 20, 0)), "pool: knockback 20 mêlée (borne) autorisé")
 	_check(not ShopPool.is_allowed(pistol), "pool: pistolet (kb 15 distance) refusé")
 	_check(not ShopPool.is_allowed(sword), "pool: épée (kb 2) refusée")
 	_check(not ShopPool.is_allowed(sniper), "pool: sniper (kb 20 mais distance) refusé")

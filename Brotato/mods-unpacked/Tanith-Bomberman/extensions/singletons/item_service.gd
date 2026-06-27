@@ -70,7 +70,7 @@ func _ready() -> void:
 # get_player_shop_items tire armes ET items ; on pose un drapeau (joueur courant)
 # pendant ce tirage, et get_pool ne garde que le roster Bomberto quand le pool
 # d'ARMES est tiré pour un joueur Bomberto. Compatible avec l'empilement
-# d'extensions (ShopConfig surcharge aussi get_pool/get_player_shop_items) via `.
+# d'extensions (ShopConfig surcharge aussi get_pool/get_player_shop_items) via `.` (appel parent).
 func get_player_shop_items(wave: int, player_index: int, args) -> Array:
 	var previous = _shop_draw_player
 	_shop_draw_player = player_index
