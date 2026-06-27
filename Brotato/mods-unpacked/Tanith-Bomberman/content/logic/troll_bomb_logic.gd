@@ -46,3 +46,26 @@ static func step_velocity(from_pos: Vector2, target_pos: Vector2, speed: float) 
 	if delta.length() < 0.0001:
 		return Vector2.ZERO
 	return delta.normalized() * speed
+
+
+# Dégâts NON LÉTAUX : jamais plus que ce qui laisserait le joueur à 1 PV.
+# raw = dégâts bruts de la bombe, hp = PV courants du joueur visé.
+# Résultat dans [0, raw] et toujours <= hp-1 (donc 0 si hp <= 1, jamais de kill).
+static func nonlethal_damage(raw: int, hp: int) -> int:
+	var cap := hp - 1
+	if cap < 0:
+		cap = 0
+	if raw < cap:
+		return raw
+	return cap
+
+
+# Position de spawn repoussée à au moins min_dist du joueur (anti "explose au
+# visage sans réaction"). Si déjà assez loin, renvoie spawn_pos inchangé.
+static func keep_distance(spawn_pos: Vector2, player_pos: Vector2, min_dist: float) -> Vector2:
+	var dir := spawn_pos - player_pos
+	if dir.length() >= min_dist:
+		return spawn_pos
+	if dir.length() < 0.0001:
+		dir = Vector2(1, 0)  # direction arbitraire si pile sur le joueur
+	return player_pos + dir.normalized() * min_dist

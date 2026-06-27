@@ -28,6 +28,8 @@ func _init():
 	_test_troll_wake_delay()
 	_test_troll_nearest_target()
 	_test_troll_step_velocity()
+	_test_troll_nonlethal_damage()
+	_test_troll_keep_distance()
 	print("=== %d tests, %d échec(s) ===" % [_count, _failures])
 	quit(_failures)
 
@@ -119,6 +121,27 @@ func _test_troll_step_velocity():
 	_check(_approx(v.length(), 100.0), "troll: norme du déplacement = vitesse")
 	var z = TrollLogic.step_velocity(Vector2(5, 5), Vector2(5, 5), 100.0)
 	_check(z == Vector2.ZERO, "troll: positions confondues => zéro")
+
+
+func _test_troll_nonlethal_damage():
+	_check(TrollLogic.nonlethal_damage(10, 100) == 10, "troll: dégâts < PV => inchangés")
+	_check(TrollLogic.nonlethal_damage(50, 30) == 29, "troll: dégâts >= PV => laisse à 1 PV (PV-1)")
+	_check(TrollLogic.nonlethal_damage(50, 50) == 49, "troll: dégâts == PV => laisse à 1 PV")
+	_check(TrollLogic.nonlethal_damage(10, 1) == 0, "troll: 1 PV => 0 dégât (pas de kill)")
+	_check(TrollLogic.nonlethal_damage(10, 0) == 0, "troll: 0 PV => 0 dégât")
+	_check(TrollLogic.nonlethal_damage(0, 100) == 0, "troll: 0 dégât brut => 0")
+
+
+func _test_troll_keep_distance():
+	# Déjà assez loin => inchangé.
+	var far = TrollLogic.keep_distance(Vector2(200, 0), Vector2(0, 0), 100.0)
+	_check(far == Vector2(200, 0), "troll: spawn déjà loin => inchangé")
+	# Trop proche => repoussé à exactement min_dist sur le même axe.
+	var near = TrollLogic.keep_distance(Vector2(10, 0), Vector2(0, 0), 100.0)
+	_check(_approx(near.x, 100.0) and _approx(near.y, 0.0), "troll: spawn proche => repoussé à min_dist")
+	# Pile sur le joueur => direction arbitraire, à min_dist.
+	var on = TrollLogic.keep_distance(Vector2(5, 5), Vector2(5, 5), 80.0)
+	_check(_approx((on - Vector2(5, 5)).length(), 80.0), "troll: spawn pile sur joueur => repoussé à min_dist")
 
 
 func _check(cond, name):

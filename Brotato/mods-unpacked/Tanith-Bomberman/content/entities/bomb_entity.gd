@@ -10,7 +10,7 @@ const TrollBombLogic = preload("res://mods-unpacked/Tanith-Bomberman/content/log
 # --- Paramètres réglables de la troll bombe (calibrage final en jeu) ---
 const TROLL_WAKE_CHANCE := 0.10   # ~10 % qu'une bombe posée se réveille
 const TROLL_WAKE_FRACTION := 0.5  # réveil à ~50 % de la mèche
-const TROLL_WAKE_SOUND := "res://entities/units/enemies/pursuer/sci-fi_code_fail_08.wav"
+# Le son d'alerte est joué par la troll bombe elle-même (phase télégraphe).
 
 # Scène d'explosion vanilla réutilisée (dégâts de zone + lecture explosion_damage/size).
 var _explosion_scene: PackedScene = preload("res://projectiles/explosion.tscn")
@@ -80,12 +80,9 @@ func _on_fuse_timeout() -> void:
 	var _inst = WeaponService.explode(_exploding_effect, _explode_args)
 	queue_free()
 
-# Réveil : joue un son, instancie la troll bombe à la place de l'explosion, et
-# se libère sans exploser. La troll bombe prend le relais (poursuite + explosion).
+# Réveil : instancie la troll bombe à la place de l'explosion et se libère sans
+# exploser. La troll bombe prend le relais (télégraphe + son + poursuite + explosion).
 func _wake_into_troll() -> void:
-	var snd = load(TROLL_WAKE_SOUND)
-	if snd != null:
-		SoundManager2D.play(snd, global_position, -6.0)
 	var troll = TrollBomb.instance()
 	Utils.get_scene_node().add_child(troll)
 	troll.global_position = global_position

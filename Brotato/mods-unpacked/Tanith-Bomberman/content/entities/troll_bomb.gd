@@ -17,17 +17,24 @@ const TrollBombLogic = preload("res://mods-unpacked/Tanith-Bomberman/content/log
 
 const _FACE_PATH := "res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb/skins/troll_bomb_face.png"
 
+# Son d'alerte joué à l'éveil (phase télégraphe), préchargé.
+const WAKE_SOUND := preload("res://entities/units/enemies/boss/zombie_voice_general_emote_05.wav")
+
 # --- Paramètres réglables (calibrage final en jeu) ---
-const SPEED := 120.0          # ≈ vitesse de base d'un joueur, CONSTANTE
-const PURSUIT_SECONDS := 5.0  # minuteur de poursuite (plage à tester 4-6)
-const BLAST_RADIUS := 120.0   # rayon de l'AoE infligée en fin de minuteur (> rayon de contact ~50)
+const SPEED := 120.0            # ≈ vitesse de base d'un joueur, CONSTANTE
+const PURSUIT_SECONDS := 5.0    # minuteur de poursuite (plage à tester 4-6)
+const BLAST_RADIUS := 120.0     # rayon de l'AoE infligée en fin de minuteur (> rayon de contact ~50)
+const TELEGRAPH_SECONDS := 0.8  # éveil : son + immobile (le joueur a le temps de réagir) avant la chasse
+const MIN_SPAWN_DISTANCE := 130.0  # ne pas apparaître collé au joueur
 
 var _player_index: int = -1
 var _stats: WeaponStats = null
 var _tier: int = 0
 var _explosion_scale: float = 1.5
 var _damage_tracking_key_hash: int = Keys.empty_hash
+var _base_damage: int = 1       # dégâts bruts de la bombe (avant plafond non-létal)
 var _exploded: bool = false
+var _telegraph_timer: Timer = null
 
 var _explosion_scene: PackedScene = preload("res://projectiles/explosion.tscn")
 var _exploding_effect: ExplodingEffect = null
@@ -52,6 +59,11 @@ func _ready() -> void:
 	# c'est notre signal de "contact joueur" -> on explose.
 	var _e2 = _hitbox.connect("hit_something", self, "_on_hit_player")
 	var _e3 = _free_timer.connect("timeout", self, "_on_free_timeout")
+	# Timer de télégraphe (créé en code, pas dans la scène) : éveil immobile.
+	_telegraph_timer = Timer.new()
+	_telegraph_timer.one_shot = true
+	add_child(_telegraph_timer)
+	var _e4 = _telegraph_timer.connect("timeout", self, "_on_telegraph_timeout")
 
 
 # Appelée juste après instanciation par bomb_entity (au réveil).
@@ -73,39 +85,85 @@ func arm(p_player_index: int, p_stats: WeaponStats, p_tier: int, p_explosion_sca
 	if face_tex != null and is_instance_valid(_face):
 		_face.texture = face_tex
 
-	# Hitbox de contact : inflige les dégâts de la bombe aux joueurs/alliés (couche 4).
+	# Dégâts bruts de la bombe : plafonnés à chaque frame pour rester NON LÉTAUX.
+	_base_damage = int(_stats.damage) if _stats != null else 1
+
+	# Hitbox de contact (couche 4) : désactivée pendant le télégraphe, armée ensuite.
 	if is_instance_valid(_hitbox):
-		_hitbox.damage = int(_stats.damage) if _stats != null else 1
+		_hitbox.damage = _base_damage
 		_hitbox.from = null
 		_hitbox.damage_tracking_key_hash = Keys.empty_hash
-		_hitbox.enable()
+		_hitbox.disable()
 
+	# Anti "explose au visage" : ne pas démarrer collé au joueur le plus proche.
+	var np = _nearest_player_node()
+	if np != null:
+		global_position = TrollBombLogic.keep_distance(global_position, np.global_position, MIN_SPAWN_DISTANCE)
+
+	# Télégraphe : son d'alerte (toujours joué, plus fort) + immobile un court instant.
+	SoundManager2D.play(WAKE_SOUND, global_position, 4.0, 0.0, true)
+	set_physics_process(false)
+	_telegraph_timer.wait_time = TELEGRAPH_SECONDS
+	_telegraph_timer.start()
+
+
+# Fin du télégraphe : on arme la hitbox, on lance la poursuite et le déplacement.
+func _on_telegraph_timeout() -> void:
+	if _exploded:
+		return
+	if is_instance_valid(_hitbox):
+		_hitbox.enable()
 	_pursuit_timer.wait_time = PURSUIT_SECONDS
 	_pursuit_timer.start()
+	set_physics_process(true)
 
 
 func _physics_process(delta: float) -> void:
 	if _exploded:
 		return
-	var target = _nearest_player()
-	if not target["found"]:
+	var node = _nearest_player_node()
+	if node == null:
 		return
-	var vel = TrollBombLogic.step_velocity(global_position, target["position"], SPEED)
+	var vel = TrollBombLogic.step_velocity(global_position, node.global_position, SPEED)
 	global_position += vel * delta
+	# Plafonne les dégâts de contact pour ne jamais tuer le joueur poursuivi.
+	if is_instance_valid(_hitbox):
+		_hitbox.damage = TrollBombLogic.nonlethal_damage(_base_damage, int(node.current_stats.health))
 
 
-# Construit la liste pure des joueurs et délègue le choix à la logique pure.
-func _nearest_player() -> Dictionary:
+# Nœud du joueur VIVANT le plus proche (ou null). Construit la liste pure puis
+# délègue le choix à la logique pure, et remappe l'index vers le nœud.
+func _nearest_player_node():
 	var main = Utils.get_scene_node()
 	if main == null or not ("_players" in main):
-		return {"found": false}
+		return null
 	var targets := []
-	var idx := 0
+	var nodes := []
 	for p in main._players:
 		if is_instance_valid(p):
-			targets.append({"position": p.global_position, "dead": p.dead, "index": idx})
-		idx += 1
-	return TrollBombLogic.nearest_target(global_position, targets)
+			targets.append({"position": p.global_position, "dead": p.dead, "index": nodes.size()})
+			nodes.append(p)
+	var r = TrollBombLogic.nearest_target(global_position, targets)
+	if not r["found"]:
+		return null
+	return nodes[r["index"]]
+
+
+# Plus petit PV courant parmi les joueurs vivants dans le rayon d'explosion.
+# Renvoie un très grand nombre si personne n'est à portée (dégâts non plafonnés,
+# mais sans cible -> sans effet).
+func _min_hp_in_blast() -> int:
+	var main = Utils.get_scene_node()
+	if main == null or not ("_players" in main):
+		return 0x7FFFFFFF
+	var min_hp := 0x7FFFFFFF
+	for p in main._players:
+		if is_instance_valid(p) and not p.dead:
+			if global_position.distance_to(p.global_position) <= BLAST_RADIUS:
+				var hp = int(p.current_stats.health)
+				if hp < min_hp:
+					min_hp = hp
+	return min_hp
 
 
 # Le joueur a encaissé notre Hitbox au contact -> il a déjà pris les dégâts :
@@ -147,6 +205,8 @@ func _burst_aoe() -> void:
 			var shape = CircleShape2D.new()  # neuf : ne pas partager la forme entre instances
 			shape.radius = BLAST_RADIUS
 			col.shape = shape
+		# Dégâts plafonnés au plus petit PV des joueurs vivants à portée -> aucun kill.
+		_hitbox.damage = TrollBombLogic.nonlethal_damage(_base_damage, _min_hp_in_blast())
 		_hitbox.enable()
 	_spawn_visual_explosion()
 	_free_timer.wait_time = 0.12
