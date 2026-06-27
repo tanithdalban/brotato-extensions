@@ -69,3 +69,14 @@ static func keep_distance(spawn_pos: Vector2, player_pos: Vector2, min_dist: flo
 	if dir.length() < 0.0001:
 		dir = Vector2(1, 0)  # direction arbitraire si pile sur le joueur
 	return player_pos + dir.normalized() * min_dist
+
+
+# Plus petit PV parmi ceux fournis (PV courants des joueurs VIVANTS, déjà filtrés
+# par l'appelant). Retourne un très grand nombre si la liste est vide (=> aucun
+# plafond, mais sans cible le dégât n'a de toute façon pas d'effet).
+static func min_living_hp(hps: Array) -> int:
+	var m := 0x7FFFFFFF
+	for hp in hps:
+		if hp < m:
+			m = hp
+	return m

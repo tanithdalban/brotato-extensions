@@ -126,9 +126,9 @@ func _physics_process(delta: float) -> void:
 		return
 	var vel = TrollBombLogic.step_velocity(global_position, node.global_position, SPEED)
 	global_position += vel * delta
-	# Plafonne les dégâts de contact pour ne jamais tuer le joueur poursuivi.
+	# Plafonne les dégâts de contact au PV min de tous les joueurs vivants (coop-safe).
 	if is_instance_valid(_hitbox):
-		_hitbox.damage = TrollBombLogic.nonlethal_damage(_base_damage, int(node.current_stats.health))
+		_hitbox.damage = TrollBombLogic.nonlethal_damage(_base_damage, _min_hp_all_living())
 
 
 # Nœud du joueur VIVANT le plus proche (ou null). Construit la liste pure puis
@@ -164,6 +164,21 @@ func _min_hp_in_blast() -> int:
 				if hp < min_hp:
 					min_hp = hp
 	return min_hp
+
+
+# Plus petit PV courant parmi TOUS les joueurs vivants (sans notion de rayon).
+# Sert à plafonner le dégât de CONTACT pour qu'aucun joueur — pas seulement le
+# poursuivi — ne puisse mourir en coop (la Hitbox couche 4 touche n'importe quel
+# joueur qui la chevauche).
+func _min_hp_all_living() -> int:
+	var main = Utils.get_scene_node()
+	if main == null or not ("_players" in main):
+		return 0x7FFFFFFF
+	var hps := []
+	for p in main._players:
+		if is_instance_valid(p) and not p.dead:
+			hps.append(int(p.current_stats.health))
+	return TrollBombLogic.min_living_hp(hps)
 
 
 # Le joueur a encaissé notre Hitbox au contact -> il a déjà pris les dégâts :

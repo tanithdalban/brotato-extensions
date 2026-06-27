@@ -45,6 +45,7 @@ func _init():
 	_test_troll_nearest_target()
 	_test_troll_step_velocity()
 	_test_troll_nonlethal_damage()
+	_test_troll_min_living_hp()
 	_test_troll_keep_distance()
 	print("=== %d tests, %d échec(s) ===" % [_count, _failures])
 	quit(_failures)
@@ -160,6 +161,13 @@ func _test_troll_nonlethal_damage():
 	_check(TrollLogic.nonlethal_damage(10, 1) == 0, "troll: 1 PV => 0 dégât (pas de kill)")
 	_check(TrollLogic.nonlethal_damage(10, 0) == 0, "troll: 0 PV => 0 dégât")
 	_check(TrollLogic.nonlethal_damage(0, 100) == 0, "troll: 0 dégât brut => 0")
+
+
+func _test_troll_min_living_hp():
+	_check(TrollLogic.min_living_hp([30, 10, 50]) == 10, "troll: min PV = 10")
+	_check(TrollLogic.min_living_hp([5]) == 5, "troll: un seul joueur => son PV")
+	_check(TrollLogic.min_living_hp([]) == 0x7FFFFFFF, "troll: aucun joueur => très grand (pas de plafond)")
+	_check(TrollLogic.min_living_hp([1, 100]) == 1, "troll: prend le plus bas (1)")
 
 
 func _test_troll_keep_distance():
