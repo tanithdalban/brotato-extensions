@@ -20,6 +20,7 @@ const _FACE_PATH := "res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb/s
 # --- Paramètres réglables (calibrage final en jeu) ---
 const SPEED := 120.0          # ≈ vitesse de base d'un joueur, CONSTANTE
 const PURSUIT_SECONDS := 5.0  # minuteur de poursuite (plage à tester 4-6)
+const BLAST_RADIUS := 120.0   # rayon de l'AoE infligée en fin de minuteur (> rayon de contact ~50)
 
 var _player_index: int = -1
 var _stats: WeaponStats = null
@@ -36,6 +37,7 @@ onready var _body: Sprite = $Body
 onready var _face: Sprite = $Face
 onready var _hitbox: Hitbox = $Hitbox
 onready var _pursuit_timer: Timer = $PursuitTimer
+onready var _free_timer: Timer = $FreeTimer
 
 
 func _ready() -> void:
@@ -49,6 +51,7 @@ func _ready() -> void:
 	# La hurtbox du joueur appelle hitbox.hit_something() quand elle encaisse :
 	# c'est notre signal de "contact joueur" -> on explose.
 	var _e2 = _hitbox.connect("hit_something", self, "_on_hit_player")
+	var _e3 = _free_timer.connect("timeout", self, "_on_free_timeout")
 
 
 # Appelée juste après instanciation par bomb_entity (au réveil).
@@ -105,38 +108,67 @@ func _nearest_player() -> Dictionary:
 	return TrollBombLogic.nearest_target(global_position, targets)
 
 
-# Le joueur a encaissé notre Hitbox -> explosion au visage.
+# Le joueur a encaissé notre Hitbox au contact -> il a déjà pris les dégâts :
+# on joue juste l'explosion visuelle et on disparaît.
 func _on_hit_player(_thing_hit, _damage_dealt) -> void:
-	_explode()
+	_finish(false)
 
 
-# Le minuteur de poursuite a expiré sans contact -> explosion sur place.
+# Fin du minuteur de poursuite sans contact -> AoE sur les joueurs/alliés à portée.
 func _on_pursuit_timeout() -> void:
-	_explode()
+	_finish(true)
 
 
-func _explode() -> void:
+# aoe=false : contact direct (dégâts déjà infligés) -> visuel + disparition immédiate.
+# aoe=true  : fin de minuteur -> agrandit la Hitbox au rayon d'explosion pour
+#             toucher les joueurs/alliés à portée, puis disparaît après détection.
+func _finish(aoe: bool) -> void:
 	if _exploded:
 		return
 	_exploded = true
 	set_physics_process(false)
+	if aoe:
+		_burst_aoe()
+	else:
+		if is_instance_valid(_hitbox):
+			_hitbox.disable()
+		_spawn_visual_explosion()
+		queue_free()
+
+
+# Agrandit la Hitbox (couche 4) au rayon d'explosion : les joueurs/alliés à
+# portée encaissent via leur hurtbox (les ennemis ne surveillent pas la couche 4).
+# On garde la Hitbox active un court instant pour laisser la physique détecter le
+# chevauchement, puis on libère via FreeTimer.
+func _burst_aoe() -> void:
+	if is_instance_valid(_hitbox):
+		var col = _hitbox.get_node("Collision") as CollisionShape2D
+		if col != null:
+			var shape = CircleShape2D.new()  # neuf : ne pas partager la forme entre instances
+			shape.radius = BLAST_RADIUS
+			col.shape = shape
+		_hitbox.enable()
+	_spawn_visual_explosion()
+	_free_timer.wait_time = 0.12
+	_free_timer.start()
+
+
+func _on_free_timeout() -> void:
 	if is_instance_valid(_hitbox):
 		_hitbox.disable()
-	# Explosion VISUELLE uniquement (damage 0) : les dégâts joueur viennent de
-	# la Hitbox de contact. WeaponService.explode crée le visuel + fumée + son.
+	queue_free()
+
+
+# Explosion PUREMENT VISUELLE (damage 0, aucun effet propagé) : les dégâts
+# joueur viennent de la Hitbox (couche 4). On ne propage RIEN (notamment pas
+# burning_data) pour ne jamais affecter les ennemis via la hitbox couche 8 de
+# l'explosion (la brûlure s'applique indépendamment des dégâts dans unit.gd).
+func _spawn_visual_explosion() -> void:
 	_explode_args.pos = global_position
 	_explode_args.damage = 0
-	if _stats != null:
-		_explode_args.accuracy = _stats.accuracy
-		_explode_args.crit_chance = _stats.crit_chance
-		_explode_args.crit_damage = _stats.crit_damage
-		_explode_args.scaling_stats = _stats.scaling_stats
-	# L'explosion est purement visuelle (damage 0) — on ne propage AUCUN effet
-	# (notamment burning_data) pour ne jamais affecter les ennemis : la brûlure
-	# s'applique indépendamment des dégâts dans unit.gd via la hitbox couche 8.
 	_explode_args.burning_data = null
+	_explode_args.scaling_stats = []
 	_explode_args.from_player_index = _player_index
 	_explode_args.from = null
 	_explode_args.damage_tracking_key_hash = Keys.empty_hash
 	var _inst = WeaponService.explode(_exploding_effect, _explode_args)
-	queue_free()
