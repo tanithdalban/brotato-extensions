@@ -12,17 +12,33 @@ const TrollLogic = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/t
 var _failures := 0
 var _count := 0
 
-# Faux WeaponData minimal pour les tests purs du filtre de pool.
+# Faux objets minimaux pour les tests purs du filtre de pool.
+class _StubSet:
+	var my_id
+	func _init(id):
+		my_id = id
+
+class _StubStats:
+	var knockback
+	func _init(kb):
+		knockback = kb
+
 class _StubWeapon:
 	var weapon_id
-	func _init(id):
-		weapon_id = id
+	var sets
+	var stats
+	var type
+	func _init(p_weapon_id = "", p_sets = [], p_knockback = 0, p_type = 1):
+		weapon_id = p_weapon_id
+		sets = p_sets
+		stats = _StubStats.new(p_knockback)
+		type = p_type
 
 func _init():
 	print("=== Bomberman tests ===")
 	_test_fuse_seconds()
 	_test_slot_phase_offset()
-	_test_keep_only_bombs()
+	_test_keep_allowed_weapons()
 	_test_bomb_skin()
 	_test_troll_should_wake()
 	_test_troll_wake_delay()
@@ -55,19 +71,33 @@ func _test_slot_phase_offset():
 	_check(_approx(BombTiming.slot_phase_offset(3, 4, 0.0), 0.0), "phase: cooldown 0 => 0")
 
 
-func _test_keep_only_bombs():
-	var bomb1 = _StubWeapon.new("weapon_bomb")
-	var bomb2 = _StubWeapon.new("weapon_bomb")
-	var sword = _StubWeapon.new("weapon_sword_2")
-	var pistol = _StubWeapon.new("weapon_pistol_1")
-	var pool = [sword, bomb1, pistol, bomb2]
+func _test_keep_allowed_weapons():
+	var SET_EXPLOSIVE = [_StubSet.new("set_explosive")]
+	var SET_HEAVY = [_StubSet.new("set_heavy")]
+	# weapon_id, sets, knockback, type (0=MELEE, 1=RANGED)
+	var bomb = _StubWeapon.new("weapon_bomb", [], 0, 1)
+	var rocket = _StubWeapon.new("weapon_rocket_launcher", SET_EXPLOSIVE, 0, 1)
+	var hammer = _StubWeapon.new("weapon_hammer", SET_HEAVY, 30, 0)
+	var hand = _StubWeapon.new("weapon_hand", [], 30, 0)
+	var pistol = _StubWeapon.new("weapon_pistol", [], 15, 1)
+	var sword = _StubWeapon.new("weapon_sword", [], 2, 0)
+	var sniper = _StubWeapon.new("weapon_sniper", [], 20, 1)
 
-	var kept = ShopPool.keep_only_bombs(pool)
-	_check(kept.size() == 2, "shop: garde 2 bombes sur 4")
-	_check(kept.size() == 2 and kept[0] == bomb1 and kept[1] == bomb2, "shop: ne garde que les bombes, dans l'ordre")
-	_check(pool.size() == 4, "shop: n'altère pas la liste d'entrée")
-	_check(ShopPool.keep_only_bombs([]).size() == 0, "shop: pool vide => vide")
-	_check(ShopPool.keep_only_bombs([sword, pistol]).size() == 0, "shop: aucune bombe => vide")
+	_check(ShopPool.is_allowed(bomb), "pool: bombe autorisée")
+	_check(ShopPool.is_allowed(rocket), "pool: set explosive autorisé")
+	_check(ShopPool.is_allowed(hammer), "pool: knockback 30 mêlée autorisé")
+	_check(ShopPool.is_allowed(hand), "pool: hand (kb 30 mêlée) autorisé")
+	_check(not ShopPool.is_allowed(pistol), "pool: pistolet (kb 15 distance) refusé")
+	_check(not ShopPool.is_allowed(sword), "pool: épée (kb 2) refusée")
+	_check(not ShopPool.is_allowed(sniper), "pool: sniper (kb 20 mais distance) refusé")
+	_check(not ShopPool.is_allowed(null), "pool: null refusé")
+
+	var pool = [sword, bomb, pistol, rocket, hand]
+	var kept = ShopPool.keep_allowed_weapons(pool)
+	_check(kept.size() == 3, "pool: garde 3 sur 5 (bombe, rocket, hand)")
+	_check(kept[0] == bomb and kept[1] == rocket and kept[2] == hand, "pool: conserve l'ordre")
+	_check(pool.size() == 5, "pool: n'altère pas la liste d'entrée")
+	_check(ShopPool.keep_allowed_weapons([]).size() == 0, "pool: vide => vide")
 
 func _test_bomb_skin():
 	# Mapping tier -> couleur (rareté Brotato).
