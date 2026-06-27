@@ -12,7 +12,11 @@
 
 - **Langue** : tout en **français** (commentaires, docs, libellés de commits). Libellés UI bilingues via le helper i18n existant.
 - **Aucune dépendance autoload dans la logique pure** (`content/logic/*.gd`) — sinon les tests headless ne chargent pas.
-- **Tests purs** lancés via `./run-tests.sh` (WSL/Linux) — code de sortie = nombre d'échecs (0 = OK). Les erreurs moteur **après** la ligne `=== N tests, M échec(s) ===` sont la fermeture des autoloads et n'affectent pas le résultat.
+- **Tests purs** — runner **Bomberman** (⚠️ PAS le script `run-tests.sh`, qui teste ShopConfig). Commande exacte, lancée depuis la racine du repo :
+  ```
+  "./Godot_v3.6.2-stable_win64.exe/Godot_v3.6.2-stable_win64.exe" --path Brotato --no-window -s res://mods-unpacked/Tanith-Bomberman/test/run_tests.gd
+  ```
+  Le résultat est la ligne `=== N tests, M échec(s) ===` (chercher `0 échec(s)`). Les erreurs moteur **après** cette ligne sont la fermeture des autoloads et n'affectent pas le résultat. Baseline avant ce plan : **51 tests, 0 échec**.
 - **Identité d'un élément** : `my_id : String` / `weapon_id : String`. `WeaponData.Type { MELEE = 0, RANGED = 1 }`.
 - **Intégration** : ne jamais toucher au ban natif, aux item boxes, ni au pool d'**items** ; seulement le pool d'**armes** de la boutique et la sélection de départ.
 - **Commits fréquents**, un par tâche minimum. Branche de travail : `feat/troll-bombe`.
@@ -122,7 +126,7 @@ func _test_keep_allowed_weapons():
 
 - [ ] **Step 2: Lancer les tests pour vérifier l'échec**
 
-Run: `./run-tests.sh`
+Run: `"./Godot_v3.6.2-stable_win64.exe/Godot_v3.6.2-stable_win64.exe" --path Brotato --no-window -s res://mods-unpacked/Tanith-Bomberman/test/run_tests.gd`
 Expected: ÉCHEC — `keep_allowed_weapons`/`is_allowed` n'existent pas encore (erreur de méthode invalide ou `FAIL`).
 
 - [ ] **Step 3: Implémenter le filtre pur**
@@ -189,7 +193,7 @@ static func keep_allowed_weapons(pool: Array) -> Array:
 
 - [ ] **Step 4: Lancer les tests pour vérifier le succès**
 
-Run: `./run-tests.sh`
+Run: `"./Godot_v3.6.2-stable_win64.exe/Godot_v3.6.2-stable_win64.exe" --path Brotato --no-window -s res://mods-unpacked/Tanith-Bomberman/test/run_tests.gd`
 Expected: SUCCÈS — la ligne `=== N tests, 0 échec(s) ===` (N augmente vs avant).
 
 - [ ] **Step 5: Brancher l'extension sur le nouveau filtre**
@@ -244,7 +248,7 @@ func _test_troll_min_living_hp():
 
 - [ ] **Step 2: Lancer les tests pour vérifier l'échec**
 
-Run: `./run-tests.sh`
+Run: `"./Godot_v3.6.2-stable_win64.exe/Godot_v3.6.2-stable_win64.exe" --path Brotato --no-window -s res://mods-unpacked/Tanith-Bomberman/test/run_tests.gd`
 Expected: ÉCHEC — `min_living_hp` n'existe pas encore.
 
 - [ ] **Step 3: Implémenter `min_living_hp`**
@@ -266,7 +270,7 @@ static func min_living_hp(hps: Array) -> int:
 
 - [ ] **Step 4: Lancer les tests pour vérifier le succès**
 
-Run: `./run-tests.sh`
+Run: `"./Godot_v3.6.2-stable_win64.exe/Godot_v3.6.2-stable_win64.exe" --path Brotato --no-window -s res://mods-unpacked/Tanith-Bomberman/test/run_tests.gd`
 Expected: SUCCÈS — `=== N tests, 0 échec(s) ===`.
 
 - [ ] **Step 5: Brancher la troll bombe sur le PV min global**
@@ -308,7 +312,7 @@ par :
 
 - [ ] **Step 6: Lancer les tests (non-régression)**
 
-Run: `./run-tests.sh`
+Run: `"./Godot_v3.6.2-stable_win64.exe/Godot_v3.6.2-stable_win64.exe" --path Brotato --no-window -s res://mods-unpacked/Tanith-Bomberman/test/run_tests.gd`
 Expected: SUCCÈS — toujours `0 échec(s)`.
 
 - [ ] **Step 7: Commit**
@@ -768,6 +772,6 @@ Après la Task 9, lancer Brotato avec le mod (copier/symlinker le dossier dans `
 5. Bombe posée plus grosse (×1.25), rayon inchangé.
 6. Coop : troll bombe ne tue jamais un allié.
 
-Lancer une dernière fois `./run-tests.sh` → `0 échec(s)`.
+Lancer une dernière fois `"./Godot_v3.6.2-stable_win64.exe/Godot_v3.6.2-stable_win64.exe" --path Brotato --no-window -s res://mods-unpacked/Tanith-Bomberman/test/run_tests.gd` → `0 échec(s)`.
 
 > Déploiement Steam Workshop (item `3748276960`) hors périmètre de ce plan.
