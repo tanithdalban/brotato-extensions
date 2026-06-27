@@ -6,9 +6,10 @@ const BombTiming = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/b
 const BombSkin = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_skin.gd")
 const TrollBomb = preload("res://mods-unpacked/Tanith-Bomberman/content/entities/troll_bomb.tscn")
 const TrollBombLogic = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/troll_bomb_logic.gd")
+const ModLog = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/mod_log.gd")
 
 # --- Paramètres réglables de la troll bombe (calibrage final en jeu) ---
-const TROLL_WAKE_CHANCE := 0.10   # ~10 % qu'une bombe posée se réveille
+const TROLL_WAKE_CHANCE := 0.05   # ~5 % qu'une bombe posée se réveille (par bombe ; se cumule avec le volume de bombes)
 const TROLL_WAKE_FRACTION := 0.5  # réveil à ~50 % de la mèche
 # Le son d'alerte est joué par la troll bombe elle-même (phase télégraphe).
 
@@ -83,6 +84,12 @@ func _on_fuse_timeout() -> void:
 	_explode_args.from_player_index = _player_index
 	_explode_args.from = null  # pas d'auto-attribution à un noeud qui va disparaître
 	_explode_args.damage_tracking_key_hash = _damage_tracking_key_hash
+	if ModLog.is_enabled():
+		var _bd = _explode_args.burning_data
+		ModLog.info("explosion bombe (j%d) — burning=%s | dmg=%s" % [
+			_player_index,
+			("NULL" if _bd == null else ("chance=%s dmg=%s notburn=%s" % [str(_bd.chance), str(_bd.damage), str(_bd.is_not_burning())])),
+			str(_explode_args.damage)])
 	var _inst = WeaponService.explode(_exploding_effect, _explode_args)
 	queue_free()
 
