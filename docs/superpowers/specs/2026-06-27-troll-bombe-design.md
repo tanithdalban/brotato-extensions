@@ -24,7 +24,8 @@ alliés**, jamais les ennemis.
 | Vitesse | **≈ vitesse de base d'un joueur, fixe** : ignore la stat vitesse (un joueur rapide la sème, un joueur ralenti non). La troll bombe ne change jamais de vitesse. |
 | Dégâts | **= ceux de la bombe d'origine** (`stats.damage`, donc montée en puissance par tier). |
 | Emplacement d'apparition | **Là où la bombe a été posée** (conséquence du réveil pendant la mèche ; souvent derrière le joueur, à distance variable selon son déplacement). |
-| Apparence | Bombe noire cartoon, **visage fâché + mèche allumée** (réf. `screens/trollbomb.jpg`). |
+| Apparence | Bombe cartoon **colorée par le tier de sa bombe d'origine** (T1 gris / T2 bleu / T3 violet / T4 rouge, comme les bombes normales) + **visage fâché** en surcouche (réf. `screens/trollbomb.jpg`). |
+| Couleur | **Modulée par le tier d'origine** : corps = sprite de bombe déjà coloré (réutilisé tel quel), visage = overlay unique indépendant du tier. |
 | Son de réveil | SFX court joué au réveil ; **son vanilla réutilisé** d'abord (placeholder), à affiner en jeu. |
 | Explosion (visuel + dégâts de zone) | **Réutilise `explosion.tscn` vanilla** (cohérent avec la bombe normale). |
 
@@ -57,11 +58,10 @@ ne tape que les ennemis).
 
 | Fichier | Rôle |
 |---|---|
-| `content/entities/troll_bomb.tscn` | Scène : `KinematicBody2D` + `Sprite` + `Hitbox` (couche 4) + `PursuitTimer` (one-shot). |
-| `content/entities/troll_bomb.gd` | Comportement : poursuite, contact, explosion, dégâts joueurs/alliés, son de réveil. |
+| `content/entities/troll_bomb.tscn` | Scène : `KinematicBody2D` + `Sprite` (corps, texture par tier) + `Sprite` enfant (visage fâché, overlay) + `Hitbox` (couche 4) + `PursuitTimer` (one-shot). |
+| `content/entities/troll_bomb.gd` | Comportement : poursuite, contact, explosion, dégâts joueurs/alliés, son de réveil, application couleur par tier. |
 | `content/logic/troll_bomb_logic.gd` | **Logique pure** testable (aucune dépendance jeu). |
-| `content/weapons/bomb/skins/troll_bomb.png` | Sprite icône/référence (placeholder → art final). |
-| `content/weapons/bomb/skins/troll_bomb_48.png` | Sprite en jeu 48×48 (chargé au runtime). |
+| `content/weapons/bomb/skins/troll_bomb_face.png` | **Seul nouvel asset** : overlay « visage fâché » (yeux + bouche), indépendant du tier, posé sur le corps coloré (placeholder → art final). |
 
 ### Fichiers modifiés
 
@@ -83,7 +83,9 @@ ne tape que les ennemis).
    se libère sans exploser.
 4. **Poursuite** (`troll_bomb._physics_process`) — récupère les joueurs vivants, choisit le
    plus proche (`nearest_target`), avance à vitesse fixe (`step_velocity` + `move_and_slide`).
-   Sprite « bombe noire fâchée ». `PursuitTimer` (4–6 s) démarré au spawn.
+   Apparence : corps = sprite de bombe coloré par le **tier d'origine** (réutilise
+   `bomb_skin.load_world_texture(tier)`, comme la bombe normale), + overlay « visage fâché »
+   posé en sprite enfant. `PursuitTimer` (4–6 s) démarré au spawn.
 5. **Explosion — deux issues** :
    - **Contact joueur** : la `Hitbox` chevauche la `Hurtbox` d'un joueur → dégâts via le
      chemin vanilla ; on déclenche le visuel `explosion.tscn` et `queue_free()`.
@@ -117,9 +119,12 @@ par l'humain** — non testable headless (autoloads + physique), comme le reste 
 
 ## Art & packaging
 
-- `troll_bomb.png` (icône/réf) + `troll_bomb_48.png` (en jeu) : pixel-art bombe noire au
-  visage fâché, mèche allumée, façon `screens/trollbomb.jpg`. Placeholder d'abord, art final
-  ensuite.
+- **Corps** : aucun nouvel asset — on réutilise tel quel les sprites de bombe déjà colorés
+  par tier (`bomb_gray/blue/purple/red_48.png`) via `bomb_skin.load_world_texture(tier)`.
+  La couleur de la troll bombe est donc exactement celle de sa bombe d'origine.
+- **Visage** : un seul nouvel asset `troll_bomb_face.png` (overlay yeux + bouche fâchés,
+  indépendant du tier), pixel-art façon `screens/trollbomb.jpg`. Placeholder d'abord, art
+  final ensuite. Même technique que les overlays yeux/bouche du perso Bombertoe.
 - Chargés au **runtime** (`Image.load` → `ImageTexture`, filtre net), comme les skins de
   bombe → indépendants du cache `.import`/`.stex`. Le `.png` est embarqué dans le `.zip`
   Workshop par `tools/build-bomberman.ps1` (mécanisme déjà en place).
@@ -136,6 +141,7 @@ par l'humain** — non testable headless (autoloads + physique), comme le reste 
 | Minuteur de poursuite | 5 s (plage à tester 4–6) |
 | Dégâts | = `stats.damage` de la bombe |
 | Rayon d'explosion finale | = échelle d'explosion de la bombe (réutilisée) |
+| Couleur du corps | = couleur du tier d'origine (`bomb_skin`, réutilisée) |
 | Son de réveil | id SFX vanilla + volume (à choisir en jeu) |
 
 ## Hors périmètre (YAGNI)
@@ -143,8 +149,9 @@ par l'humain** — non testable headless (autoloads + physique), comme le reste 
 - Pas d'item/upgrade modulant le % de réveil.
 - Pas de variation par personnage.
 - Pas de comptage dans le cap d'ennemis / affichage minimap.
-- Pas d'art ni de son **dédiés** dans cette itération (placeholders réutilisés ; finalisation
-  ultérieure possible).
+- Corps : aucun art neuf (réutilise les bombes colorées existantes). Seul nouvel asset = le
+  visage en surcouche (placeholder d'abord). Son : réutilisé (placeholder). Finalisation art/son
+  ultérieure possible.
 
 ## Points à affiner en jeu (humain)
 
