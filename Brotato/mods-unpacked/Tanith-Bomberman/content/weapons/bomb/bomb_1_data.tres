@@ -1,4 +1,4 @@
-[gd_resource type="Resource" load_steps=8 format=2]
+[gd_resource type="Resource" load_steps=12 format=2]
 
 [ext_resource path="res://items/global/weapon_data.gd" type="Script" id=1]
 [ext_resource path="res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb/bomb_icon.png" type="Texture" id=2]
@@ -7,6 +7,28 @@
 [ext_resource path="res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb/bomb_2_data.tres" type="Resource" id=5]
 [ext_resource path="res://items/sets/explosive/explosive_set_data.tres" type="Resource" id=6]
 [ext_resource path="res://items/sets/fire/fire_set_data.tres" type="Resource" id=7]
+[ext_resource path="res://effects/weapons/burning_effect.gd" type="Script" id=8]
+[ext_resource path="res://effects/burning_data.gd" type="Script" id=9]
+
+[sub_resource type="Resource" id=1]
+script = ExtResource( 9 )
+chance = 1.0
+damage = 3
+duration = 3
+spread = 0
+scaling_stats = [ [ "stat_elemental_damage", 1.0 ] ]
+is_global_burn = false
+
+[sub_resource type="Resource" id=2]
+script = ExtResource( 8 )
+key = "effect_burning"
+text_key = ""
+value = 0
+custom_key = ""
+storage_method = 0
+effect_sign = 0
+custom_args = [  ]
+burning_data = SubResource( 1 )
 
 [resource]
 script = ExtResource( 1 )
@@ -17,7 +39,7 @@ icon = ExtResource( 2 )
 name = "WEAPON_BOMB"
 tier = 0
 value = 40
-effects = [  ]
+effects = [ SubResource( 2 ) ]
 tracking_text = ""
 is_lockable = true
 unlock_codex_descr_after_get_it = 1
