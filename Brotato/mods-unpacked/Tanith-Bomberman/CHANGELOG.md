@@ -7,6 +7,22 @@ elemental/engineering scaling.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.4.0] — 2026-06-28
+
+### Added
+- Arme Bombe : la **vitesse d'attaque raccourcit la mèche** (même formule que le
+  cooldown vanilla, plancher 0.5 s). Plus on attaque vite, plus les bombes
+  explosent tôt ; une vitesse d'attaque négative rallonge au contraire la mèche.
+  S'applique à la bombe normale comme à la troll bombe.
+
+### Fixed
+- Arme Bombe : la **brûlure** fonctionne désormais réellement en jeu. Elle était
+  posée sur `stats.burning_data`, un champ que la sérialisation de run ne conserve
+  pas (la brûlure retombait à 0 dès le premier passage boutique/vague). Elle passe
+  maintenant par un `BurningEffect` dans `WeaponData.effects` (schéma vanilla de la
+  Torch), ré-appliqué à chaque calcul de stats et persistant. Brûlure progressive
+  par tier inchangée (3 dmg/3 s → 12 dmg/9 s, scaling élémentaire).
+
 ## [1.3.0] — 2026-06-27
 
 ### Changed
