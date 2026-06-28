@@ -35,7 +35,7 @@ $modStage = Join-Path $stage "mods-unpacked\$modName"
 New-Item -ItemType Directory -Force -Path $modStage | Out-Null
 
 # Copie le code, en excluant le dev-only (test/, docs/)
-foreach ($item in @('content','extensions','scenes','singletons','manifest.json','mod_main.gd','CHANGELOG.md')) {
+foreach ($item in @('content','extensions','scenes','singletons','manifest.json','mod_main.gd','CHANGELOG_FR.md','CHANGELOG_EN.md')) {
   Copy-Item (Join-Path $modSrc $item) (Join-Path $modStage $item) -Recurse -Force
 }
 $testDir = Join-Path $modStage 'test'; if (Test-Path $testDir) { Remove-Item $testDir -Recurse -Force }

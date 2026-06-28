@@ -34,7 +34,7 @@ New-Item -ItemType Directory -Force -Path $modStage | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $stage '.import') | Out-Null
 
 # Copie le code/les assets, en excluant le dev-only (test/, docs/, sauvegardes *.pngold)
-foreach ($item in @('content','extensions','manifest.json','mod_main.gd','CHANGELOG.md')) {
+foreach ($item in @('content','extensions','manifest.json','mod_main.gd','CHANGELOG_FR.md','CHANGELOG_EN.md')) {
   Copy-Item (Join-Path $modSrc $item) (Join-Path $modStage $item) -Recurse -Force
 }
 Get-ChildItem $modStage -Recurse -Include '*.pngold' | Remove-Item -Force
@@ -78,7 +78,7 @@ if (Test-Path $DeployDir) {
   $dest = Join-Path $DeployDir $modName
   New-Item -ItemType Directory -Force -Path $dest | Out-Null
   Copy-Item $outZip (Join-Path $dest "$modName.zip") -Force
-  $preview = Join-Path $modSrc 'bombertoe_preview.png'
+  $preview = Join-Path $modSrc 'bomberto_preview.png'
   if (Test-Path $preview) { Copy-Item $preview (Join-Path $dest 'preview.png') -Force }
   else { Write-Warning ("preview introuvable : {0}" -f $preview) }
   Write-Output ("Depose -> {0}" -f $dest)
