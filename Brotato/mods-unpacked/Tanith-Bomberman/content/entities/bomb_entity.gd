@@ -60,10 +60,18 @@ func arm(p_player_index: int, p_stats: WeaponStats, p_tier: int, p_explosion_sca
 	# avant la bascule en troll bombe (instant = fraction de la mèche) ; sinon
 	# c'est la mèche normale qui mène à l'explosion.
 	_will_wake = TrollBombLogic.should_wake(randf(), TROLL_WAKE_CHANCE)
+	# La vitesse d'attaque raccourcit la mèche (même formule que le cooldown
+	# vanilla) : vitesse combinée joueur + arme, en fraction (+50% = 0.5).
+	var atk_speed_mod := 0.0
+	if _player_index >= 0:
+		atk_speed_mod = Utils.get_stat(Keys.stat_attack_speed_hash, _player_index) / 100.0
+	if _stats != null:
+		atk_speed_mod += _stats.attack_speed_mod / 100.0
+	var fuse := BombTiming.fuse_seconds_scaled(p_tier, atk_speed_mod)
 	if _will_wake:
-		_fuse_timer.wait_time = TrollBombLogic.wake_delay(BombTiming.fuse_seconds(p_tier), TROLL_WAKE_FRACTION)
+		_fuse_timer.wait_time = TrollBombLogic.wake_delay(fuse, TROLL_WAKE_FRACTION)
 	else:
-		_fuse_timer.wait_time = BombTiming.fuse_seconds(p_tier)
+		_fuse_timer.wait_time = fuse
 	_fuse_timer.start()
 
 func _on_fuse_timeout() -> void:

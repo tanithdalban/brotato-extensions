@@ -62,6 +62,13 @@ func _test_fuse_seconds():
 	_check(_approx(BombTiming.fuse_seconds(2), 2.0 - (2.0 / 3.0)), "fuse: T3 interpolé ≈ 1.333s")
 	_check(_approx(BombTiming.fuse_seconds(-5), 2.0), "fuse: clamp bas = T1")
 	_check(_approx(BombTiming.fuse_seconds(99), 1.0), "fuse: clamp haut = T4")
+	# Mèche ajustée par la vitesse d'attaque (formule cooldown vanilla).
+	_check(_approx(BombTiming.fuse_seconds_scaled(0, 0.0), 2.0), "fuse_scaled: vitesse 0 => mèche de base")
+	_check(_approx(BombTiming.fuse_seconds_scaled(0, 1.0), 1.0), "fuse_scaled: +100% => moitié (2.0/2)")
+	_check(_approx(BombTiming.fuse_seconds_scaled(0, 0.5), 2.0 / 1.5), "fuse_scaled: +50% => 2.0/1.5")
+	_check(_approx(BombTiming.fuse_seconds_scaled(0, -0.5), 3.0), "fuse_scaled: -50% => rallonge ×1.5")
+	_check(_approx(BombTiming.fuse_seconds_scaled(3, 1.0), 0.5), "fuse_scaled: T4 +100% => plancher 0.5")
+	_check(_approx(BombTiming.fuse_seconds_scaled(3, 3.0), 0.5), "fuse_scaled: T4 +300% => borné au plancher 0.5")
 
 
 func _test_slot_phase_offset():
