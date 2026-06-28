@@ -16,6 +16,7 @@ Tous les sprites sont en **pixel-art** style Brotato (cartoon coloré, palette l
 | Sprite arme (tenu) | `bomb.png` | 80×80 px | Petite bombe noire tenue à la main, mèche allumée |
 | Icône arme | `bomb_icon.png` | 96×96 px | Icône bombe pour l'interface (codex, boutique) |
 | Bombe posée | `bomb_entity_sprite.png` | 48×48 px | Bombe ronde à mèche, vue 3/4 légèrement dessus |
+| Preview Workshop | `bomberto_preview.png` | 640×640 px | Vignette de la page Steam Workshop (titre **BOMBERTO**) |
 
 ---
 
@@ -105,6 +106,21 @@ Tiny scale: bomb occupies ~32x32 pixels centered in the 48x48 canvas.
 Strong black outline (1 pixel at this scale), flat shading with a single highlight dot.
 Palette: black (#111111), dark grey highlight (#444444), fuse brown (#663300), spark orange (#FF6600).
 Transparent background, no shadow, no extra elements.
+```
+
+### 8. Preview Workshop — `bomberto_preview.png` (640×640)
+
+> Remplace l'ancien `bombertoe_preview.png` (titre périmé « BOMBERTOE »). Seul le
+> **titre change** : « BOMBERTOE » → « **BOMBERTO** ». La composition reste la même.
+
+```
+Steam Workshop preview thumbnail, 640x640, Brotato cartoon pixel-art style.
+Dark green vignette background with a soft golden glow behind the character.
+Center: the Bomberto potato character (white Bomberman helmet, large round eyes,
+angry brows, holding a small black lit bomb).
+Top: bold rounded title text "BOMBERTO" in bright yellow/gold with a dark outline.
+Bottom row: the four tier-colored bombs (grey, blue, purple, red), left to right.
+Bottom caption in white: "Pose des bombes - 4 tiers".
 ```
 
 ---

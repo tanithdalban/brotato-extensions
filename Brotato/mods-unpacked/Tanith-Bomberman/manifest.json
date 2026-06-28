@@ -1,8 +1,8 @@
 {
     "name": "Bomberman",
     "namespace": "Tanith",
-    "version_number": "1.1.0",
-    "description": "Bombertoe : personnage qui pose des bombes à mèche (jusqu'à 6), seule arme dispo.",
+    "version_number": "1.4.0",
+    "description": "Bomberto : personnage qui pose des bombes à mèche et manie aussi les armes explosives et de mêlée à fort knockback.",
     "website_url": "",
     "dependencies": [],
     "extra": {
@@ -17,7 +17,7 @@
             "config_schema": {
                 "type": "object",
                 "properties": {
-                    "debug_log": { "type": "boolean", "description": "Active les logs détaillés de Bombertoe.", "default": false }
+                    "debug_log": { "type": "boolean", "description": "Active les logs détaillés de Bomberto.", "default": false }
                 }
             }
         }

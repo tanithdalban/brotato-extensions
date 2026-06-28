@@ -4,6 +4,13 @@ extends Node2D
 
 const BombTiming = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_timing.gd")
 const BombSkin = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_skin.gd")
+const TrollBomb = preload("res://mods-unpacked/Tanith-Bomberman/content/entities/troll_bomb.tscn")
+const TrollBombLogic = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/troll_bomb_logic.gd")
+
+# --- Paramètres réglables de la troll bombe (calibrage final en jeu) ---
+const TROLL_WAKE_CHANCE := 0.05   # ~5 % qu'une bombe posée se réveille (par bombe ; se cumule avec le volume de bombes)
+const TROLL_WAKE_FRACTION := 0.5  # réveil à ~50 % de la mèche
+# Le son d'alerte est joué par la troll bombe elle-même (phase télégraphe).
 
 # Scène d'explosion vanilla réutilisée (dégâts de zone + lecture explosion_damage/size).
 var _explosion_scene: PackedScene = preload("res://projectiles/explosion.tscn")
@@ -15,6 +22,9 @@ var _explode_args := WeaponServiceExplodeArgs.new()
 var _exploding_effect: ExplodingEffect = null
 # Clé de tracking fournie par l'arme (T4) ; défaut = non tracké (empty_hash = pas de stats/défis).
 var _damage_tracking_key_hash: int = Keys.empty_hash
+var _tier: int = 0           # tier de la bombe (pour la couleur de la troll bombe)
+var _will_wake: bool = false # tirage du réveil, décidé à l'armement
+var _explosion_damage_override: int = -1  # dégât d'explosion pré-calculé (-1 = non fourni)
 
 onready var _fuse_timer: Timer = $FuseTimer
 onready var _sprite: Sprite = $Sprite
@@ -29,26 +39,50 @@ func _ready() -> void:
 	var _e = _fuse_timer.connect("timeout", self, "_on_fuse_timeout")
 
 # Appelée juste après instanciation par l'arme.
-func arm(p_player_index: int, p_stats: WeaponStats, p_tier: int, p_explosion_scale: float = 1.75, p_damage_tracking_key_hash: int = Keys.empty_hash) -> void:
+func arm(p_player_index: int, p_stats: WeaponStats, p_tier: int, p_explosion_scale: float = 1.75, p_damage_tracking_key_hash: int = Keys.empty_hash, p_explosion_damage: int = -1) -> void:
 	_player_index = p_player_index
 	_stats = p_stats
 	_explosion_scale = p_explosion_scale
 	_damage_tracking_key_hash = p_damage_tracking_key_hash
+	_explosion_damage_override = p_explosion_damage
 	if _exploding_effect != null:
 		_exploding_effect.scale = _explosion_scale
 	# Skin coloré selon le tier de l'arme (sprite en jeu 48×48, chargé au runtime).
 	var skin = BombSkin.load_world_texture(p_tier)
 	if skin != null and is_instance_valid(_sprite):
 		_sprite.texture = skin
-	_fuse_timer.wait_time = BombTiming.fuse_seconds(p_tier)
+	# Grossissement purement VISUEL de la bombe posée (n'affecte pas le rayon
+	# d'explosion, géré par _explosion_scale / explosion_size).
+	if is_instance_valid(_sprite):
+		_sprite.scale = Vector2(1.25, 1.25)
+	_tier = p_tier
+	# Tirage unique du réveil. Si elle se réveille, la "mèche" sert de délai
+	# avant la bascule en troll bombe (instant = fraction de la mèche) ; sinon
+	# c'est la mèche normale qui mène à l'explosion.
+	_will_wake = TrollBombLogic.should_wake(randf(), TROLL_WAKE_CHANCE)
+	# La vitesse d'attaque raccourcit la mèche (même formule que le cooldown
+	# vanilla) : vitesse combinée joueur + arme, en fraction (+50% = 0.5).
+	var atk_speed_mod := 0.0
+	if _player_index >= 0:
+		atk_speed_mod = Utils.get_stat(Keys.stat_attack_speed_hash, _player_index) / 100.0
+	if _stats != null:
+		atk_speed_mod += _stats.attack_speed_mod / 100.0
+	var fuse := BombTiming.fuse_seconds_scaled(p_tier, atk_speed_mod)
+	if _will_wake:
+		_fuse_timer.wait_time = TrollBombLogic.wake_delay(fuse, TROLL_WAKE_FRACTION)
+	else:
+		_fuse_timer.wait_time = fuse
 	_fuse_timer.start()
 
 func _on_fuse_timeout() -> void:
+	if _will_wake:
+		_wake_into_troll()
+		return
 	if _stats == null:
 		queue_free()
 		return
 	_explode_args.pos = global_position
-	_explode_args.damage = _stats.damage
+	_explode_args.damage = _explosion_damage_override if _explosion_damage_override >= 0 else _stats.damage
 	_explode_args.accuracy = _stats.accuracy
 	_explode_args.crit_chance = _stats.crit_chance
 	_explode_args.crit_damage = _stats.crit_damage
@@ -58,4 +92,13 @@ func _on_fuse_timeout() -> void:
 	_explode_args.from = null  # pas d'auto-attribution à un noeud qui va disparaître
 	_explode_args.damage_tracking_key_hash = _damage_tracking_key_hash
 	var _inst = WeaponService.explode(_exploding_effect, _explode_args)
+	queue_free()
+
+# Réveil : instancie la troll bombe à la place de l'explosion et se libère sans
+# exploser. La troll bombe prend le relais (télégraphe + son + poursuite + explosion).
+func _wake_into_troll() -> void:
+	var troll = TrollBomb.instance()
+	Utils.get_scene_node().add_child(troll)
+	troll.global_position = global_position
+	troll.arm(_player_index, _stats, _tier, _explosion_scale, _damage_tracking_key_hash)
 	queue_free()

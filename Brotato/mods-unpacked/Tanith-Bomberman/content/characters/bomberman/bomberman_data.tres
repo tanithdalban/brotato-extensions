@@ -1,12 +1,21 @@
-[gd_resource type="Resource" load_steps=8 format=2]
+[gd_resource type="Resource" load_steps=17 format=2]
 
 [ext_resource path="res://mods-unpacked/Tanith-Bomberman/content/characters/bomberman/bomberman_icon.png" type="Texture" id=1]
 [ext_resource path="res://items/characters/character_data.gd" type="Script" id=2]
-[ext_resource path="res://mods-unpacked/Tanith-Bomberman/content/characters/bomberman/bomberman_explosion_effect.tres" type="Resource" id=3]
+[ext_resource path="res://mods-unpacked/Tanith-Bomberman/content/characters/bomberman/effect_damage_malus.tres" type="Resource" id=3]
 [ext_resource path="res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb/bomb_1_data.tres" type="Resource" id=4]
+[ext_resource path="res://mods-unpacked/Tanith-Bomberman/content/characters/bomberman/effect_explosion_size_per_elemental.tres" type="Resource" id=8]
+[ext_resource path="res://mods-unpacked/Tanith-Bomberman/content/characters/bomberman/effect_explosion_damage_per_engineering.tres" type="Resource" id=9]
 [ext_resource path="res://mods-unpacked/Tanith-Bomberman/content/characters/bomberman/bomberman_eyes_appearance.tres" type="Resource" id=5]
 [ext_resource path="res://mods-unpacked/Tanith-Bomberman/content/characters/bomberman/bomberman_mouth_appearance.tres" type="Resource" id=6]
 [ext_resource path="res://mods-unpacked/Tanith-Bomberman/content/characters/bomberman/bomberman_torso_appearance.tres" type="Resource" id=7]
+[ext_resource path="res://mods-unpacked/Tanith-Bomberman/content/characters/bomberman/effect_starting_bomb.tres" type="Resource" id=10]
+[ext_resource path="res://weapons/ranged/shredder/1/shredder_data.tres" type="Resource" id=11]
+[ext_resource path="res://weapons/melee/plank/1/plank_data.tres" type="Resource" id=12]
+[ext_resource path="res://weapons/melee/hand/1/hand_data.tres" type="Resource" id=13]
+[ext_resource path="res://weapons/melee/spiky_shield/1/spiky_shield_data.tres" type="Resource" id=14]
+[ext_resource path="res://weapons/melee/torch/1/torch_data.tres" type="Resource" id=15]
+[ext_resource path="res://weapons/melee/wrench/1/wrench_data.tres" type="Resource" id=16]
 
 [resource]
 script = ExtResource( 2 )
@@ -17,7 +26,7 @@ icon = ExtResource( 1 )
 name = "CHARACTER_BOMBERMAN"
 tier = 0
 value = 1
-effects = [ ExtResource( 3 ) ]
+effects = [ ExtResource( 3 ), ExtResource( 8 ), ExtResource( 9 ), ExtResource( 10 ) ]
 tracking_text = ""
 is_lockable = true
 unlock_codex_descr_after_get_it = 1
@@ -30,5 +39,5 @@ wanted_tags = [ "explosive" ]
 banned_item_groups = [  ]
 banned_items = [  ]
 banned_upgrades = [  ]
-starting_weapons = [ ExtResource( 4 ) ]
+starting_weapons = [ ExtResource( 4 ), ExtResource( 11 ), ExtResource( 12 ), ExtResource( 13 ), ExtResource( 14 ), ExtResource( 15 ), ExtResource( 16 ) ]
 starting_items = [  ]
