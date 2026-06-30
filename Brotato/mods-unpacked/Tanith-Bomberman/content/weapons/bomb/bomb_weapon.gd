@@ -18,7 +18,30 @@ func _ready() -> void:
 	var skin = BombSkin.load_world_texture(tier)
 	if skin != null:
 		sprite.texture = skin
+	# Garde anti-double-branchement : le _ready() vanilla (weapon.gd) rebranche les
+	# signaux de la hitbox SANS is_connected (lignes 87/104/107). Quand ce _ready
+	# repasse sur la même Bombe (re-init d'arme), Godot loggue « already connected »
+	# (refus inoffensif mais bruyant). On repart d'une hitbox propre : au 1er passage
+	# rien n'est branché (no-op) ; aux suivants on déconnecte avant le rebranchement.
+	_clear_hitbox_signal_dupes()
 	._ready()
+
+
+# Déconnecte (si présents) les signaux que le _ready() vanilla va rebrancher, pour
+# éviter les erreurs « already connected » quand _ready repasse sur le même nœud.
+# is_connected garde chaque cas : au 1er passage tout est faux -> aucune action.
+func _clear_hitbox_signal_dupes() -> void:
+	if _hitbox == null:
+		return
+	var pairs = [
+		["critically_hit_something", "_on_weapon_critically_hit_something"],
+		["one_shot_something", "on_one_shot_something"],
+		["killed_something", "on_killed_something"],
+		["added_gold_on_crit", "on_added_gold_on_crit"],
+	]
+	for p in pairs:
+		if _hitbox.is_connected(p[0], self, p[1]):
+			_hitbox.disconnect(p[0], self, p[1])
 
 
 # Surcharge : tirer dès que le cooldown est prêt, SANS exiger de cible/portée.

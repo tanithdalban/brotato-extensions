@@ -7,6 +7,16 @@ elemental/engineering scaling.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.4.1] — 2026-06-30
+
+### Fixed
+- Bomb weapon: removed the "Signal already connected" log spam (on
+  `killed_something`, `added_gold_on_crit`, `critically_hit_something`). The
+  vanilla weapon `_ready()` reconnects the hitbox signals without an
+  `is_connected` guard; when it runs again on the same bomb, Godot refused the
+  duplicate connections (no effect) but flooded the log. The Bomb now clears those
+  connections before the reconnect. Purely cosmetic: no gameplay impact.
+
 ## [1.4.0] — 2026-06-28
 
 ### Added

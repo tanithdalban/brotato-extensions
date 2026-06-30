@@ -7,6 +7,16 @@ et mise sur les dégâts d'explosion et le scaling élémentaire/ingénierie.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.4.1] — 2026-06-30
+
+### Corrigé
+- Arme Bombe : suppression du spam de log « Signal already connected » (sur
+  `killed_something`, `added_gold_on_crit`, `critically_hit_something`). Le
+  `_ready()` vanilla de l'arme rebranche les signaux de la hitbox sans garde
+  `is_connected` ; quand il repasse sur la même bombe, Godot refusait (sans effet)
+  les connexions en double mais polluait le log. La Bombe nettoie désormais ces
+  connexions avant le rebranchement. Purement cosmétique : aucun impact de jeu.
+
 ## [1.4.0] — 2026-06-28
 
 ### Ajouté
