@@ -76,8 +76,24 @@ var _weapons_grid
 var _tabs
 var _items_tab_button
 var _weapons_tab_button
-var _tier_filter
-var _class_filter
+# Filtres tier/classe : « listes déroulantes maison » (in-panel), PAS des
+# OptionButton. Un OptionButton ouvre un PopupMenu natif GLOBALEMENT MODAL qui
+# fige/parasite l'autre joueur en coop (le FocusEmulator le sait pourtant piloter,
+# mais le popup natif capte n'importe quel device). Notre liste est faite de vrais
+# boutons focusables enfants du panneau (territoire de l'émulateur), confinés par
+# leurs voisins de focus + l'état visible/caché. cf. _build_dropdown / _open_dropdown.
+var _tier_labels := []      # libellés des options tier (index 0 = « Tous tiers »)
+var _tier_index := 0        # index sélectionné (0 = « Tous tiers »)
+var _tier_field             # Button-champ (affiche la valeur courante)
+var _tier_list              # PanelContainer superposé (liste d'options)
+var _tier_items := []       # Button par option
+var _class_labels := []     # libellés des options classe (index 0 = « Toutes classes »)
+var _class_index := 0       # index sélectionné (0 = « Toutes classes »)
+var _class_field
+var _class_list
+var _class_items := []
+var _dropdown_overlay       # Control plein-panneau qui héberge les listes superposées
+var _open_which := ""       # "" / "tier" / "class" : quelle liste est ouverte
 var _exclude_shown_button
 var _ready_button
 var _warning_label
@@ -298,30 +314,41 @@ func _build_ui() -> void:
 	header.text = _t("Player %d", "Joueur %d") % (_player_index + 1)
 	root.add_child(header)
 
+	# Calque superposé (au-dessus de la grille) qui héberge les listes déroulantes
+	# ouvertes, pour qu'elles ne décalent pas la mise en page. Plein-panneau (comme
+	# _checkmark) mais NON-conteneur, donc on y positionne les listes en absolu.
+	_dropdown_overlay = Control.new()
+	_dropdown_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_dropdown_overlay.anchor_right = 1.0
+	_dropdown_overlay.anchor_bottom = 1.0
+
 	# Barre de filtres
 	var filter_bar = HBoxContainer.new()
 	root.add_child(filter_bar)
-	_tier_filter = OptionButton.new()
-	_tier_filter.add_item(_t("All tiers", "Tous tiers"))
-	_tier_filter.add_item(_t("Common", "Commun"))
-	_tier_filter.add_item(_t("Uncommon", "Peu commun"))
-	_tier_filter.add_item(_t("Rare", "Rare"))
-	_tier_filter.add_item(_t("Legendary", "Légendaire"))
-	_tier_filter.connect("item_selected", self, "_on_filter_changed")
-	filter_bar.add_child(_tier_filter)
+	# Filtre de tier — liste déroulante MAISON (in-panel), pas un OptionButton :
+	# son PopupMenu natif est globalement modal et parasite l'autre joueur en coop.
+	_tier_labels = [
+		_t("All tiers", "Tous tiers"),
+		_t("Common", "Commun"),
+		_t("Uncommon", "Peu commun"),
+		_t("Rare", "Rare"),
+		_t("Legendary", "Légendaire"),
+	]
+	_tier_index = 0
+	filter_bar.add_child(_build_dropdown("tier", _tier_labels))
 	# Filtre par classe (stat) — couvre armes (scaling_stats) et objets (key
 	# des effets). Construit dynamiquement à partir des classes présentes.
 	# Quand une classe est choisie, seuls les éléments liés à cette stat
 	# restent, pour que « Exclure tout l'affiché » cible précisément la classe.
+	# Même liste déroulante maison que le tier (zéro popup natif).
 	_filter_keys = _collect_class_keys()
-	_class_filter = OptionButton.new()
-	_class_filter.add_item(_t("All classes", "Toutes classes"))
+	_class_labels = [_t("All classes", "Toutes classes")]
 	for i in _filter_keys.size():
-		_class_filter.add_item(_key_label(_filter_keys[i]))
+		_class_labels.append(_key_label(_filter_keys[i]))
 	if _has_other:
-		_class_filter.add_item(_t("Other", "Autre"))
-	_class_filter.connect("item_selected", self, "_on_filter_changed")
-	filter_bar.add_child(_class_filter)
+		_class_labels.append(_t("Other", "Autre"))
+	_class_index = 0
+	filter_bar.add_child(_build_dropdown("class", _class_labels))
 	# Rappel de la touche pour basculer la popup d'info : on affiche l'ICONE reelle
 	# de la touche (ui_info = F clavier / Y manette), suivant le joueur et son
 	# peripherique (helper natif). Fallback texte si pas d'icone.
@@ -398,6 +425,11 @@ func _build_ui() -> void:
 	_checkmark.visible = false
 	add_child(_checkmark)
 
+	# Calque des listes déroulantes : ajouté APRÈS root -> dessiné par-dessus la
+	# grille (ses listes ouvertes ne décalent donc rien). Construit plus haut, ses
+	# listes y ont déjà été rangées par _build_dropdown.
+	add_child(_dropdown_overlay)
+
 	# Infobulle riche, sur un calque au-dessus de tout (style magasin).
 	var layer = CanvasLayer.new()
 	layer.layer = 100
@@ -432,6 +464,136 @@ func _make_key_hint(action, suffix, text_fallback) -> Control:
 		sfx.text = " " + suffix
 		box.add_child(sfx)
 	return box
+
+
+# ---------- filtres : liste déroulante maison (in-panel, sans popup natif) ----------
+# Pourquoi pas un OptionButton : son PopupMenu natif est GLOBALEMENT MODAL ; en coop
+# il fige/parasite l'autre joueur (n'importe quel device le pilote). Ici la liste est
+# faite de vrais Button enfants du panneau (donc dans le territoire du FocusEmulator
+# de chaque joueur), confinée par ses voisins de focus + l'état visible/caché.
+
+# Construit un filtre : un bouton-champ (à mettre dans la barre de filtres, rendu)
+# + sa liste d'options superposée (rangée dans _dropdown_overlay, cachée). `which`
+# = "tier" / "class". Mémorise les refs dans _<which>_field / _list / _items.
+func _build_dropdown(which, labels) -> Button:
+	var field = Button.new()
+	field.clip_text = true
+	field.rect_min_size = Vector2(150, 0)
+	field.connect("pressed", self, "_on_field_pressed", [which])
+
+	var list = PanelContainer.new()
+	list.visible = false
+	var vbox = VBoxContainer.new()
+	list.add_child(vbox)
+	var items = []
+	for i in labels.size():
+		var it = Button.new()
+		it.text = labels[i]
+		it.connect("pressed", self, "_on_value_pressed", [which, i])
+		vbox.add_child(it)
+		items.append(it)
+	_dropdown_overlay.add_child(list)
+
+	# Confinement de la navigation manette/clavier dans la liste ouverte : haut/bas
+	# bouclent d'une option à l'autre ; gauche/droite sont absorbés (voisin = soi)
+	# pour ne pas s'échapper vers la grille. Les options cachées (liste fermée) sont
+	# de toute façon ignorées par le focus (FocusEmulator._filter_control / Godot).
+	for i in items.size():
+		var it = items[i]
+		var up = items[(i - 1 + items.size()) % items.size()]
+		var down = items[(i + 1) % items.size()]
+		it.set_focus_neighbour(MARGIN_TOP, it.get_path_to(up))
+		it.set_focus_neighbour(MARGIN_BOTTOM, it.get_path_to(down))
+		it.set_focus_neighbour(MARGIN_LEFT, it.get_path_to(it))
+		it.set_focus_neighbour(MARGIN_RIGHT, it.get_path_to(it))
+
+	if which == "tier":
+		_tier_field = field
+		_tier_list = list
+		_tier_items = items
+	else:
+		_class_field = field
+		_class_list = list
+		_class_items = items
+	_update_field_text(which)
+	return field
+
+
+# Libellé du bouton-champ : valeur courante + « ... » (convention : ouvre une liste).
+func _update_field_text(which) -> void:
+	if which == "tier" and _tier_field != null:
+		_tier_field.text = _tier_labels[_tier_index] + "  ..."
+	elif which == "class" and _class_field != null:
+		_class_field.text = _class_labels[_class_index] + "  ..."
+
+
+func _on_field_pressed(which) -> void:
+	if _open_which == which:
+		_close_dropdown()
+	else:
+		_open_dropdown(which)
+
+
+# Ouvre la liste `which` : la positionne sous le champ (en absolu, sans décaler la
+# grille), l'affiche, et déplace le focus du joueur sur l'option courante.
+func _open_dropdown(which) -> void:
+	if _open_which != "":
+		_close_dropdown()
+	_open_which = which
+	var field = _tier_field if which == "tier" else _class_field
+	var list = _tier_list if which == "tier" else _class_list
+	var items = _tier_items if which == "tier" else _class_items
+	var idx = _tier_index if which == "tier" else _class_index
+	var min_w = max(150.0, field.rect_size.x)
+	list.rect_min_size = Vector2(min_w, 0)
+	list.visible = true
+	list.rect_global_position = field.rect_global_position + Vector2(0, field.rect_size.y)
+	# Le calque hôte n'est pas un conteneur : on fixe explicitement la taille de la
+	# liste à sa taille minimale (sinon elle peut rester repliée selon le timing).
+	list.rect_size = Vector2(min_w, list.get_combined_minimum_size().y)
+	var target = items[idx] if idx >= 0 and idx < items.size() else items[0]
+	_grab_focus_on(target)
+
+
+# Ferme la liste ouverte (le cas échéant) et rend le focus au champ.
+func _close_dropdown() -> void:
+	if _open_which == "":
+		return
+	var field = _tier_field if _open_which == "tier" else _class_field
+	var list = _tier_list if _open_which == "tier" else _class_list
+	list.visible = false
+	_open_which = ""
+	_grab_focus_on(field)
+
+
+# Choix d'une option : applique l'index, met à jour le champ, ferme, ré-filtre.
+func _on_value_pressed(which, idx) -> void:
+	if which == "tier":
+		_tier_index = idx
+	else:
+		_class_index = idx
+	_update_field_text(which)
+	_close_dropdown()
+	_on_filter_changed()
+
+
+func is_dropdown_open() -> bool:
+	return _open_which != ""
+
+
+# Fermeture demandée de l'extérieur (ex. ui_cancel solo géré par l'écran).
+func close_dropdown() -> void:
+	_close_dropdown()
+
+
+# Déplace le focus : FocusEmulator du joueur en coop, focus Godot réel en solo.
+func _grab_focus_on(control) -> void:
+	if control == null:
+		return
+	if _focus_emulator != null:
+		Utils.focus_player_control(control, _player_index, _focus_emulator)
+	else:
+		control.grab_focus()
 
 
 func _make_grid_tab(tabs, title) -> GridContainer:
@@ -580,6 +742,14 @@ func _set_cell_excluded(my_id, btn, excluded) -> void:
 # _player_index, faithful au magasin coop) : touche ui_info (F / Y) pour la popup
 # d'info, et changement d'onglet (L1/R1 manette, A/E clavier).
 func _input(event) -> void:
+	# Liste déroulante ouverte : en COOP, ui_cancel du joueur la ferme (le
+	# FocusEmulator ignore ui_cancel, donc on le voit ; pas de _go_back en coop).
+	# En solo, c'est l'écran qui ferme sur ui_cancel (sinon il revient en arrière).
+	if _open_which != "" and RunData.is_coop_run \
+			and Utils.is_player_action_pressed(event, _player_index, "ui_cancel"):
+		_close_dropdown()
+		get_tree().set_input_as_handled()
+		return
 	if Utils.is_player_info_pressed(event, _player_index):
 		_hide_popup = not _hide_popup
 		if _hide_popup:
@@ -587,6 +757,9 @@ func _input(event) -> void:
 				_popup.hide()
 		elif _focused_entry != null and _popup != null:
 			_popup.display_item_data(_focused_entry, _focused_attach)
+		return
+	# Une liste déroulante est ouverte : ne pas changer d'onglet sous elle.
+	if _open_which != "":
 		return
 	# Changement d'onglet Objets/Armes — manette L1/R1 (par joueur, le FocusEmulator
 	# coop ignore deja ltrigger/rtrigger), clavier A/E pour le joueur au clavier.
@@ -709,10 +882,9 @@ func _cell_shown(btn) -> bool:
 # ---------- filtres ----------
 
 # Tier sélectionné (valeur d'enum) ou -1 pour « Tous tiers ». Sélection par
-# INDEX : l'index 0 = « Tous tiers », les suivants pointent dans _TIER_VALUES.
+# INDEX du cycleur : l'index 0 = « Tous tiers », les suivants pointent dans _TIER_VALUES.
 func _selected_tier() -> int:
-	var idx = _tier_filter.get_selected()
-	return -1 if idx <= 0 else _TIER_VALUES[idx - 1]
+	return -1 if _tier_index <= 0 else _TIER_VALUES[_tier_index - 1]
 
 func _matches_filter(my_id) -> bool:
 	var entry = _entry_by_id[my_id]
@@ -727,7 +899,7 @@ func _matches_filter(my_id) -> bool:
 # Index 0 = « Toutes classes » ; 1..N = une classe du top N ; dernier (si
 # présent) = « Autre » = éléments couverts par aucune classe du top N.
 func _matches_class(my_id) -> bool:
-	var idx = _class_filter.get_selected()
+	var idx = _class_index
 	if idx <= 0:
 		return true
 	if _has_other and idx == _filter_keys.size() + 1:

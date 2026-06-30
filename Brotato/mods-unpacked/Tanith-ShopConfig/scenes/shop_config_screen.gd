@@ -141,10 +141,15 @@ func _make_base_data(_node):
 	return bd
 
 
-# En solo uniquement : ui_cancel revient en arrière (en coop, c'est le bouton
-# Retour, joignable par le joueur 0 — cf. weapon_selection).
+# En solo uniquement : ui_cancel ferme d'abord une liste déroulante ouverte ;
+# sinon il revient en arrière (en coop, c'est le bouton Retour, joignable par le
+# joueur 0 — cf. weapon_selection ; la fermeture de liste coop est gérée par le panneau).
 func _input(event: InputEvent) -> void:
 	if not RunData.is_coop_run and event.is_action_released("ui_cancel"):
+		for panel in _panels:
+			if panel.is_dropdown_open():
+				panel.close_dropdown()
+				return
 		_go_back()
 
 

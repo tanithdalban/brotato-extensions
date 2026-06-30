@@ -1,7 +1,7 @@
 {
     "name": "ShopConfig",
     "namespace": "Tanith",
-    "version_number": "0.4.3",
+    "version_number": "1.0.0",
     "description": "Écran de configuration du pool du magasin, par joueur, entre sélection perso et arme.",
     "website_url": "",
     "dependencies": [],

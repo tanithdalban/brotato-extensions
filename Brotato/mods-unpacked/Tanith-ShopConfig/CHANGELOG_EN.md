@@ -6,6 +6,18 @@ never show up in *their own* shop for the run.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.0.0] — 2026-06-29
+
+First stable release: all known issues are fixed.
+
+### Fixed
+- **Coop**: gamepad/keyboard navigation no longer "bleeds" across players when
+  opening a filter (tier or class). The filters were native dropdowns whose
+  popup menu was *globally modal* — it froze/hijacked the other player. They are
+  now custom in-panel dropdown lists (real buttons navigable within each player's
+  focus, no native popup): all values stay visible and navigation stays scoped
+  to each player.
+
 ## [0.4.3] — 2026-06-27
 
 ### Changed

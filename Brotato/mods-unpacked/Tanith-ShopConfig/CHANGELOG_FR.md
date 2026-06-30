@@ -6,6 +6,19 @@ objets/armes pour qu'ils n'apparaissent jamais dans *sa propre* boutique de la r
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.0.0] — 2026-06-29
+
+Première version stable : toutes les anomalies connues sont corrigées.
+
+### Corrigé
+- **Coop** : la navigation manette/clavier ne « bave » plus quand on ouvre un
+  filtre (tier ou classe). Les filtres étaient des listes déroulantes natives
+  dont le menu surgissant était *globalement modal* — il figeait/parasitait
+  l'autre joueur. Ils sont désormais des listes déroulantes « maison »
+  affichées dans le panneau (de vrais boutons navigables au focus de chaque
+  joueur, sans menu surgissant natif) : on revoit toutes les valeurs et la
+  navigation reste bornée à chaque joueur.
+
 ## [0.4.3] — 2026-06-27
 
 ### Modifié
