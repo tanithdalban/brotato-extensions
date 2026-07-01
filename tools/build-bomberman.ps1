@@ -38,6 +38,9 @@ foreach ($item in @('content','extensions','manifest.json','mod_main.gd','CHANGE
   Copy-Item (Join-Path $modSrc $item) (Join-Path $modStage $item) -Recurse -Force
 }
 Get-ChildItem $modStage -Recurse -Include '*.pngold' | Remove-Item -Force
+# Contact sheet de l'icône animée = vérif visuelle dev-only, jamais chargée en jeu
+# (on retire aussi son .png.import pour ne pas embarquer un .stex orphelin).
+Get-ChildItem $modStage -Recurse -Include '_contact_sheet.png','_contact_sheet.png.import' | Remove-Item -Force
 $testDir = Join-Path $modStage 'test'; if (Test-Path $testDir) { Remove-Item $testDir -Recurse -Force }
 $docsDir = Join-Path $modStage 'docs'; if (Test-Path $docsDir) { Remove-Item $docsDir -Recurse -Force }
 
