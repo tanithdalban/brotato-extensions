@@ -7,6 +7,13 @@ elemental/engineering scaling.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.5.0] — 2026-07-01
+
+### Added
+- **Animated Bomberto icon** on the character-selection screen: his bomb's fuse
+  burns down to an explosion (flash + orange/yellow burst, small character squash
+  reaction), then the icon returns to the starting image, on a loop.
+
 ## [1.4.1] — 2026-06-30
 
 ### Fixed
