@@ -6,8 +6,14 @@ extends "res://singletons/item_service.gd"
 const ModLog = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/mod_log.gd")
 const ShopPool = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/shop_pool.gd")
 const BombSkin = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_skin.gd")
+const AnimatedIcon = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/animated_icon.gd")
 
 const _BOMBERMAN_ID := "character_bomberman"
+
+# Icône ANIMÉE de Bomberto (sélection de perso) : mèche -> explosion -> boucle.
+const _ICON_ANIM_DIR := "res://mods-unpacked/Tanith-Bomberman/content/characters/bomberman/icon_anim"
+const _ICON_ANIM_FRAMES := 18
+const _ICON_ANIM_FPS := 12.0
 
 # Index du joueur dont on tire actuellement la boutique (-1 = aucun tirage).
 # Le tirage du magasin (get_player_shop_items) tire armes ET items via get_pool ;
@@ -43,6 +49,20 @@ func _ready() -> void:
 	if character != null and not characters.has(character):
 		characters.append(character)
 		ModLog.info("perso enregistré: " + str(character.my_id))
+
+	# Icône ANIMÉE dans la sélection de perso : mèche -> explosion -> boucle.
+	# AnimatedTexture hérite de Texture -> drop-in dans le TextureRect de l'écran,
+	# qui anime et boucle tout seul. Frames chargées au runtime (hors cache
+	# d'import, comme bomb_skin). Si rien ne charge, build() rend null et on
+	# garde l'icône statique du .tres (dégradation propre).
+	if character != null:
+		var anim_paths := []
+		for i in _ICON_ANIM_FRAMES:
+			anim_paths.append("%s/frame_%02d.png" % [_ICON_ANIM_DIR, i])
+		var anim = AnimatedIcon.build(anim_paths, _ICON_ANIM_FPS)
+		if anim != null:
+			character.icon = anim
+			ModLog.info("icône animée posée sur Bomberto (%d frames)" % _ICON_ANIM_FRAMES)
 
 	# Débloquer explicitement nos contenus.
 	# ProgressData est un autoload déclaré AVANT ItemService (project.godot),
