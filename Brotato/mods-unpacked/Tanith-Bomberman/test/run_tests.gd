@@ -8,6 +8,7 @@ const BombTiming = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/b
 const ShopPool = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/shop_pool.gd")
 const BombSkin = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_skin.gd")
 const TrollLogic = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/troll_bomb_logic.gd")
+const AnimatedIcon = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/animated_icon.gd")
 
 var _failures := 0
 var _count := 0
@@ -47,6 +48,7 @@ func _init():
 	_test_troll_nonlethal_damage()
 	_test_troll_min_living_hp()
 	_test_troll_keep_distance()
+	_test_animated_icon_helpers()
 	print("=== %d tests, %d échec(s) ===" % [_count, _failures])
 	quit(_failures)
 
@@ -188,6 +190,18 @@ func _test_troll_keep_distance():
 	# Pile sur le joueur => direction arbitraire, à min_dist.
 	var on = TrollLogic.keep_distance(Vector2(5, 5), Vector2(5, 5), 80.0)
 	_check(_approx((on - Vector2(5, 5)).length(), 80.0), "troll: spawn pile sur joueur => repoussé à min_dist")
+
+
+func _test_animated_icon_helpers():
+	# clamp_fps : plancher à MIN_FPS, sinon inchangé.
+	_check(_approx(AnimatedIcon.clamp_fps(12.0), 12.0), "anim: fps 12 inchangé")
+	_check(_approx(AnimatedIcon.clamp_fps(0.0), AnimatedIcon.MIN_FPS), "anim: fps 0 => plancher")
+	_check(_approx(AnimatedIcon.clamp_fps(-5.0), AnimatedIcon.MIN_FPS), "anim: fps négatif => plancher")
+	# usable_frame_count : borné [0, MAX_FRAMES].
+	_check(AnimatedIcon.usable_frame_count(18) == 18, "anim: 18 frames inchangé")
+	_check(AnimatedIcon.usable_frame_count(0) == 0, "anim: 0 frame => 0")
+	_check(AnimatedIcon.usable_frame_count(-3) == 0, "anim: négatif => 0")
+	_check(AnimatedIcon.usable_frame_count(300) == AnimatedIcon.MAX_FRAMES, "anim: au-delà de 256 => 256")
 
 
 func _check(cond, name):
