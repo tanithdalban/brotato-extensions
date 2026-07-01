@@ -7,6 +7,13 @@ et mise sur les dégâts d'explosion et le scaling élémentaire/ingénierie.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.5.0] — 2026-07-01
+
+### Ajouté
+- **Icône animée de Bomberto** dans la sélection de personnage : la mèche de sa
+  bombe se consume jusqu'à l'explosion (flash + éclosion orange/jaune, petit
+  sursaut du perso), puis l'icône revient à l'image de départ, en boucle.
+
 ## [1.4.1] — 2026-06-30
 
 ### Corrigé
