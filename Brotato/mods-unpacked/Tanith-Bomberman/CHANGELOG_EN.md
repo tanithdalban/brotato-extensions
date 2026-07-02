@@ -16,6 +16,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   curve of a top-end base weapon (spear, SMG, wrench): **20 / 39 / 74 / 149**
   (instead of 40 / 56 / 78 / 106). In the shop, the tier-I Bomb now costs ~23 gold
   (like the SMG) instead of ~45. Recycling value scales down accordingly.
+- **Bomberto's character-selection portrait** now tints its background based on the
+  **highest danger beaten** (and gains a frame at danger 6), like vanilla characters.
+  The character had no difficulty-tracking entry (`difficulties_unlocked`) because of
+  the singleton load order, so the beaten danger was never recorded and the portrait
+  kept its default background. Fixed by re-running the game's native unlock pass after
+  the character is injected.
 
 ## [1.5.0] — 2026-07-01
 

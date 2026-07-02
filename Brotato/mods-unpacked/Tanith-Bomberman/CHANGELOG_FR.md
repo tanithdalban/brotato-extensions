@@ -17,6 +17,12 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/).
   wrench) : **20 / 39 / 74 / 149** (au lieu de 40 / 56 / 78 / 106). En boutique, la
   Bombe tier I coûte désormais ~23 or (comme le SMG) au lieu de ~45. La revente
   s'aligne d'autant.
+- **Vignette de Bomberto en sélection de personnage** : son fond se colore
+  désormais selon le **danger max battu** (et reçoit un cadre au danger 6), comme
+  les persos vanilla. Le perso n'avait aucune entrée de suivi de difficulté
+  (`difficulties_unlocked`), à cause de l'ordre de chargement des singletons : le
+  danger battu n'était jamais enregistré, la vignette gardait donc le fond par
+  défaut. Corrigé en rejouant le déblocage natif du jeu après l'injection du perso.
 
 ## [1.5.0] — 2026-07-01
 
