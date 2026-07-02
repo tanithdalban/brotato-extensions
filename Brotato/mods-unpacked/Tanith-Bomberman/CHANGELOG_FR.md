@@ -7,6 +7,17 @@ et mise sur les dégâts d'explosion et le scaling élémentaire/ingénierie.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.5.1] — 2026-07-02
+
+### Corrigé
+- **Prix de l'arme Bombe recalé** (erreur de conception). Sa `value` de base était
+  bien trop élevée : 40 au tier I, soit le double de l'arme de départ vanilla la
+  plus chère (20) et un prix déjà dans la fourchette du tier II. Les 4 tiers sont
+  remis sur la courbe canonique d'une arme de base « haut de gamme » (spear, SMG,
+  wrench) : **20 / 39 / 74 / 149** (au lieu de 40 / 56 / 78 / 106). En boutique, la
+  Bombe tier I coûte désormais ~23 or (comme le SMG) au lieu de ~45. La revente
+  s'aligne d'autant.
+
 ## [1.5.0] — 2026-07-01
 
 ### Ajouté

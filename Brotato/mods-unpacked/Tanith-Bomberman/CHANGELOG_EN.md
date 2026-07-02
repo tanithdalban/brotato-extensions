@@ -7,6 +7,16 @@ elemental/engineering scaling.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.5.1] — 2026-07-02
+
+### Fixed
+- **Rebalanced the Bomb weapon's price** (design error). Its base `value` was far
+  too high: 40 at tier I, twice the priciest vanilla starting weapon (20) and
+  already in tier-II price territory. All 4 tiers are brought back onto the canonical
+  curve of a top-end base weapon (spear, SMG, wrench): **20 / 39 / 74 / 149**
+  (instead of 40 / 56 / 78 / 106). In the shop, the tier-I Bomb now costs ~23 gold
+  (like the SMG) instead of ~45. Recycling value scales down accordingly.
+
 ## [1.5.0] — 2026-07-01
 
 ### Added
