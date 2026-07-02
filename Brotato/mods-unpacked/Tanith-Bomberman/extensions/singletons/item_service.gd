@@ -64,15 +64,23 @@ func _ready() -> void:
 			character.icon = anim
 			ModLog.info("icône animée posée sur Bomberto (%d frames)" % _ICON_ANIM_FRAMES)
 
-	# Débloquer explicitement nos contenus.
+	# Rejouer le passage de déblocage natif APRÈS notre injection.
 	# ProgressData est un autoload déclaré AVANT ItemService (project.godot),
 	# donc ProgressData._ready() -> add_unlocked_by_default() s'exécute AVANT ce
-	# _ready() : nos armes/perso injectés ici échappent au passage de déblocage
-	# par défaut. Sans ça, l'écran de sélection d'arme (qui filtre les armes de
-	# départ par ProgressData.weapons_unlocked) affiche une liste VIDE -> run
-	# bloquée. (Le perso n'apparaissait que grâce au mod de test DevUnlockAll,
-	# qui ne débloque que les personnages, masquant le même bug côté arme.)
-	_unlock_modded_content()
+	# _ready() : nos armes/perso injectés ici échappent au passage natif. On le
+	# rejoue nous-mêmes (il est idempotent : toutes ses écritures sont gardées
+	# anti-doublon). Il répare DEUX symptômes :
+	#   1. weapons_unlocked/characters_unlocked -> sans ça, l'écran de sélection
+	#      d'arme (qui filtre les armes de départ par ProgressData.weapons_unlocked)
+	#      affiche une liste VIDE -> run bloquée. (Le perso n'apparaissait que grâce
+	#      au mod de test DevUnlockAll, qui ne débloque que les personnages,
+	#      masquant le même bug côté arme.)
+	#   2. difficulties_unlocked -> crée l'entrée de suivi de difficulté de notre
+	#      perso. Sans elle, get_character_difficulty_info() renvoie un objet jetable
+	#      à la victoire (run_data.gd apply_run_won) : le danger battu n'est jamais
+	#      persisté et la vignette de sélection garde le fond par défaut (pas de
+	#      couleur par danger max, pas de cadre au danger 6).
+	ProgressData.add_unlocked_by_default()
 
 	# Le _ready() parent fixe upgrades_into.previous_upgrade pour toutes les armes.
 	._ready()
@@ -109,25 +117,3 @@ func get_pool(item_tier: int, type: int) -> Array:
 func _is_bomberman(player_index: int) -> bool:
 	var character = RunData.get_player_character(player_index)
 	return character != null and character.my_id == _BOMBERMAN_ID
-
-
-# Ajoute nos armes/perso (unlocked_by_default) aux listes de déblocage de
-# ProgressData, manquées par le passage vanilla à cause de l'ordre des autoloads.
-# Idempotent (gardes anti-doublon) ; reproduit la logique de
-# ProgressData.add_unlocked_by_default() bornée à notre contenu.
-func _unlock_modded_content() -> void:
-	for path in _BOMB_WEAPONS:
-		var w = load(path)
-		if w == null:
-			continue
-		w._generate_hashes()
-		if w.unlocked_by_default and not ProgressData.weapons_unlocked.has(w.weapon_id_hash):
-			ProgressData.weapons_unlocked.push_back(w.weapon_id_hash)
-			ModLog.info("arme débloquée: " + str(w.my_id))
-
-	var character = load(_BOMBERMAN_CHAR)
-	if character != null:
-		character._generate_hashes()
-		if character.unlocked_by_default and not ProgressData.characters_unlocked.has(character.my_id_hash):
-			ProgressData.characters_unlocked.push_back(character.my_id_hash)
-			ModLog.info("perso débloqué: " + str(character.my_id))
