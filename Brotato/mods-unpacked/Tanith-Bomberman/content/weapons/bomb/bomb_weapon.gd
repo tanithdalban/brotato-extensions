@@ -15,7 +15,7 @@ const EXPLOSION_SCALE := 1.5
 # s'en sert pour l'outline. `tier` est déjà renseigné à ce stade (vanilla
 # weapon.gd l'utilise dans update_highlighting() appelé par son _ready()).
 func _ready() -> void:
-	var skin = BombSkin.load_world_texture(tier)
+	var skin = BombSkin.build_normal_world_texture()
 	if skin != null:
 		sprite.texture = skin
 	# Garde anti-double-branchement : le _ready() vanilla (weapon.gd) rebranche les

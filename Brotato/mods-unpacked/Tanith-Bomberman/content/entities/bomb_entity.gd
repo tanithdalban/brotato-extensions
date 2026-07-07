@@ -48,7 +48,7 @@ func arm(p_player_index: int, p_stats: WeaponStats, p_tier: int, p_explosion_sca
 	if _exploding_effect != null:
 		_exploding_effect.scale = _explosion_scale
 	# Skin coloré selon le tier de l'arme (sprite en jeu 48×48, chargé au runtime).
-	var skin = BombSkin.load_world_texture(p_tier)
+	var skin = BombSkin.build_normal_world_texture()
 	if skin != null and is_instance_valid(_sprite):
 		_sprite.texture = skin
 	# Grossissement purement VISUEL de la bombe posée (n'affecte pas le rayon

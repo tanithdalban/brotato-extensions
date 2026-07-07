@@ -77,7 +77,7 @@ func arm(p_player_index: int, p_stats: WeaponStats, p_tier: int, p_explosion_sca
 		_exploding_effect.scale = _explosion_scale
 
 	# Corps coloré par le tier d'origine (sprite en jeu 48 réutilisé).
-	var body_tex = BombSkin.load_world_texture(p_tier)
+	var body_tex = BombSkin.build_normal_world_texture()
 	if body_tex != null and is_instance_valid(_body):
 		_body.texture = body_tex
 	# Visage fâché en surcouche (placeholder -> art final).

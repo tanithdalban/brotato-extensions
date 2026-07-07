@@ -35,9 +35,10 @@ func _ready() -> void:
 	for path in _BOMB_WEAPONS:
 		var w = load(path)
 		if w != null:
-			# Icône colorée par tier (chargée au runtime, hors cache d'import).
-			# On mute la WeaponData partagée : le magasin/inventaire lit son icon.
-			var skin = BombSkin.load_texture(w.tier)
+			# Icône : bombe_normale sur un disque coloré à la rareté du tier
+			# (couleur officielle du jeu). Runtime, hors cache d'import. Null
+			# (headless/asset absent) => on garde l'icône du .tres.
+			var skin = BombSkin.build_normal_icon(get_color_from_tier(w.tier))
 			if skin != null:
 				w.icon = skin
 		if w != null and not weapons.has(w):
