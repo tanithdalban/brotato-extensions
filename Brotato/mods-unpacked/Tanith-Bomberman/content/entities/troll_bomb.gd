@@ -85,13 +85,15 @@ func arm(p_player_index: int, p_stats: WeaponStats, p_tier: int, p_explosion_sca
 	if face_tex != null and is_instance_valid(_face):
 		_face.texture = face_tex
 
-	# Grossissement purement VISUEL (×1.25, comme la bombe posée en T7) : on scale
-	# le corps ET le visage, jamais la racine (sinon la Hitbox/rayon de contact
-	# serait agrandie aussi). Le rayon d'explosion reste géré par _explosion_scale.
+	# Grossissement purement VISUEL : la troll bombe est volontairement IMPOSANTE
+	# (~96px = presque la taille d'un ennemi de base 100×100) pour bien se voir comme
+	# un danger. On scale le corps ET le visage, jamais la racine (sinon la Hitbox/
+	# rayon de contact serait agrandie aussi). Le rayon d'explosion reste géré par
+	# _explosion_scale. Constante à régler ici si besoin (sprite source = 48px).
 	if is_instance_valid(_body):
-		_body.scale = Vector2(1.25, 1.25)
+		_body.scale = Vector2(2.0, 2.0)
 	if is_instance_valid(_face):
-		_face.scale = Vector2(1.25, 1.25)
+		_face.scale = Vector2(2.0, 2.0)
 
 	# Dégâts bruts de la bombe : plafonnés à chaque frame pour rester NON LÉTAUX.
 	_base_damage = int(_stats.damage) if _stats != null else 1

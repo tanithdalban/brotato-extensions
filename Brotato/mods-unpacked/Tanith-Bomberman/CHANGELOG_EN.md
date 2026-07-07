@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Changed
 - New Bomb skin: classic black bomb everywhere (icon, held weapon, placed bomb). Tier reads via the in-game rarity outline and a colored background on the shop icon.
+- Troll bomb enlarged (≈ a basic enemy's size) so it reads more clearly as a threat.
 
 ## [1.5.1] — 2026-07-02
 
