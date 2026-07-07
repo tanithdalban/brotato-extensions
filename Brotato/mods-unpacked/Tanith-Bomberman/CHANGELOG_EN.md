@@ -7,7 +7,9 @@ elemental/engineering scaling.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
-## 1.6.0
+## [1.6.0] — 2026-07-07
+
+### Changed
 - New Bomb skin: classic black bomb everywhere (icon, held weapon, placed bomb). Tier reads via the in-game rarity outline and a colored background on the shop icon.
 
 ## [1.5.1] — 2026-07-02

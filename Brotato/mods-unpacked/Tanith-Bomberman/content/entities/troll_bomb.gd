@@ -76,7 +76,7 @@ func arm(p_player_index: int, p_stats: WeaponStats, p_tier: int, p_explosion_sca
 	if _exploding_effect != null:
 		_exploding_effect.scale = _explosion_scale
 
-	# Corps = skin de bombe CONSTANT (sprite en jeu 48 réutilisé).
+	# Corps = skin de bombe CONSTANT (sprite en jeu 48 réutilisé ; le tier ne colore que l'icône de boutique).
 	var body_tex = BombSkin.build_normal_world_texture()
 	if body_tex != null and is_instance_valid(_body):
 		_body.texture = body_tex
