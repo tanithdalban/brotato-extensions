@@ -40,7 +40,7 @@ func _init():
 	_test_fuse_seconds()
 	_test_slot_phase_offset()
 	_test_keep_allowed_weapons()
-	_test_bomb_skin()
+	_test_bomb_icon_background()
 	_test_troll_should_wake()
 	_test_troll_wake_delay()
 	_test_troll_nearest_target()
@@ -110,19 +110,14 @@ func _test_keep_allowed_weapons():
 	_check(pool.size() == 5, "pool: n'altère pas la liste d'entrée")
 	_check(ShopPool.keep_allowed_weapons([]).size() == 0, "pool: vide => vide")
 
-func _test_bomb_skin():
-	# Mapping tier -> couleur (rareté Brotato).
-	_check(BombSkin.color_for_tier(0) == "gray", "skin: T1 = gray")
-	_check(BombSkin.color_for_tier(1) == "blue", "skin: T2 = blue")
-	_check(BombSkin.color_for_tier(2) == "purple", "skin: T3 = purple")
-	_check(BombSkin.color_for_tier(3) == "red", "skin: T4 = red")
-	# Clamps.
-	_check(BombSkin.color_for_tier(-3) == "gray", "skin: clamp bas = gray")
-	_check(BombSkin.color_for_tier(99) == "red", "skin: clamp haut = red")
-	# Chemins construits : icône 96 vs sprite en jeu 48.
-	_check(BombSkin.texture_path(2).ends_with("/skins/bomb_purple.png"), "skin: icône T3 = bomb_purple.png")
-	_check(BombSkin.world_texture_path(2).ends_with("/skins/bomb_purple_48.png"), "skin: en jeu T3 = bomb_purple_48.png")
-	_check(BombSkin.world_texture_path(0).ends_with("/skins/bomb_gray_48.png"), "skin: en jeu T1 = bomb_gray_48.png")
+func _test_bomb_icon_background():
+	# Repli gris quand la couleur de rareté vaut blanc (tier commun).
+	_check(BombSkin.icon_background_color(Color.white) == BombSkin.COMMON_BG, "icone: fond blanc (commun) -> gris")
+	# Sinon, on conserve la couleur de rareté du jeu telle quelle.
+	var red := Color(1.0, 0.231, 0.231, 1.0)
+	_check(BombSkin.icon_background_color(red) == red, "icone: fond rareté conservé (rouge)")
+	var purple := Color(0.678, 0.353, 1.0, 1.0)
+	_check(BombSkin.icon_background_color(purple) == purple, "icone: fond rareté conservé (violet)")
 
 
 func _test_troll_should_wake():
