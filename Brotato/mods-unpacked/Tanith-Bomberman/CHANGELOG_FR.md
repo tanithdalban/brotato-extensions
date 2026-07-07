@@ -12,6 +12,7 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/).
 ### Modifié
 - Nouveau skin de la Bombe : bombe noire classique partout (icône, arme tenue, bombe posée). Le niveau (tier) se lit via le contour coloré en jeu et un fond coloré sur l'icône de boutique.
 - Troll bombe agrandie (≈ la taille d'un ennemi de base) pour mieux se voir comme un danger.
+- Explosions de bombes plus discrètes : l'opacité de la zone d'effet est réduite (~20 %) pour limiter les flashs répétés (confort visuel / épilepsie). N'affecte ni la zone touchée ni les dégâts.
 
 ## [1.5.1] — 2026-07-02
 

@@ -13,6 +13,7 @@ extends Node2D
 # visage fâché en surcouche. Vitesse FIXE (indépendante de la stat vitesse).
 
 const BombSkin = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_skin.gd")
+const ExplosionVisual = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/explosion_visual.gd")
 const TrollBombLogic = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/troll_bomb_logic.gd")
 
 const _FACE_PATH := "res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb/skins/troll_bomb_face.png"
@@ -257,3 +258,5 @@ func _spawn_visual_explosion() -> void:
 	_explode_args.from = null
 	_explode_args.damage_tracking_key_hash = Keys.empty_hash
 	var _inst = WeaponService.explode(_exploding_effect, _explode_args)
+	# Anti-épilepsie : plafonne l'opacité du sprite d'AOE (visuel seul).
+	ExplosionVisual.cap_aoe_opacity(_inst)

@@ -4,6 +4,7 @@ extends Node2D
 
 const BombTiming = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_timing.gd")
 const BombSkin = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_skin.gd")
+const ExplosionVisual = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/explosion_visual.gd")
 const TrollBomb = preload("res://mods-unpacked/Tanith-Bomberman/content/entities/troll_bomb.tscn")
 const TrollBombLogic = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/troll_bomb_logic.gd")
 
@@ -92,6 +93,8 @@ func _on_fuse_timeout() -> void:
 	_explode_args.from = null  # pas d'auto-attribution à un noeud qui va disparaître
 	_explode_args.damage_tracking_key_hash = _damage_tracking_key_hash
 	var _inst = WeaponService.explode(_exploding_effect, _explode_args)
+	# Anti-épilepsie : plafonne l'opacité du sprite d'AOE (ne touche pas les dégâts).
+	ExplosionVisual.cap_aoe_opacity(_inst)
 	queue_free()
 
 # Réveil : instancie la troll bombe à la place de l'explosion et se libère sans
