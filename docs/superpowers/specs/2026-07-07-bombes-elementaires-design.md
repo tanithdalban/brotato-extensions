@@ -174,3 +174,11 @@ Découverte clé du jeu décompilé : **presque tout est data-driven**.
 - Équilibrage fin (dégâts DOT, nb éclairs, valeurs de slow, prix/`value`).
 - Déploiement Steam Workshop (item existant) — après validation en jeu.
 - Un éventuel réglage d'opacité pour les éclairs (si besoin au calibrage).
+
+## TODO — idées futures (hors phases planifiées)
+
+- **Mieux gérer la dépose des bombes** pour éviter l'**empilement** et le
+  **croisement des zones d'AOE** (bombes qui tombent au même endroit / AOE qui se
+  chevauchent). Pistes à explorer : dispersion/offset de la position de dépose,
+  espacement minimal entre bombes, ou déphasage spatial en plus du déphasage
+  temporel déjà existant (`BombTiming.slot_phase_offset`). À concevoir plus tard.
