@@ -10,10 +10,10 @@ const BombSkin = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bom
 # Échelle d'explosion de base (équiv. landmine). Ajustable au réglage.
 const EXPLOSION_SCALE := 1.5
 
-# Surcharge : applique le skin coloré du tier au sprite tenu AVANT le _ready()
-# vanilla, qui capture `sprite.texture` dans `_original_sprite` (ligne 74) et
-# s'en sert pour l'outline. `tier` est déjà renseigné à ce stade (vanilla
-# weapon.gd l'utilise dans update_highlighting() appelé par son _ready()).
+# Surcharge : applique le skin de bombe (CONSTANT) au sprite tenu AVANT le
+# _ready() vanilla, qui capture `sprite.texture` dans `_original_sprite` (ligne 74)
+# et s'en sert pour l'outline coloré par tier (update_highlighting). Le sprite en
+# jeu est identique à tous les tiers ; le tier ne colore que l'icône de boutique.
 func _ready() -> void:
 	var skin = BombSkin.build_normal_world_texture()
 	if skin != null:

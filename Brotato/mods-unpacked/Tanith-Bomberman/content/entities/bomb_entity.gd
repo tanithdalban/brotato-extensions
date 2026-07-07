@@ -47,7 +47,7 @@ func arm(p_player_index: int, p_stats: WeaponStats, p_tier: int, p_explosion_sca
 	_explosion_damage_override = p_explosion_damage
 	if _exploding_effect != null:
 		_exploding_effect.scale = _explosion_scale
-	# Skin coloré selon le tier de l'arme (sprite en jeu 48×48, chargé au runtime).
+	# Skin de bombe CONSTANT (sprite en jeu 48×48, chargé au runtime ; le tier ne colore que l'icône de boutique).
 	var skin = BombSkin.build_normal_world_texture()
 	if skin != null and is_instance_valid(_sprite):
 		_sprite.texture = skin
