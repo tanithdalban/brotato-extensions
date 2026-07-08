@@ -10,6 +10,7 @@ const BombSkin = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bom
 const TrollLogic = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/troll_bomb_logic.gd")
 const AnimatedIcon = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/animated_icon.gd")
 const BombElement = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_element.gd")
+const BombIceSlow = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_ice_slow.gd")
 
 var _failures := 0
 var _count := 0
@@ -51,6 +52,7 @@ func _init():
 	_test_troll_keep_distance()
 	_test_animated_icon_helpers()
 	_test_bomb_element()
+	_test_bomb_ice_slow()
 	print("=== %d tests, %d échec(s) ===" % [_count, _failures])
 	quit(_failures)
 
@@ -210,6 +212,22 @@ func _test_bomb_element():
 	_check(BombElement.from_weapon_id("") == BombElement.NORMAL, "element: vide => normal")
 	_check(BombElement.is_effect(BombElement.ICE), "element: ice est un effet")
 	_check(not BombElement.is_effect(BombElement.NORMAL), "element: normal n'est pas un effet")
+
+
+func _test_bomb_ice_slow():
+	# slow_pct_for : magnitude du champ (négatif dans le .tres).
+	_check(_approx(BombIceSlow.slow_pct_for(-30), 30.0), "ice: slow_pct_for(-30) = 30")
+	_check(_approx(BombIceSlow.slow_pct_for(-60), 60.0), "ice: slow_pct_for(-60) = 60")
+	# apply : coupe vers la vitesse cible (max_speed=100, slow 30% => cible 70).
+	_check(_approx(BombIceSlow.apply(100.0, 100.0, 30.0), 70.0), "ice: 100 -> cible 70 (slow 30%)")
+	# non cumulatif : déjà à 70, re-slow 30% => cible 70 => no-op.
+	_check(_approx(BombIceSlow.apply(70.0, 100.0, 30.0), 70.0), "ice: non cumulatif (même tier = no-op)")
+	# slow plus fort écrase : à 70, slow 50% => cible 50.
+	_check(_approx(BombIceSlow.apply(70.0, 100.0, 50.0), 50.0), "ice: slow plus fort écrase (70 -> 50)")
+	# slow plus faible après plus fort = no-op : à 50, slow 30% => cible 70 > 50 => reste 50.
+	_check(_approx(BombIceSlow.apply(50.0, 100.0, 30.0), 50.0), "ice: slow plus faible = no-op (garde le plus lent)")
+	# garde-fou max_speed 0 => inchangé.
+	_check(_approx(BombIceSlow.apply(42.0, 0.0, 50.0), 42.0), "ice: max_speed 0 => inchangé")
 
 
 func _check(cond, name):
