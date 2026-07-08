@@ -5,18 +5,33 @@ extends Reference
 # Sur l'ICÔNE de boutique, on ajoute un disque de fond coloré à la rareté du tier.
 #
 # - icon_background_color(tier_color) -> couleur du disque (repli gris si blanc).
-# - build_normal_icon(tier_color)     -> icône = bombe sur disque coloré.
-# - build_normal_world_texture()      -> sprite EN JEU (tenu / posé / troll), sans fond.
+# - build_icon(element, tier_color)   -> icône = sprite élément sur disque coloré.
+# - build_world_texture(element)      -> sprite EN JEU (tenu / posé / troll), sans fond.
+# - build_normal_icon(tier_color)     -> délégation pour rétro-compat (normal).
+# - build_normal_world_texture()      -> délégation pour rétro-compat (normal).
+# - element_sprite_path(element)      -> chemin du PNG par élément (repli normal).
 # - _load(path)                       -> loader runtime générique (réutilisé ailleurs).
 #
 # Chargement runtime (Image.load) : contourne le cache d'import Godot. Textures
 # créées avec FILTER+MIPMAPS pour un rendu lisse (sprite cartoon non pixel-art).
 
-const _NORMAL_ICON_PATH := "res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb/bombe_normale.png"
+const _BOMB_DIR := "res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb"
+# Clés = valeurs de BombElement (normal/ice/...). Poison/foudre viendront aux
+# phases suivantes.
+const _SPRITE_PATHS := {
+	"normal": _BOMB_DIR + "/bombe_normale.png",
+	"ice": _BOMB_DIR + "/glace.png",
+}
+# Rétro-compat interne (anciens sites).
+const _NORMAL_ICON_PATH := _BOMB_DIR + "/bombe_normale.png"
 const _WORLD_SIZE := 48  # taille du sprite en jeu (ancienne taille des skins colorés)
 
 # Repli quand la couleur de rareté vaut blanc (tier commun) : gris clair lisible.
 const COMMON_BG := Color(0.72, 0.72, 0.72, 1.0)
+
+# Chemin du sprite d'un élément (repli sur normal si élément inconnu).
+static func element_sprite_path(element: String) -> String:
+	return _SPRITE_PATHS.get(element, _SPRITE_PATHS["normal"])
 
 # Couleur du disque de fond de l'icône : la couleur de rareté fournie par le jeu
 # (ItemService.get_color_from_tier), avec repli gris si elle vaut blanc.
@@ -25,11 +40,24 @@ static func icon_background_color(tier_color: Color) -> Color:
 		return COMMON_BG
 	return tier_color
 
-# Icône de boutique/inventaire : bombe_normale composée sur un disque coloré.
-# `tier_color` = couleur de rareté du tier (fournie par l'appelant). Null si
-# l'asset ne charge pas (headless / absent).
+# Icône de boutique : sprite de l'élément composé sur un disque coloré.
+static func build_icon(element: String, tier_color: Color) -> Texture:
+	return _compose_icon(element_sprite_path(element), tier_color)
+
+# Sprite EN JEU : sprite de l'élément, 48×48, SANS fond.
+static func build_world_texture(element: String) -> Texture:
+	return _compose_world(element_sprite_path(element))
+
+# --- Rétro-compat : la Bombe normale (troll bombe, etc.). ---
 static func build_normal_icon(tier_color: Color) -> Texture:
-	var sprite_img := _load_image(_NORMAL_ICON_PATH)
+	return build_icon("normal", tier_color)
+
+static func build_normal_world_texture() -> Texture:
+	return build_world_texture("normal")
+
+# Composition icône (disque coloré + sprite). Null si l'asset ne charge pas.
+static func _compose_icon(path: String, tier_color: Color) -> Texture:
+	var sprite_img := _load_image(path)
 	if sprite_img == null:
 		return null
 	var w := sprite_img.get_width()
@@ -40,10 +68,9 @@ static func build_normal_icon(tier_color: Color) -> Texture:
 	tex.create_from_image(bg, Texture.FLAG_FILTER | Texture.FLAG_MIPMAPS)
 	return tex
 
-# Sprite EN JEU (arme tenue / bombe posée / corps de la troll bombe) : la bombe
-# seule, redimensionnée à _WORLD_SIZE, SANS fond. Null si l'asset ne charge pas.
-static func build_normal_world_texture() -> Texture:
-	var img := _load_image(_NORMAL_ICON_PATH)
+# Composition sprite en jeu (48×48, sans fond). Null si l'asset ne charge pas.
+static func _compose_world(path: String) -> Texture:
+	var img := _load_image(path)
 	if img == null:
 		return null
 	if img.get_width() != _WORLD_SIZE or img.get_height() != _WORLD_SIZE:

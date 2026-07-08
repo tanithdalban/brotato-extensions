@@ -43,6 +43,7 @@ func _init():
 	_test_slot_phase_offset()
 	_test_keep_allowed_weapons()
 	_test_bomb_icon_background()
+	_test_bomb_skin_element()
 	_test_troll_should_wake()
 	_test_troll_wake_delay()
 	_test_troll_nearest_target()
@@ -127,6 +128,15 @@ func _test_bomb_icon_background():
 	_check(BombSkin.icon_background_color(red) == red, "icone: fond rareté conservé (rouge)")
 	var purple := Color(0.678, 0.353, 1.0, 1.0)
 	_check(BombSkin.icon_background_color(purple) == purple, "icone: fond rareté conservé (violet)")
+
+
+func _test_bomb_skin_element():
+	var normal_path = BombSkin.element_sprite_path("normal")
+	var ice_path = BombSkin.element_sprite_path("ice")
+	_check(normal_path.ends_with("bombe_normale.png"), "skin: normal -> bombe_normale.png")
+	_check(ice_path.ends_with("glace.png"), "skin: ice -> glace.png")
+	# Élément inconnu => repli sur normal (pas de crash).
+	_check(BombSkin.element_sprite_path("inconnu").ends_with("bombe_normale.png"), "skin: inconnu -> repli normal")
 
 
 func _test_troll_should_wake():
