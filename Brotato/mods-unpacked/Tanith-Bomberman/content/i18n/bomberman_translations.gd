@@ -7,6 +7,7 @@
 # Clés fournies :
 #   CHARACTER_BOMBERMAN  — nom du personnage (affiché via tr(name) dans item_parent_data.gd)
 #   WEAPON_BOMB          — nom de l'arme    (idem)
+#   WEAPON_BOMB_ICE      — nom de la Bombe de Glace
 #
 # Note sur les descriptions : dans Brotato, les descriptions d'objets/personnages
 # sont construites à partir du tableau effects[] (EffectLine), PAS depuis une clé
@@ -21,10 +22,12 @@ static func register() -> void:
 	tr_en.locale = "en"
 	tr_en.add_message("CHARACTER_BOMBERMAN", "Bomberto")
 	tr_en.add_message("WEAPON_BOMB", "Bomb")
+	tr_en.add_message("WEAPON_BOMB_ICE", "Ice Bomb")
 	TranslationServer.add_translation(tr_en)
 
 	var tr_fr := Translation.new()
 	tr_fr.locale = "fr"
 	tr_fr.add_message("CHARACTER_BOMBERMAN", "Bomberto")
 	tr_fr.add_message("WEAPON_BOMB", "Bombe")
+	tr_fr.add_message("WEAPON_BOMB_ICE", "Bombe de Glace")
 	TranslationServer.add_translation(tr_fr)
