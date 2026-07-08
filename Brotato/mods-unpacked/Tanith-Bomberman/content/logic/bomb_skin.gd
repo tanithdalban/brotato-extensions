@@ -22,8 +22,6 @@ const _SPRITE_PATHS := {
 	"normal": _BOMB_DIR + "/bombe_normale.png",
 	"ice": _BOMB_DIR + "/glace.png",
 }
-# Rétro-compat interne (anciens sites).
-const _NORMAL_ICON_PATH := _BOMB_DIR + "/bombe_normale.png"
 const _WORLD_SIZE := 48  # taille du sprite en jeu (ancienne taille des skins colorés)
 
 # Repli quand la couleur de rareté vaut blanc (tier commun) : gris clair lisible.
