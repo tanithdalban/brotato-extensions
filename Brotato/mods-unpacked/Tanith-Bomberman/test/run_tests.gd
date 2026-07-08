@@ -9,6 +9,7 @@ const ShopPool = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/sho
 const BombSkin = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_skin.gd")
 const TrollLogic = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/troll_bomb_logic.gd")
 const AnimatedIcon = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/animated_icon.gd")
+const BombElement = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_element.gd")
 
 var _failures := 0
 var _count := 0
@@ -49,6 +50,7 @@ func _init():
 	_test_troll_min_living_hp()
 	_test_troll_keep_distance()
 	_test_animated_icon_helpers()
+	_test_bomb_element()
 	print("=== %d tests, %d échec(s) ===" % [_count, _failures])
 	quit(_failures)
 
@@ -197,6 +199,17 @@ func _test_animated_icon_helpers():
 	_check(AnimatedIcon.usable_frame_count(0) == 0, "anim: 0 frame => 0")
 	_check(AnimatedIcon.usable_frame_count(-3) == 0, "anim: négatif => 0")
 	_check(AnimatedIcon.usable_frame_count(300) == AnimatedIcon.MAX_FRAMES, "anim: au-delà de 256 => 256")
+
+
+func _test_bomb_element():
+	_check(BombElement.from_weapon_id("weapon_bomb") == BombElement.NORMAL, "element: weapon_bomb => normal")
+	_check(BombElement.from_weapon_id("weapon_bomb_ice") == BombElement.ICE, "element: weapon_bomb_ice => ice")
+	_check(BombElement.from_weapon_id("weapon_bomb_poison") == BombElement.POISON, "element: poison")
+	_check(BombElement.from_weapon_id("weapon_bomb_storm") == BombElement.STORM, "element: storm")
+	_check(BombElement.from_weapon_id("weapon_smg") == BombElement.NORMAL, "element: inconnu => normal (repli)")
+	_check(BombElement.from_weapon_id("") == BombElement.NORMAL, "element: vide => normal")
+	_check(BombElement.is_effect(BombElement.ICE), "element: ice est un effet")
+	_check(not BombElement.is_effect(BombElement.NORMAL), "element: normal n'est pas un effet")
 
 
 func _check(cond, name):
