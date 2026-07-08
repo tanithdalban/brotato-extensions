@@ -114,6 +114,11 @@ func _test_keep_allowed_weapons():
 	_check(pool.size() == 5, "pool: n'altère pas la liste d'entrée")
 	_check(ShopPool.keep_allowed_weapons([]).size() == 0, "pool: vide => vide")
 
+	# Préfixe weapon_bomb : la glace passe même sans set explosive.
+	_check(ShopPool.is_allowed(_StubWeapon.new("weapon_bomb_ice", [], 0, 1)), "pool: weapon_bomb_ice accepté (préfixe)")
+	_check(ShopPool.is_allowed(_StubWeapon.new("weapon_bomb", [], 0, 1)), "pool: weapon_bomb accepté (préfixe)")
+	_check(not ShopPool.is_allowed(_StubWeapon.new("weapon_smg", [], 0, 1)), "pool: weapon_smg rejeté")
+
 func _test_bomb_icon_background():
 	# Repli gris quand la couleur de rareté vaut blanc (tier commun).
 	_check(BombSkin.icon_background_color(Color.white) == BombSkin.COMMON_BG, "icone: fond blanc (commun) -> gris")
