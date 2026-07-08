@@ -6,6 +6,8 @@ class_name BombWeapon
 const BombEntity = preload("res://mods-unpacked/Tanith-Bomberman/content/entities/bomb_entity.tscn")
 const BombTiming = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_timing.gd")
 const BombSkin = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_skin.gd")
+const BombElement = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_element.gd")
+const BombIceSlow = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_ice_slow.gd")
 
 # Échelle d'explosion de base (équiv. landmine). Ajustable au réglage.
 const EXPLOSION_SCALE := 1.5
@@ -15,7 +17,7 @@ const EXPLOSION_SCALE := 1.5
 # et s'en sert pour l'outline coloré par tier (update_highlighting). Le sprite en
 # jeu est identique à tous les tiers ; le tier ne colore que l'icône de boutique.
 func _ready() -> void:
-	var skin = BombSkin.build_normal_world_texture()
+	var skin = BombSkin.build_world_texture(BombElement.from_weapon_id(weapon_id))
 	if skin != null:
 		sprite.texture = skin
 	# Garde anti-double-branchement : le _ready() vanilla (weapon.gd) rebranche les
@@ -70,7 +72,7 @@ func shoot() -> void:
 	# La Bombe n'a pas d'ExplodingEffect dans ses `effects`, donc current_stats
 	# ne porte pas ce bonus.
 	var explosion_damage = WeaponService.get_explosion_damage(stats, player_index)
-	bomb.arm(player_index, current_stats, tier, EXPLOSION_SCALE, Keys.empty_hash, explosion_damage)
+	bomb.arm(player_index, current_stats, tier, EXPLOSION_SCALE, Keys.empty_hash, explosion_damage, BombElement.from_weapon_id(weapon_id), self)
 	_current_cooldown = get_next_cooldown()
 	# La bombe n'a pas d'animation de tir : on a "fini de tirer" dès qu'elle est posée.
 	# Sans ce reset, `_is_shooting` resterait `true` à vie (vanilla weapon.gd:201 le pose,
@@ -78,6 +80,24 @@ func shoot() -> void:
 	# gèlerait le cooldown (weapon.gd:192) et bloquerait should_shoot() : une seule bombe
 	# par partie. On reproduit donc le `set_shooting(false)` de fin d'animation vanilla.
 	set_shooting(false)
+
+
+# Cible du signal hit_something de l'explosion d'une bombe de GLACE (connecté par
+# bomb_entity). Applique une coupe de vitesse RÉELLE et NON CUMULATIVE à l'ennemi
+# touché (cf. bomb_ice_slow). Duck-typé : ne touche que des unités ayant
+# current_stats/max_stats (marche vanilla/DLC/autre mod, sans étendre enemy.gd).
+func on_ice_hit(thing_hit, _damage_dealt, slow_pct: float) -> void:
+	if not is_instance_valid(thing_hit):
+		return
+	if not ("current_stats" in thing_hit) or not ("max_stats" in thing_hit):
+		return
+	if thing_hit.current_stats == null or thing_hit.max_stats == null:
+		return
+	thing_hit.current_stats.speed = BombIceSlow.apply(
+		thing_hit.current_stats.speed,
+		thing_hit.max_stats.speed,
+		slow_pct
+	)
 
 
 # --- Déphasage par slot ("train de bombes") ---
