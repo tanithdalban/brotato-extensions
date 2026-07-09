@@ -7,6 +7,11 @@ elemental/engineering scaling.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.7.0] — 2026-07-09
+
+### Added
+- **New weapon: the Ice Bomb** (4 tiers), offered in Bomberto's shop and selectable as a starting weapon. It deals **no explosion damage** but **permanently slows the enemies it hits** — the slow does not stack (the strongest one is kept) — and marks them with a **blue frost outline**. Its tooltip shows the slow percentage, increasing with tier (30 / 40 / 50 / 60%).
+
 ## [1.6.0] — 2026-07-07
 
 ### Changed

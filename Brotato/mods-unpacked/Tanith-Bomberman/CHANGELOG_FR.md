@@ -7,6 +7,11 @@ et mise sur les dégâts d'explosion et le scaling élémentaire/ingénierie.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.7.0] — 2026-07-09
+
+### Ajouté
+- **Nouvelle arme : la Bombe de Glace** (4 niveaux), proposée dans la boutique de Bomberto et sélectionnable comme arme de départ. Elle n'inflige **aucun dégât d'explosion** mais **ralentit durablement les ennemis touchés** — le ralentissement ne se cumule pas (on garde le plus fort) — et les marque d'un **contour bleu givré**. Son infobulle indique le pourcentage de ralentissement, croissant selon le niveau (30 / 40 / 50 / 60 %).
+
 ## [1.6.0] — 2026-07-07
 
 ### Modifié
