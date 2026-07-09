@@ -7,6 +7,14 @@ et mise sur les dégâts d'explosion et le scaling élémentaire/ingénierie.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.8.0] — 2026-07-09
+
+### Ajouté
+- **Nouvelle arme : la Bombe de Foudre** (4 niveaux), proposée dans la boutique de Bomberto et sélectionnable comme arme de départ. À la détonation, elle libère une **salve d'éclairs en cercle** (à la manière de l'objet Tyler) qui portent les dégâts — **sans explosion de zone**. Le nombre d'éclairs et les dégâts croissent selon le niveau, avec du scaling ingénierie et élémentaire.
+
+### Corrigé
+- **Les dégâts des bombes sont désormais comptabilisés** dans l'infobulle de l'arme (« dégâts infligés » de la dernière vague), comme pour les autres armes. Auparavant, les bombes frappant à distance de l'arme (explosion / éclairs), leurs dégâts n'étaient pas attribués et le compteur restait à 0.
+
 ## [1.7.0] — 2026-07-09
 
 ### Ajouté

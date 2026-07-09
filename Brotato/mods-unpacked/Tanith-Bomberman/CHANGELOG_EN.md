@@ -7,6 +7,14 @@ elemental/engineering scaling.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.8.0] — 2026-07-09
+
+### Added
+- **New weapon: the Storm Bomb** (4 tiers), offered in Bomberto's shop and selectable as a starting weapon. On detonation it releases a **burst of lightning bolts in a full circle** (like the Tyler item) that carry the damage — **with no area explosion**. The number of bolts and the damage increase with tier, with engineering and elemental scaling.
+
+### Fixed
+- **Bomb damage is now tracked** in the weapon tooltip ("damage dealt" for the last wave), like other weapons. Previously, because bombs hit away from the weapon (explosion / bolts), their damage wasn't attributed and the counter stayed at 0.
+
 ## [1.7.0] — 2026-07-09
 
 ### Added
