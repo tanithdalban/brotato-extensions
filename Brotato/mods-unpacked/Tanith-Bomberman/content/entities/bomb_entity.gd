@@ -93,6 +93,13 @@ func _on_fuse_timeout() -> void:
 	if _stats == null:
 		queue_free()
 		return
+	# Foudre : pas d'explosion AoE. On tire un burst d'éclairs en cercle (façon
+	# item Tyler) puis la bombe disparaît ; les dégâts sont portés par les
+	# projectiles, pas par une zone d'explosion.
+	if _element == BombElement.STORM:
+		_burst_lightning()
+		queue_free()
+		return
 	_explode_args.pos = global_position
 	# Bombes à effet : AUCUN dégât d'explosion AoE (les effets — slow, givre —
 	# s'appliquent indépendamment ; deals_damage reste true donc les hits sont émis).
@@ -129,3 +136,22 @@ func _wake_into_troll() -> void:
 	troll.global_position = global_position
 	troll.arm(_player_index, _stats, _tier, _explosion_scale, _damage_tracking_key_hash)
 	queue_free()
+
+# Foudre : tire _stats.nb_projectiles projectiles "delayed_lightning" en cercle
+# complet (spread ≈ π) depuis la position de la bombe, via le même appel que
+# turret._spawn_projectile (WeaponService.spawn_projectile). from = _weapon
+# (l'arme persistante) pour l'attribution des dégâts + le player_index. Aucune
+# structure ni cooldown de tourelle : un unique burst, puis la bombe se libère.
+func _burst_lightning() -> void:
+	if _stats == null or not is_instance_valid(_weapon):
+		return
+	var args := WeaponServiceSpawnProjectileArgs.new()
+	args.from_player_index = _player_index
+	args.damage_tracking_key_hash = _damage_tracking_key_hash
+	# Orientation de base aléatoire : avec spread ≈ π, chaque tir couvre déjà tout
+	# le cercle ; la base ne fait que décorréler les bursts successifs.
+	var base := randf() * TAU
+	for _i in range(int(_stats.nb_projectiles)):
+		var rot := rand_range(base - _stats.projectile_spread, base + _stats.projectile_spread)
+		args.knockback_direction = Vector2(cos(rot), sin(rot))
+		WeaponService.spawn_projectile(global_position, _stats, rot, _weapon, args)
