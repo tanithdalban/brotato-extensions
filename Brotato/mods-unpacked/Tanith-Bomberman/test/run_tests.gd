@@ -119,6 +119,7 @@ func _test_keep_allowed_weapons():
 	_check(ShopPool.is_allowed(_StubWeapon.new("weapon_bomb_ice", [], 0, 1)), "pool: weapon_bomb_ice accepté (préfixe)")
 	_check(ShopPool.is_allowed(_StubWeapon.new("weapon_bomb", [], 0, 1)), "pool: weapon_bomb accepté (préfixe)")
 	_check(not ShopPool.is_allowed(_StubWeapon.new("weapon_smg", [], 0, 1)), "pool: weapon_smg rejeté")
+	_check(ShopPool.is_allowed(_StubWeapon.new("weapon_bomb_storm", [], 0, 1)), "pool: weapon_bomb_storm accepté (préfixe)")
 
 func _test_bomb_icon_background():
 	# Repli gris quand la couleur de rareté vaut blanc (tier commun).
@@ -137,6 +138,8 @@ func _test_bomb_skin_element():
 	_check(ice_path.ends_with("glace.png"), "skin: ice -> glace.png")
 	# Élément inconnu => repli sur normal (pas de crash).
 	_check(BombSkin.element_sprite_path("inconnu").ends_with("bombe_normale.png"), "skin: inconnu -> repli normal")
+	var storm_path = BombSkin.element_sprite_path("storm")
+	_check(storm_path.ends_with("storm.png"), "skin: storm -> storm.png")
 
 
 func _test_troll_should_wake():

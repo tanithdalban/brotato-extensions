@@ -16,11 +16,12 @@ extends Reference
 # créées avec FILTER+MIPMAPS pour un rendu lisse (sprite cartoon non pixel-art).
 
 const _BOMB_DIR := "res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb"
-# Clés = valeurs de BombElement (normal/ice/...). Poison/foudre viendront aux
-# phases suivantes.
+# Clés = valeurs de BombElement (normal/ice/...). Poison viendra aux phases
+# suivantes.
 const _SPRITE_PATHS := {
 	"normal": _BOMB_DIR + "/bombe_normale.png",
 	"ice": _BOMB_DIR + "/glace.png",
+	"storm": _BOMB_DIR + "/storm.png",
 }
 const _WORLD_SIZE := 48  # taille du sprite en jeu (ancienne taille des skins colorés)
 
