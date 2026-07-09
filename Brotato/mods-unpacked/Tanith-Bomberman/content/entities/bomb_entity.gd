@@ -118,6 +118,16 @@ func _on_fuse_timeout() -> void:
 	var _inst = WeaponService.explode(_exploding_effect, _explode_args)
 	# Anti-épilepsie : plafonne l'opacité du sprite d'AOE (ne touche pas les dégâts).
 	ExplosionVisual.cap_aoe_opacity(_inst)
+	# Suivi des dégâts "façon arme tenue" : on attribue les dégâts de l'explosion à
+	# notre BombWeapon via son on_weapon_hit_something héritée de Weapon
+	# (-> RunData.add_weapon_dmg_dealt(weapon_pos)), pour que l'infobulle affiche les
+	# "dégâts infligés (dernière vague)" comme n'importe quelle arme. Le hitbox bindé
+	# est null (on_weapon_hit_something sort après l'ajout si hitbox == null : aucune
+	# logique d'attack_id/combo n'est déclenchée). Connexion nettoyée par
+	# PlayerExplosion.end_explosion (disconnect_all hit_something).
+	if _inst != null and is_instance_valid(_weapon):
+		if not _inst.is_connected("hit_something", _weapon, "on_weapon_hit_something"):
+			_inst.connect("hit_something", _weapon, "on_weapon_hit_something", [null])
 	# Glace : coupe de vitesse réelle sur les ennemis touchés, via le signal
 	# public hit_something de l'explosion (émis même à 0 dégât, unit.gd:608) →
 	# notre BombWeapon (persistant). AUCUNE extension de enemy.gd. La connexion
@@ -154,4 +164,11 @@ func _burst_lightning() -> void:
 	for _i in range(int(_stats.nb_projectiles)):
 		var rot := rand_range(base - _stats.projectile_spread, base + _stats.projectile_spread)
 		args.knockback_direction = Vector2(cos(rot), sin(rot))
-		WeaponService.spawn_projectile(global_position, _stats, rot, _weapon, args)
+		var proj = WeaponService.spawn_projectile(global_position, _stats, rot, _weapon, args)
+		# Suivi des dégâts façon arme tenue : connecter hit_something de l'éclair à
+		# on_weapon_hit_something (Weapon -> add_weapon_dmg_dealt(weapon_pos)), comme
+		# ranged_weapon.on_projectile_shot. Le flag + la déconnexion sont gérés par
+		# projectile.gd au recyclage (pas de contamination inter-armes).
+		if is_instance_valid(proj) and ("hit_something_connected" in proj) and not proj.hit_something_connected:
+			var _c = proj.connect("hit_something", _weapon, "on_weapon_hit_something", [proj._hitbox])
+			proj.hit_something_connected = true
