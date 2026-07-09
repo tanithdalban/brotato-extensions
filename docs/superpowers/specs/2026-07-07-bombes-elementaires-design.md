@@ -51,14 +51,77 @@ Découverte clé du jeu décompilé : **presque tout est data-driven**.
 - **Visuel** : `bombe_normale.png` (constant I→IV) + fond coloré par tier.
 
 ### Bombe de Glace ❄️
-- **Mécanique** : ralentissement des ennemis dans la zone, **aucun dégât**.
-  `speed_percent_modifier` (négatif) est renseigné dans le `_stats.tres` ;
-  `bomb_entity` le pose sur la hitbox de l'explosion **après** `explode()`
-  (`instance._hitbox.speed_percent_modifier = _stats.speed_percent_modifier`).
-  Le natif `add_decaying_speed` applique un slow qui se dissipe.
-- **Valeurs par tier (I→IV)** : `-20 / -30 / -40 / -50 %` (plafond 50 %, c'est un
-  debuff d'ennemi).
-- **Visuel** : `Glace.png` (constant I→IV, fond déjà transparent) + fond par tier.
+
+**Décision de conception (2026-07-08, validée en session)** : on **abandonne** le
+slow décroissant vanilla (`speed_percent_modifier` → `add_decaying_speed`) : sa
+récupération (+300 vitesse/s, `unit.gd:161`) est **codée en dur et globale**, donc
+le slow s'efface en ~0,5 s — trop bref. On veut un ralentissement **durable** mais
+**strictement scopé à la bombe de glace** (pas d'effet joueur global type Ugly Tooth
+`remove_speed`, ni Snail — rejetés car globaux).
+
+- **Ralentissement — coupe de vitesse RÉELLE à l'impact, NON CUMULATIVE (modèle
+  « vitesse cible »)** :
+  - Inspiré d'Ugly Tooth (`items/all/ugly_tooth/`, `enemy.gd:254-256`) qui réduit
+    `enemy.current_stats.speed` en % de la vitesse **max** — mais Ugly Tooth est
+    **cumulatif par coup** et **joueur global**. On reproduit la coupe de vitesse
+    réelle sur `current_stats.speed`, mais **scopée à la glace** et **non
+    cumulative**.
+  - **Non cumulatif — « on garde le plus fort »** : plusieurs bombes de glace sur
+    un même ennemi **ne s'empilent PAS**. Chaque tier vise une **vitesse cible**
+    `cible = max_speed × (1 − slow%/100)` ; on applique
+    `current_stats.speed = min(current_stats.speed, cible)`. Un slow plus faible
+    arrivant après un plus fort est donc un **no-op** (la cible est plus haute que
+    la vitesse courante). Deux bombes de même tier → 2ᵉ = no-op. Fonction **pure**
+    `bomb_ice_slow.gd apply(cur_speed, max_speed, slow_pct) -> float`.
+  - **Application via le signal `hit_something` (AUCUNE extension de `enemy.gd`)** :
+    l'explosion (`PlayerExplosion`) émet déjà un signal public
+    `hit_something(thing_hit, damage_dealt)` pour **chaque** ennemi touché, émis
+    **hors** du gate `deals_damage` (`unit.gd:608`) → il se déclenche **même à
+    0 dégât**. `bomb_entity`, pour une bombe de glace, connecte **après**
+    `explode()` ce signal à notre `BombWeapon` (persistant) :
+    `instance.connect("hit_something", weapon, "on_ice_hit", [slow_pct])`
+    (gardé par `is_connected`). `BombWeapon.on_ice_hit(thing_hit, damage_dealt,
+    slow_pct)` applique
+    `thing_hit.current_stats.speed = BombIceSlow.apply(thing_hit.current_stats.speed,
+    thing_hit.max_stats.speed, slow_pct)` — **duck-typé** (`if "current_stats" in
+    thing_hit and "max_stats" in thing_hit`), donc marche sur n'importe quel `Unit`
+    (vanilla/DLC/autre mod) sans toucher au code ennemi.
+  - **Pourquoi ce choix (risques évités)** : étendre `enemy.gd` exposerait à
+    (a) un ennemi DLC avec un `_on_hurt` maison n'appelant pas son parent (pas de
+    slow) ou une MAJ changeant sa signature (casse au chargement), et (b) la
+    fragilité de chaînage si un autre mod étend aussi `enemy.gd` sans rappeler son
+    parent. Le signal `hit_something` (stable, déjà utilisé par le vanilla pour
+    brancher les armes) confine **toute** la logique dans NOTRE `bomb_weapon.gd`.
+  - **Hygiène du pool** : `PlayerExplosion.end_explosion()` fait déjà
+    `Utils.disconnect_all_signal_connections(self, "hit_something")` au recyclage →
+    notre connexion est nettoyée à chaque fin d'explosion. **Aucune contamination,
+    aucune extension `player_explosion.gd` nécessaire.**
+  - **Durée** : la coupe est écrite dans `thing_hit.current_stats.speed` → elle
+    **persiste** tant que l'ennemi vit (pas de régénération de la vitesse de base).
+    Comportement voulu (débuff durable, non décroissant) ; le `min()` garantit
+    l'absence d'empilement.
+- **Slow % par tier (I→IV)** : porté par `_stats.speed_percent_modifier`
+  (**repurposé** comme pourcentage de slow cible, valeurs `-30 / -40 / -50 / -60`).
+  Valeurs à caler en jeu.
+- **Givre visuel — contour bleu persistant (0 dégât strict)** : en plus du slow,
+  l'ennemi touché reçoit un **contour bleu givré** via `entity.gd:add_outline(color)`
+  (système d'outline shader natif, 4 couleurs max, déjà utilisé par les boosts /
+  la malédiction des pets). Appliqué dans `BombWeapon.on_ice_hit` (même point que le
+  slow, guardé par `has_method("add_outline")`). Couleur `FROST_OUTLINE_COLOR`
+  (`Color("5bc8ff")`). **Non cumulatif** (add_outline dédoublonne par couleur) et
+  **auto-nettoyé** à la mort de l'ennemi.
+  → **Pivot vs. le plan initial (burning BLEU)** : l'approche `BurningEffect` givré
+  (`damage=0` + scaling ingé pour la couleur) a été **abandonnée** car le calcul
+  vanilla `apply_scaling_stats_to_damage` = `max(1.0, …)` **impose un plancher de
+  1 dégât/tick** : un DOT à 0 strict est **impossible** via le burning (constaté en
+  jeu). Le contour remplace donc entièrement le burning givré — plus aucun
+  `BurningEffect` dans les `.tres` de glace, `burning_data` reste nul (cas déjà géré,
+  comme la bombe normale).
+- **Explosion** : AoE `damage = 0` (repli **1 dégât** autorisé si un test montre
+  qu'un 0 pose souci) ; `_will_wake = false` (jamais de trollbombe).
+- **Visuel bombe** : `glace.png` (= `Glace.png` copié dans le mod, 150×150 RGBA,
+  fond déjà transparent), constant I→IV ; sprite en jeu 48×48 sans fond ; icône
+  boutique avec disque coloré par tier.
 
 ### Bombe de Poison ☠️
 - **Mécanique** : DOT, **aucun dégât d'explosion direct**. `BurningData` avec

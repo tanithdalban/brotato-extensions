@@ -12,6 +12,13 @@ const BombIceSlow = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/
 # Échelle d'explosion de base (équiv. landmine). Ajustable au réglage.
 const EXPLOSION_SCALE := 1.5
 
+# Couleur du contour "givré" appliqué à l'ennemi gelé (feedback visuel du slow).
+# Le système d'outline vit dans entity.gd (add_outline/remove_outline, shader,
+# 4 couleurs max) : il porte ici tout le signal visuel de la Bombe de Glace, ce qui
+# nous permet de retirer le burning givré (et donc son DOT plancher max(1,…)).
+# Non cumulatif par nature : add_outline dédoublonne par couleur.
+const FROST_OUTLINE_COLOR := Color("5bc8ff")
+
 # Surcharge : applique le skin de bombe (déterminé par l'élément) au sprite tenu
 # AVANT le _ready() vanilla, qui capture `sprite.texture` dans `_original_sprite` (ligne 74)
 # et s'en sert pour l'outline coloré par tier (update_highlighting). Le sprite en
@@ -99,6 +106,10 @@ func on_ice_hit(thing_hit, _damage_dealt, slow_pct: float) -> void:
 		thing_hit.max_stats.speed,
 		slow_pct
 	)
+	# Feedback visuel du gel : contour bleu persistant (add_outline vient d'entity.gd).
+	# Se nettoie tout seul à la mort de l'ennemi ; dédoublonné par couleur (non cumulatif).
+	if thing_hit.has_method("add_outline"):
+		thing_hit.add_outline(FROST_OUTLINE_COLOR)
 
 
 # --- Déphasage par slot ("train de bombes") ---
