@@ -14,6 +14,9 @@
 #   WEAPON_BOMB_STORM       — nom de la Bombe de Foudre
 #   WEAPON_BOMB_STORM_BOLTS — ligne d'infobulle « nb éclairs » (via NullEffect,
 #                             {0} = nb_projectiles du tier)
+#   WEAPON_BOMB_POISON      — nom de la Bombe de Poison (le DOT s'affiche via
+#                             la ligne de brûlure native du BurningEffect,
+#                             aucune clé d'infobulle dédiée)
 #
 # Note sur les descriptions : dans Brotato, les descriptions d'objets/personnages
 # sont construites à partir du tableau effects[] (EffectLine), PAS depuis une clé
@@ -32,6 +35,7 @@ static func register() -> void:
 	tr_en.add_message("WEAPON_BOMB_ICE_SLOW", "Slows enemies by {0}%")
 	tr_en.add_message("WEAPON_BOMB_STORM", "Storm Bomb")
 	tr_en.add_message("WEAPON_BOMB_STORM_BOLTS", "Strikes with {0} lightning bolts")
+	tr_en.add_message("WEAPON_BOMB_POISON", "Poison Bomb")
 	TranslationServer.add_translation(tr_en)
 
 	var tr_fr := Translation.new()
@@ -42,4 +46,5 @@ static func register() -> void:
 	tr_fr.add_message("WEAPON_BOMB_ICE_SLOW", "Ralentit les ennemis de {0}%")
 	tr_fr.add_message("WEAPON_BOMB_STORM", "Bombe de Foudre")
 	tr_fr.add_message("WEAPON_BOMB_STORM_BOLTS", "Frappe en {0} éclairs")
+	tr_fr.add_message("WEAPON_BOMB_POISON", "Bombe de Poison")
 	TranslationServer.add_translation(tr_fr)
