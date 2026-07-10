@@ -43,6 +43,13 @@ const _BOMB_STORM_WEAPONS := [
 	"res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb/bomb_storm_4_data.tres",
 ]
 
+const _BOMB_POISON_WEAPONS := [
+	"res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb/bomb_poison_1_data.tres",
+	"res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb/bomb_poison_2_data.tres",
+	"res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb/bomb_poison_3_data.tres",
+	"res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb/bomb_poison_4_data.tres",
+]
+
 const _BOMBERMAN_CHAR := "res://mods-unpacked/Tanith-Bomberman/content/characters/bomberman/bomberman_data.tres"
 
 func _ready() -> void:
@@ -52,6 +59,8 @@ func _ready() -> void:
 	for path in _BOMB_ICE_WEAPONS:
 		_register_bomb_weapon(path)
 	for path in _BOMB_STORM_WEAPONS:
+		_register_bomb_weapon(path)
+	for path in _BOMB_POISON_WEAPONS:
 		_register_bomb_weapon(path)
 
 	# Enregistrer le personnage Bomberman dans le pool de personnages.
