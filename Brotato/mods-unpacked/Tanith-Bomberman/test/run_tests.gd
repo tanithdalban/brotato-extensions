@@ -140,6 +140,7 @@ func _test_bomb_skin_element():
 	_check(BombSkin.element_sprite_path("inconnu").ends_with("bombe_normale.png"), "skin: inconnu -> repli normal")
 	var storm_path = BombSkin.element_sprite_path("storm")
 	_check(storm_path.ends_with("storm.png"), "skin: storm -> storm.png")
+	_check(BombSkin.element_sprite_path("poison").ends_with("poison.png"), "skin: poison -> poison.png")
 
 
 func _test_troll_should_wake():
