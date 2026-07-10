@@ -11,6 +11,7 @@ const TrollLogic = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/t
 const AnimatedIcon = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/animated_icon.gd")
 const BombElement = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_element.gd")
 const BombIceSlow = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_ice_slow.gd")
+const PoisonFire = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/poison_fire.gd")
 
 var _failures := 0
 var _count := 0
@@ -54,6 +55,7 @@ func _init():
 	_test_animated_icon_helpers()
 	_test_bomb_element()
 	_test_bomb_ice_slow()
+	_test_poison_fire()
 	print("=== %d tests, %d échec(s) ===" % [_count, _failures])
 	quit(_failures)
 
@@ -247,6 +249,23 @@ func _test_bomb_ice_slow():
 	_check(_approx(BombIceSlow.apply(50.0, 100.0, 30.0), 50.0), "ice: slow plus faible = no-op (garde le plus lent)")
 	# garde-fou max_speed 0 => inchangé.
 	_check(_approx(BombIceSlow.apply(42.0, 0.0, 50.0), 42.0), "ice: max_speed 0 => inchangé")
+
+
+func _test_poison_fire():
+	# Marqueur de source : le weapon_id partagé des 4 tiers commence par weapon_bomb_poison.
+	_check(PoisonFire.is_poison_source("weapon_bomb_poison"), "poison: weapon_bomb_poison reconnu")
+	_check(PoisonFire.is_poison_source("weapon_bomb_poison_3"), "poison: variante tier reconnue")
+	_check(not PoisonFire.is_poison_source("weapon_bomb"), "poison: bombe normale non reconnue")
+	_check(not PoisonFire.is_poison_source("weapon_turret"), "poison: tourelle (ingé bleu) non reconnue")
+	_check(not PoisonFire.is_poison_source(""), "poison: vide non reconnu")
+	# Dégradés verts : Gradient à points, 1re couleur plus verte que rouge.
+	var g = PoisonFire.green_gradient()
+	_check(g is Gradient, "poison: green_gradient est un Gradient")
+	_check(g.colors.size() >= 2, "poison: green_gradient a >= 2 points")
+	_check(g.colors[0].g > g.colors[0].r, "poison: 1re couleur verdâtre (g > r)")
+	var gs = PoisonFire.green_gradient_secondary()
+	_check(gs is Gradient, "poison: green_gradient_secondary est un Gradient")
+	_check(gs.colors[0].g > gs.colors[0].r, "poison: secondaire verdâtre (g > r)")
 
 
 func _check(cond, name):
