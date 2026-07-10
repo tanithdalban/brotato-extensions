@@ -124,13 +124,35 @@ le slow s'efface en ~0,5 s — trop bref. On veut un ralentissement **durable** 
   boutique avec disque coloré par tier.
 
 ### Bombe de Poison ☠️
+
+**Décisions de conception (2026-07-10, validées en session)** — écarts vs le
+plan initial ci-dessous :
+- **Sprite unique constant** (comme Glace/Foudre, pas un par tier) : on prend
+  `Poison.png` (bombe verte radioactive + fumée verte, 150×150 RGBA), copié en
+  `content/weapons/bomb/poison.png`. Le tier se lit via le contour de rareté (en
+  jeu) et le fond coloré de l'icône (boutique).
+- **Feu vert = OUI** (override `burning_particles`, cf. plus bas), repli bleu.
+- **Starter = OUI** : la Bombe de Poison tier I est ajoutée aux
+  `starting_weapons` de Bomberto, comme la Glace et la Foudre.
+
 - **Mécanique** : DOT, **aucun dégât d'explosion direct**. `BurningData` avec
-  `scaling_stats = [["stat_engineering", …]]` porté par le `_stats.tres` (ou un
-  effet burning) ; `bomb_entity` passe déjà `burning_data` à `explode()`.
-  Profite du kit ingénierie du Bomberto (`explosion_damage_per_engineering`).
+  `scaling_stats = [["stat_engineering", …]]`, damage > 0, **porté par un
+  `BurningEffect` dans `WeaponData.effects`** (schéma Torch, comme la Bombe
+  normale : la sérialisation de run **ne persiste pas** `stats.burning_data`, mais
+  l'effet le reconstitue à chaque calcul de stats). `bomb_entity` passe déjà
+  `_stats.burning_data` à `explode()` (l.113) ; **aucune branche spéciale**
+  n'est requise dans `bomb_entity` : le poison est une « bombe à effet »
+  (`is_effect` → `_explode_args.damage = 0`, jamais trollbombe) et le DOT
+  transite par le chemin existant. Profite du kit ingénierie du Bomberto
+  (`explosion_damage_per_engineering`).
+  - **Marqueur pour le feu vert** : `weapon.gd:151` fait
+    `current_stats.burning_data.from = self` (la `BombWeapon` persistante) →
+    l'ennemi brûlé propage `burning_data.from` jusqu'aux particules
+    (`unit.apply_burning` → `_burning.from` → `_burning_particles.burning_data`).
+    L'override lit donc `burning_data.from.weapon_id.begins_with("weapon_bomb_poison")`.
 - **Valeurs par tier** : dégâts/durée du DOT calqués et gradués sur la brûlure
-  élémentaire actuelle de la Bombe (à caler en jeu).
-- **Visuel — icône** : `poisonbomb_1..4.png` (un sprite par tier) + fond par tier.
+  élémentaire actuelle de la Bombe (**placeholders**, à caler en jeu).
+- **Visuel — icône** : sprite unique `poison.png` + disque coloré par tier.
 - **Visuel — DOT sur l'ennemi (feu vert)** : les particules de brûlure vanilla
   se colorent déjà selon le stat de scaling (`burning_particles.gd:_update_color`) :
   élémentaire → **rouge/orange**, ingénierie → **bleu** (couleur Tourelle
