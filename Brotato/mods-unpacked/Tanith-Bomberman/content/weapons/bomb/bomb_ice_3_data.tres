@@ -12,7 +12,7 @@
 script = ExtResource( 7 )
 key = "stat_speed"
 text_key = "WEAPON_BOMB_ICE_SLOW"
-value = 50
+value = 60
 custom_key = ""
 storage_method = 0
 effect_sign = 0
