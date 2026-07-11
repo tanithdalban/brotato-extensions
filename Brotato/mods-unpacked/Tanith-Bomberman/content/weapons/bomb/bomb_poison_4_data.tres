@@ -31,7 +31,7 @@ burning_data = SubResource( 1 )
 [resource]
 script = ExtResource( 1 )
 my_id = "weapon_bomb_poison_4"
-unlocked_by_default = true
+unlocked_by_default = false
 can_be_looted = true
 icon = ExtResource( 2 )
 name = "WEAPON_BOMB_POISON"
