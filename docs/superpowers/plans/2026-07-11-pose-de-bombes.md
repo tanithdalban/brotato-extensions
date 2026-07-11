@@ -68,9 +68,10 @@ func _test_bomb_placement():
 	# C'est le cas critique : une seule bombe en main (le slot ne différencie rien).
 	_check(not _approx(BombPlacement.raw_angle(0, 1, 0), BombPlacement.raw_angle(0, 1, 1)), "placement: poses successives (1 seule bombe) => angles différents")
 	_check(not _approx(BombPlacement.raw_angle(0, 1, 1), BombPlacement.raw_angle(0, 1, 2)), "placement: angle d'or ne reboucle pas")
-	# Garde-fous : pas de division par zéro.
-	_check(BombPlacement.raw_angle(0, 0, 0) == 0.0 or true, "placement: nb_slots 0 => pas de crash")
-	_check(BombPlacement.raw_angle(-3, 4, 0) == BombPlacement.raw_angle(0, 4, 0), "placement: slot négatif => traité comme 0")
+	# Garde-fous : pas de division par zéro. nb_slots 0 est ramené à 1, donc le terme de
+	# slot vaut 0 ; avec shot_index 0, l'angle brut vaut exactement 0.
+	_check(_approx(BombPlacement.raw_angle(0, 0, 0), 0.0), "placement: nb_slots 0 => ramené à 1, angle 0 (pas de division par zéro)")
+	_check(_approx(BombPlacement.raw_angle(-3, 4, 0), BombPlacement.raw_angle(0, 4, 0)), "placement: slot négatif => traité comme 0")
 
 	# --- mobility_target : « le déplacement suffit-il à espacer les bombes ? » ---
 	# Déplacement entre deux poses == 2 x RAYON => mobilité pleine.
