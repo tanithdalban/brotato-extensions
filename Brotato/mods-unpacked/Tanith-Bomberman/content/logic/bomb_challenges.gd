@@ -26,14 +26,6 @@ const REWARD := {
 	"chal_bomb_poison": "weapon_bomb_poison",
 }
 
-# Défi CACHÉ, sans ChallengeData ni récompense : sa seule fonction est de mémoriser
-# qu'on a déjà posé la question de migration au joueur. Poussé tel quel dans
-# ProgressData.challenges_completed (que le jeu sauvegarde), il reste invisible :
-# l'écran Progression itère le tableau ChallengeService.challenges, pas les hash
-# complétés. Aucun fichier maison, aucune persistance à écrire.
-const MIGRATION_ASKED_ID := "chal_bomb_migration_asked"
-
-
 # Le défi complété par l'obtention de cette arme, ou "" si aucun.
 static func challenge_for(weapon_id: String, tier: int) -> String:
 	if tier != TIER_IV:
