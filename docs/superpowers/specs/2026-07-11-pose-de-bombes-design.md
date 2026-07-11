@@ -166,6 +166,34 @@ Une seule formule continue, aucune bascule entre deux modes.
 **Le rayon est une constante fixe** (`RAYON ≈ 64 px`, à régler en jeu). Pas d'indexation
 sur le rayon d'explosion (cf. « L'intention »).
 
+#### ⚠️ RÉVISION (post-revue) : la mobilité se mesure sur le déplacement NET
+
+La formulation ci-dessous (mobilité = `vitesse × intervalle / (2 × RAYON)`, lissée dans le
+temps) est **conceptuellement juste mais mal mesurée**, et la revue de branche l'a fait
+tomber. Une **vitesse instantanée** trahit dès que le joueur *frétille sur place*
+(aller-retour rapide, le geste d'esquive le plus courant du jeu) : la vitesse est élevée,
+mais le déplacement **net** est nul. L'éventail se refermait alors, et les bombes
+s'empilaient — le bug même que cette refonte existe pour tuer.
+
+**Ce qui est implémenté** mesure donc la distance **nette** réellement parcourue depuis la
+bombe précédente de cette arme, au moment de la pose :
+
+```
+mobilite = clamp(distance_nette / (N × 2 × RAYON), 0, 1)
+```
+
+où `N` est le nombre d'armes bombe (elles se relaient, donc chacune parcourt `N` fois la
+distance qui sépare deux bombes consécutives). C'est la **même grandeur** que la formule
+d'origine — le déplacement par bombe rapporté au diamètre de la couronne — simplement
+mesurée sur le trajet réel plutôt que déduite d'une vitesse.
+
+Conséquence heureuse : **plus aucun suivi par frame ni lissage** n'est nécessaire (les
+constantes de montée/descente disparaissent). Le calcul est fait une fois par pose, à
+partir d'un seul vecteur, qui porte à la fois la **direction** de la traînée et son
+**ouverture**.
+
+Le raisonnement ci-dessous reste valable — seule la mesure change.
+
 #### La mobilité n'est PAS « le joueur bouge-t-il ? »
 
 C'est le point délicat du design, et le piéger serait de le rater.
