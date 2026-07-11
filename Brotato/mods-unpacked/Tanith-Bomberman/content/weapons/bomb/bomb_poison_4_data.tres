@@ -11,7 +11,7 @@
 [sub_resource type="Resource" id=1]
 script = ExtResource( 7 )
 chance = 1.0
-damage = 10
+damage = 12
 duration = 8
 spread = 0
 scaling_stats = [ [ "stat_engineering", 1.0 ] ]
@@ -20,7 +20,7 @@ is_global_burn = false
 [sub_resource type="Resource" id=2]
 script = ExtResource( 6 )
 key = "effect_burning"
-text_key = ""
+text_key = "WEAPON_BOMB_POISON_DOT"
 value = 0
 custom_key = ""
 storage_method = 0
