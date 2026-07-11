@@ -7,6 +7,18 @@ elemental/engineering scaling.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.9.0] — 2026-07-11
+
+### Added
+- **New weapon: the Poison Bomb** (4 tiers), offered in Bomberto's shop and selectable as a starting weapon. It deals **no explosion damage** but **poisons the enemies it hits**: damage over time that **ignores armor** and scales with **engineering**, much like a burning turret. Its flames are **green**, and its tooltip reads "poison damage" rather than a generic burn.
+
+### Fixed
+- **Poison damage is no longer cut to a quarter.** Bomberto's damage penalty (-75%) was being applied to the poison when it shouldn't have been: the tooltip showed the correct value (17 per tick, say) but enemies only took a quarter of it (4). The poison now actually deals what it advertises.
+
+### Changed
+- **Ice Bomb slow increased**: 30 / 45 / 60 / **75%** by tier (up from 30 / 40 / 50 / 60%).
+- **Bomb rebalance.** The regular Bomb remains Bomberto's main damage source, but its scaling is down to 90% (engineering and elemental); the Storm Bomb is up to 100%; the Poison Bomb's poison is stronger. The four bombs keep distinct roles: the regular one hits hard, ice slows, storm scatters, poison eats through armor.
+
 ## [1.8.0] — 2026-07-09
 
 ### Added

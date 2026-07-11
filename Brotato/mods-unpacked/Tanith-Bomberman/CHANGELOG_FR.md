@@ -7,6 +7,18 @@ et mise sur les dégâts d'explosion et le scaling élémentaire/ingénierie.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.9.0] — 2026-07-11
+
+### Ajouté
+- **Nouvelle arme : la Bombe de Poison** (4 niveaux), proposée dans la boutique de Bomberto et sélectionnable comme arme de départ. Elle n'inflige **aucun dégât d'explosion** mais **empoisonne les ennemis touchés** : des dégâts sur la durée qui **ignorent l'armure** et qui scalent sur l'**ingénierie**, à la manière d'une tourelle enflammée. Ses flammes sont **vertes**, et son infobulle annonce des « dégâts de poison » plutôt qu'une brûlure générique.
+
+### Corrigé
+- **Les dégâts de poison ne sont plus amputés des trois quarts.** Le malus de dégâts de Bomberto (-75 %) s'appliquait au poison alors qu'il ne devait pas : l'infobulle affichait la bonne valeur (par exemple 17 par tic) mais les ennemis n'en prenaient que le quart (4). Le poison inflige désormais réellement ce qui est annoncé.
+
+### Modifié
+- **Ralentissement de la Bombe de Glace revu à la hausse** : 30 / 45 / 60 / **75 %** selon le niveau (au lieu de 30 / 40 / 50 / 60 %).
+- **Rééquilibrage des bombes.** La Bombe normale reste la principale source de dégâts de Bomberto, mais son scaling est ramené à 90 % (ingénierie et élémentaire) ; la Bombe de Foudre passe à 100 % ; la Bombe de Poison voit son poison renforcé. Les quatre bombes gardent des rôles distincts : la normale frappe fort, la glace ralentit, la foudre disperse, le poison ronge les blindés.
+
 ## [1.8.0] — 2026-07-09
 
 ### Ajouté
