@@ -129,10 +129,60 @@ func _bomb_slot_count() -> int:
 	return _parent.get_nb_weapons()
 
 
+# --- DOT du poison : brûlure de STRUCTURE, pas d'arme tenue ---
+
+# Recalcule le burning_data de la Bombe de Poison en le traitant comme une brûlure
+# de STRUCTURE (mécanique "tourelle enflammée", cf. spec : le DOT scale sur
+# l'ingénierie, pas sur les dégâts).
+#
+# Pourquoi : init_burning_data (weapon_service.gd:329-332) choisit son multiplicateur
+# final selon `is_structure` —
+#     is_structure  -> apply_structure_damage_bonus (Keys.structure_percent_damage)
+#     sinon         -> apply_damage_bonus           (Keys.stat_percent_damage)
+# Le chemin de l'arme TENUE passe is_structure = false (weapon.gd:136 ->
+# init_ranged_stats -> init_base_stats(..., is_structure = false)), donc le DOT
+# se prend `stat_percent_damage` en pleine figure : chez Bomberto c'est -75 %,
+# soit un DOT DIVISÉ PAR 4.
+#
+# Or l'INFOBULLE, elle, déduit is_structure du scaling (BurningEffect.get_args :
+# "premier scaling == ingénierie => structure") et affiche donc la valeur NON
+# amputée. D'où l'incohérence observée en jeu : infobulle "6x17", ticks réels à 4.
+#
+# On réaligne le gameplay sur l'infobulle en refaisant le calcul avec
+# is_structure = true. Effets de bord : aucun sur les autres bombes (garde sur
+# l'élément), et pour un AUTRE personnage le DOT cesse simplement de suivre son
+# % de dégâts pour suivre son % de dégâts de structure (0 par défaut) — cohérent
+# avec l'identité "tourelle enflammée", et ce n'est pas un buff.
+func _fix_poison_burning_scaling() -> void:
+	if BombElement.from_weapon_id(weapon_id) != BombElement.POISON:
+		return
+	if current_stats == null:
+		return
+
+	# Le burning_data de BASE vit dans le BurningEffect des effects[] (et NON dans
+	# stats.burning_data, que WeaponStats.serialize() ne persiste pas — leçon v1.4.0).
+	# C'est la même source que celle lue par l'infobulle.
+	var base_burning = null
+	for effect in effects:
+		if effect is BurningEffect:
+			base_burning = effect.burning_data
+			break
+	if base_burning == null:
+		return
+
+	current_stats.burning_data = WeaponService.init_burning_data(base_burning, player_index, true)
+	# `from` = l'arme persistante : porte l'attribution des dégâts du DOT
+	# (unit.gd:694 -> on_weapon_hit_something) ET le feu VERT (l'extension
+	# burning_particles lit burning_data.from.weapon_id). Le calcul ci-dessus
+	# renvoie un BurningData NEUF : sans ça, `from` serait nul.
+	current_stats.burning_data.from = self
+
+
 # Surcharge de init_stats (Weapon) : après l'init vanilla du cooldown de début
 # de vague, ajoute un déphasage par slot pour égrener les bombes ("train").
 func init_stats(at_wave_begin: bool = true) -> void:
 	.init_stats(at_wave_begin)
+	_fix_poison_burning_scaling()
 	if at_wave_begin:
 		# Égrener les bombes des différents slots : décaler le 1er cooldown
 		# de chaque arme selon son index, pour former une traînée nette.
