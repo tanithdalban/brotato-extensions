@@ -210,8 +210,14 @@ func _bomb_weapons() -> Array:
 	var out := []
 	if not is_instance_valid(_parent):
 		return out
+	# On compare les SCRIPTS, pas les types : `w is BombWeapon` est interdit ici, car
+	# ce fichier déclare lui-même `class_name BombWeapon` et Godot 3 refuse qu'une
+	# classe se référence par son propre nom (référence cyclique -> script invalide).
+	# Les 4 bombes (normale, glace, poison, foudre) partagent la même scène, donc le
+	# même script : cette comparaison les identifie exactement.
+	var bomb_script = get_script()
 	for w in _parent.current_weapons:
-		if w is BombWeapon:
+		if is_instance_valid(w) and w.get_script() == bomb_script:
 			out.push_back(w)
 	return out
 
