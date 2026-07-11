@@ -159,8 +159,8 @@ extends Reference
 const RADIUS := 64.0
 
 # Constantes de temps du lissage de la mobilité. La descente est plus lente que la
-# montée : c'est ce qui garde la mémoire de la course pendant le micro-arrêt où la
-# bombe est effectivement posée (vanilla interdit de tirer en mouvement).
+# montée : elle laisse le joueur freiner, tourner et repartir sans que la traînée se
+# retransforme en couronne au moindre à-coup du kiting.
 const MOBILITY_RISE_SECONDS := 0.2
 const MOBILITY_FALL_SECONDS := 0.5
 
@@ -529,10 +529,9 @@ BombWeapon entretient à chaque frame (_physics_process) la dernière direction 
 déplacement et une mobilité lissée, puis pose la bombe avec BombPlacement.offset()
 au lieu de la lâcher sous les pieds du joueur.
 
-La mémoire est indispensable : vanilla interdit de tirer en mouvement
-(weapon.gd:273-283), donc _current_movement est NUL au moment exact de la pose.
-La descente plus lente que la montée garde le souvenir de la course pendant le
-micro-arrêt où la bombe tombe réellement.
+La mémoire sert à LISSER : le kiting est un va-et-vient permanent, et sans lissage
+l'éventail claquerait du cercle complet à la file stricte à chaque freinage. Elle
+conserve aussi une direction quand le joueur est réellement à l'arrêt.
 
 Corrige au passage le déphasage : il comptait TOUTES les armes (get_nb_weapons)
 alors que seules les BOMBES s'entrelacent — un Bomberto avec 3 bombes et 3
