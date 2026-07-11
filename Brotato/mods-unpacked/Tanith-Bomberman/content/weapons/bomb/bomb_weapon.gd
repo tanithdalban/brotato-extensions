@@ -8,6 +8,7 @@ const BombTiming = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/b
 const BombSkin = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_skin.gd")
 const BombElement = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_element.gd")
 const BombIceSlow = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_ice_slow.gd")
+const BombPlacement = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_placement.gd")
 
 # Échelle d'explosion de base (équiv. landmine). Ajustable au réglage.
 const EXPLOSION_SCALE := 1.5
@@ -18,6 +19,18 @@ const EXPLOSION_SCALE := 1.5
 # nous permet de retirer le burning givré (et donc son DOT plancher max(1,…)).
 # Non cumulatif par nature : add_outline dédoublonne par couleur.
 const FROST_OUTLINE_COLOR := Color("5bc8ff")
+
+# --- Mémoire du mouvement (pour orienter la traînée) ---
+# Le joueur PEUT poser en mouvement : weapon.gd:273-283 se lit « ne tire que si immobile,
+# SAUF can_attack_while_moving », mais cet effet vaut 1 PAR DÉFAUT pour tout joueur
+# (player_run_data.gd:498). _current_movement est donc non nul au moment de la pose.
+# On entretient quand même une mémoire, à chaque frame, pour deux raisons :
+#   - LISSER : le kiting est un va-et-vient permanent ; sans lissage, l'éventail
+#     claquerait du cercle complet à la file stricte à chaque freinage ;
+#   - GARDER UNE DIRECTION quand le joueur est réellement à l'arrêt (_current_movement
+#     vaut alors Vector2.ZERO et il n'y a plus rien à lire).
+var _last_dir := Vector2.ZERO
+var _mobility := 0.0
 
 # Surcharge : applique le skin de bombe (déterminé par l'élément) au sprite tenu
 # AVANT le _ready() vanilla, qui capture `sprite.texture` dans `_original_sprite` (ligne 74)
@@ -54,6 +67,54 @@ func _clear_hitbox_signal_dupes() -> void:
 			_hitbox.disconnect(p[0], self, p[1])
 
 
+# Surcharge : on laisse vanilla faire son travail (décrément du cooldown, visée), puis
+# on met à jour la mémoire du mouvement du joueur.
+func _physics_process(delta: float) -> void:
+	._physics_process(delta)
+	_update_movement_memory(delta)
+
+
+# Mémoire du mouvement, mise à jour CHAQUE frame (et pas seulement au moment du tir) :
+# c'est ce qui lisse le va-et-vient du kiting et conserve une direction à l'arrêt.
+func _update_movement_memory(delta: float) -> void:
+	if not is_instance_valid(_parent):
+		return
+
+	var movement = _parent._current_movement
+	var is_moving: bool = movement != Vector2.ZERO
+	if is_moving:
+		_last_dir = movement.normalized()
+
+	# Cible de mobilité : « le déplacement suffit-il, à lui seul, à espacer les
+	# bombes ? ». Nulle si le joueur est à l'arrêt.
+	var target := 0.0
+	if is_moving:
+		target = BombPlacement.mobility_target(
+			_parent.get_move_speed(),
+			_placement_interval_seconds(),
+			BombPlacement.RADIUS
+		)
+
+	_mobility = BombPlacement.mobility_step(
+		_mobility,
+		target,
+		delta,
+		BombPlacement.MOBILITY_RISE_SECONDS,
+		BombPlacement.MOBILITY_FALL_SECONDS
+	)
+
+
+# Intervalle réel entre deux poses de bombe, TOUTES bombes confondues, en secondes.
+# Les armes bombe étant entrelacées et de même période, il tombe une bombe tous les
+# `cooldown / nb_bombes` frames. Le cooldown est en FRAMES (weapon.gd:193 le décrémente
+# de 60 x delta), d'où la division par 60.
+func _placement_interval_seconds() -> float:
+	var nb := _bomb_slot_count()
+	if nb <= 0:
+		nb = 1
+	return (current_stats.cooldown / float(nb)) / 60.0
+
+
 # Surcharge : tirer dès que le cooldown est prêt, SANS exiger de cible/portée.
 # Respecte la règle de mouvement vanilla (immobile, sauf effet "attaque en bougeant").
 func should_shoot() -> bool:
@@ -73,7 +134,16 @@ func shoot() -> void:
 	_nb_shots_taken += 1
 	var bomb = BombEntity.instance()
 	Utils.get_scene_node().add_child(bomb)
-	bomb.global_position = _parent.global_position
+	# Position sur la couronne à éventail, plutôt que sous les pieds du joueur.
+	# `_nb_shots_taken` vient d'être incrémenté ci-dessus : c'est le numéro de la pose.
+	bomb.global_position = _parent.global_position + BombPlacement.offset(
+		_bomb_slot_index(),
+		_bomb_slot_count(),
+		_nb_shots_taken,
+		_last_dir,
+		_mobility,
+		BombPlacement.RADIUS
+	)
 	# Utilise `tier` directement (membre de Weapon) — `data` n'existe pas dans weapon.gd.
 	# Dégât d'explosion calculé depuis les stats de BASE (pas current_stats) pour
 	# inclure le bonus explosion_damage (buff ingé) sans double-compter le %Damage.
@@ -133,19 +203,32 @@ func get_next_cooldown(_at_wave_begin: bool = false) -> float:
 
 # --- Déphasage par slot ("train de bombes") ---
 
-# Index de ce slot d'arme parmi les armes du joueur.
-# `weapon_pos` est assigné par player.gd:add_weapon(weapon, pos) avant _ready().
-# Retourne -1 si non initialisé (garde-fou : slot_phase_offset renverra 0).
-func _bomb_slot_index() -> int:
-	return weapon_pos
-
-
-# Nombre d'armes actuellement équipées par le joueur.
-# Retourne 0 si _parent n'est pas encore disponible (garde-fou).
-func _bomb_slot_count() -> int:
+# Liste des armes BOMBE actuellement équipées par le joueur, dans l'ordre des slots.
+# `current_weapons` (player.gd:22) contient TOUTES les armes : Bomberto peut acheter des
+# lance-roquettes ou des armes de mêlée à knockback. Seules les bombes s'entrelacent.
+func _bomb_weapons() -> Array:
+	var out := []
 	if not is_instance_valid(_parent):
-		return 0
-	return _parent.get_nb_weapons()
+		return out
+	for w in _parent.current_weapons:
+		if w is BombWeapon:
+			out.push_back(w)
+	return out
+
+
+# Index de CETTE arme parmi les seules armes bombe du joueur.
+# Retourne -1 si introuvable (garde-fou : slot_phase_offset renverra alors 0).
+func _bomb_slot_index() -> int:
+	var bombs := _bomb_weapons()
+	for i in bombs.size():
+		if bombs[i] == self:
+			return i
+	return -1
+
+
+# Nombre d'armes BOMBE équipées.
+func _bomb_slot_count() -> int:
+	return _bomb_weapons().size()
 
 
 # --- DOT du poison : brûlure de STRUCTURE, pas d'arme tenue ---
