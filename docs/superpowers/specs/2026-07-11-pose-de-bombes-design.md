@@ -63,23 +63,34 @@ les zones d'effet se recouvriront en fin de partie. Le symptôme n°1 (« la nor
 nettoie, les autres explosent dans le vide ») n'est donc traité qu'**indirectement** :
 les bombes ne s'empilent plus, mais le gâchis ne disparaît pas complètement.
 
-## Contrainte majeure découverte : on ne pose pas en mouvement
+## Le joueur PEUT poser en mouvement (piège de lecture évité)
 
-La règle vanilla (`weapons/weapon.gd:273-283`, reproduite par notre `should_shoot`) :
-une arme ne tire **que si le joueur est immobile**, sauf effet
+La règle vanilla (`weapons/weapon.gd:273-283`, reproduite par notre `should_shoot`) se
+lit : une arme ne tire que si le joueur est immobile, **sauf** effet
 `can_attack_while_moving`.
 
-**Au moment précis d'une pose, `_parent._current_movement` vaut donc `Vector2.ZERO`.**
-On ne peut pas orienter la traînée avec le déplacement instantané — il est nul par
-construction. Ce que le joueur perçoit comme un « train de bombes en mouvement » est
-en réalité le va-et-vient du kiting : courir, s'arrêter une fraction de seconde (une
-bombe tombe), repartir.
+**Cette exception est en réalité la règle.** `can_attack_while_moving` vaut **1 par
+défaut pour tout joueur** (`singletons/player_run_data.gd:498`, la table des effets
+initiaux — la même qui contient `can_burn_enemies`). Le joueur n'est **jamais** contraint
+de s'arrêter pour poser une bombe.
 
-Il faut donc **mémoriser** le mouvement récent.
+Conséquence : au moment de la pose, `_parent._current_movement` est **non nul** dans le
+cas courant. On peut donc orienter la traînée avec le mouvement réel.
+
+**La mémoire du mouvement reste néanmoins nécessaire, pour deux raisons :**
+
+1. **Lisser.** Le kiting est un va-et-vient permanent (courir, freiner, repartir). Sans
+   lissage, l'éventail claquerait du cercle complet à la file stricte à chaque
+   micro-arrêt, et la traînée serait hachée.
+2. **Garder une direction à l'arrêt.** Quand le joueur est réellement immobile,
+   `_current_movement` vaut `Vector2.ZERO` : il n'y a plus de direction à lire. On
+   conserve la dernière connue. (Sa valeur importe peu : à l'arrêt la mobilité tombe à 0
+   et l'éventail devient un cercle complet, donc l'orientation n'a plus d'effet visible.)
 
 Note : `_current_movement` (`entities/units/unit/unit.gd:36`) est le **vecteur
 d'entrée**, pas une vitesse — le moteur le normalise puis le multiplie par la vitesse
-de déplacement (`unit.gd:219`). Sa magnitude n'est pas exploitable comme vitesse.
+de déplacement (`unit.gd:219`). Sa magnitude n'est pas exploitable comme vitesse ; la
+vitesse réelle se lit avec `_parent.get_move_speed()` (`unit.gd:222`).
 
 ## Le design
 
@@ -206,14 +217,11 @@ du tir, et entretient deux valeurs :
   constantes de temps distinctes : **montée rapide, descente plus lente** (de l'ordre de
   0,2 s et 0,5 s, à régler).
 
-Le lissage est ce qui fait vivre tout le système : c'est lui qui garde la mémoire de la
-course pendant le micro-arrêt où la bombe est effectivement posée. Sans lui, la mobilité
-serait nulle à chaque pose (le joueur est immobile au moment du tir) et l'éventail
-serait toujours grand ouvert.
+Le lissage absorbe le va-et-vient permanent du kiting. Sans lui, l'éventail claquerait du
+cercle complet à la file stricte à chaque freinage, et la traînée serait hachée.
 
-La descente plus lente que la montée est délibérée : elle laisse le temps au joueur de
-s'arrêter, poser, et repartir sans que la traînée se transforme en couronne à chaque
-freinage.
+La descente plus lente que la montée est délibérée : elle laisse le joueur freiner,
+tourner et repartir sans que la traînée se transforme en couronne au moindre à-coup.
 
 La fonction d'intégration est **pure** et vit dans `bomb_placement.gd` :
 
@@ -225,16 +233,12 @@ static func mobility_step(current: float, target: float, delta: float,
                           rise_seconds: float, fall_seconds: float) -> float
 ```
 
-**Effet concret.** Le joueur court vite, s'arrête une demi-seconde pour lâcher une
-bombe : la mobilité mémorisée est encore haute → la bombe part **derrière lui**, dans
-l'axe de sa course. Il campe sur place : la mobilité retombe → la couronne se rouvre et
-les bombes l'entourent. Il se traîne à faible vitesse avec six bombes en main : la
-mobilité reste **basse malgré le mouvement**, l'éventail reste ouvert, et les bombes
-s'éparpillent autour de lui au lieu de se tasser derrière. La transition entre ces trois
-régimes se fait toute seule, sans bascule.
-
-Si le joueur possède `can_attack_while_moving`, le déplacement est réellement non nul à
-la pose : le mécanisme fonctionne à l'identique, en plus direct.
+**Effet concret.** Le joueur court vite : la mobilité est haute → les bombes tombent
+**derrière lui**, dans l'axe de sa course. Il campe sur place : la mobilité retombe → la
+couronne se rouvre et les bombes l'entourent. Il se traîne à faible vitesse avec six
+bombes en main : la mobilité reste **basse malgré le mouvement**, l'éventail reste
+ouvert, et les bombes s'éparpillent autour de lui au lieu de se tasser derrière. La
+transition entre ces trois régimes se fait toute seule, sans bascule.
 
 ## Portée des changements
 
