@@ -7,6 +7,20 @@ elemental/engineering scaling.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.0.0] — 2026-07-11
+
+A complete rework of **how bombs are dropped**. Until now they all landed under the
+player's feet, on the very same pixel, at an erratic pace. They now lay down a
+**readable trail** behind Bomberto.
+
+### Changed
+- **Bombs no longer drop at your feet.** Each bomb is now placed on a **ring** around the player, at a fixed distance. How wide that ring opens adapts to the way you play: **while running it closes up behind you**, and the bombs form a trail along your escape route; **while standing still it opens into a full circle**, and the bombs surround you. In between, the transition is continuous — no abrupt switch. The mod looks at the distance **actually travelled** between two drops: if running is enough to space the bombs out, it lets running do the work; if it isn't (slow character, or six bombs landing back to back), it spaces them out by angle instead.
+- **Steady, predictable drop rate.** Every bomb weapon now shares the same period, and the mod strips out the **random jitter** the game normally adds to each shot (±33% with six weapons). With N bombs equipped, one lands at a constant interval, indefinitely.
+- ⚠️ **A deliberate trade-off: tiers no longer speed up the drop rate.** The rhythm is the same from tier I to tier IV. Progression now runs entirely through everything else: damage, shorter fuse, stronger poison, more bolts, harsher slow.
+
+### Fixed
+- **The offset between two equipped bombs did not work** — and in fact had **never** worked since the mod was created. Two bombs in hand could therefore drop at the same time, in the same spot. They now take proper turns.
+
 ## [1.9.0] — 2026-07-11
 
 ### Added

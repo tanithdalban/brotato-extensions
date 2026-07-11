@@ -7,6 +7,20 @@ et mise sur les dégâts d'explosion et le scaling élémentaire/ingénierie.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.0.0] — 2026-07-11
+
+Refonte complète de **la façon dont les bombes se posent**. Jusqu'ici elles tombaient
+toutes sous les pieds du joueur, au même pixel, à une cadence erratique. Elles
+dessinent désormais une **traînée lisible** derrière Bomberto.
+
+### Modifié
+- **Les bombes ne tombent plus sous vos pieds.** Chaque bombe se pose maintenant sur une **couronne** autour du joueur, à distance fixe. L'ouverture de cette couronne s'adapte toute seule à votre façon de jouer : **en course, elle se referme derrière vous** et les bombes forment une traînée dans l'axe de votre fuite ; **à l'arrêt, elle s'ouvre en cercle complet** et les bombes vous entourent. Entre les deux, la transition est continue — aucun basculement brutal. Le mod tient compte du **déplacement réellement parcouru** entre deux poses : si courir suffit à espacer les bombes, il laisse la course faire le travail ; sinon (joueur lent, ou six bombes qui tombent coup sur coup), il écarte les bombes par l'angle.
+- **Cadence de pose régulière et prévisible.** Toutes les armes-bombe partagent désormais la même période, et le mod retire le **bruit aléatoire** que le jeu ajoute normalement à chaque tir (±33 % avec six armes). Avec N bombes équipées, il en tombe une à intervalle constant, indéfiniment.
+- ⚠️ **Contrepartie assumée : monter en niveau n'accélère plus la pose.** Le rythme est identique du niveau I au niveau IV. La progression passe désormais entièrement par le reste : dégâts, mèche plus courte, poison plus fort, éclairs plus nombreux, ralentissement plus mordant.
+
+### Corrigé
+- **Le décalage entre deux bombes équipées ne fonctionnait pas** — et n'avait en réalité **jamais** fonctionné depuis la création du mod. Deux bombes en main pouvaient donc se poser en même temps, au même endroit. Elles se relaient maintenant proprement.
+
 ## [1.9.0] — 2026-07-11
 
 ### Ajouté
