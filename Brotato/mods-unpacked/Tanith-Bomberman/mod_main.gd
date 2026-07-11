@@ -25,3 +25,4 @@ func _setup_logging() -> void:
 func _install_extensions() -> void:
 	ModLoaderMod.install_script_extension("res://mods-unpacked/Tanith-Bomberman/extensions/singletons/item_service.gd")
 	ModLoaderMod.install_script_extension("res://mods-unpacked/Tanith-Bomberman/extensions/particles/burning/burning_particles.gd")
+	ModLoaderMod.install_script_extension("res://mods-unpacked/Tanith-Bomberman/extensions/singletons/challenge_service.gd")
