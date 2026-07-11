@@ -12,6 +12,7 @@ const AnimatedIcon = preload("res://mods-unpacked/Tanith-Bomberman/content/logic
 const BombElement = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_element.gd")
 const BombIceSlow = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_ice_slow.gd")
 const PoisonFire = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/poison_fire.gd")
+const BombPlacement = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_placement.gd")
 
 var _failures := 0
 var _count := 0
@@ -56,6 +57,7 @@ func _init():
 	_test_bomb_element()
 	_test_bomb_ice_slow()
 	_test_poison_fire()
+	_test_bomb_placement()
 	print("=== %d tests, %d échec(s) ===" % [_count, _failures])
 	quit(_failures)
 
@@ -266,6 +268,74 @@ func _test_poison_fire():
 	var gs = PoisonFire.green_gradient_secondary()
 	_check(gs is Gradient, "poison: green_gradient_secondary est un Gradient")
 	_check(gs.colors[0].g > gs.colors[0].r, "poison: secondaire verdâtre (g > r)")
+
+
+func _test_bomb_placement():
+	# --- raw_angle : deux sources d'unicité ---
+	# Deux SLOTS différents visent des azimuts différents.
+	_check(not _approx(BombPlacement.raw_angle(0, 4, 0), BombPlacement.raw_angle(1, 4, 0)), "placement: slots différents => angles différents")
+	# Deux POSES successives d'un MÊME slot visent des azimuts différents.
+	# C'est le cas critique : une seule bombe en main (le slot ne différencie rien).
+	_check(not _approx(BombPlacement.raw_angle(0, 1, 0), BombPlacement.raw_angle(0, 1, 1)), "placement: poses successives (1 seule bombe) => angles différents")
+	_check(not _approx(BombPlacement.raw_angle(0, 1, 1), BombPlacement.raw_angle(0, 1, 2)), "placement: angle d'or ne reboucle pas")
+	# Garde-fous : pas de division par zéro. nb_slots 0 est ramené à 1, donc le terme de
+	# slot vaut 0 ; avec shot_index 0, l'angle brut vaut exactement 0.
+	_check(_approx(BombPlacement.raw_angle(0, 0, 0), 0.0), "placement: nb_slots 0 => ramené à 1, angle 0 (pas de division par zéro)")
+	_check(_approx(BombPlacement.raw_angle(-3, 4, 0), BombPlacement.raw_angle(0, 4, 0)), "placement: slot négatif => traité comme 0")
+
+	# --- mobility_target : « le déplacement suffit-il à espacer les bombes ? » ---
+	# Déplacement entre deux poses == 2 x RAYON => mobilité pleine.
+	_check(_approx(BombPlacement.mobility_target(128.0, 1.0, 64.0), 1.0), "mobilité: déplacement = 2xRAYON => 1.0")
+	# Moitié du seuil => moitié de la mobilité.
+	_check(_approx(BombPlacement.mobility_target(64.0, 1.0, 64.0), 0.5), "mobilité: déplacement = RAYON => 0.5")
+	# Joueur LENT : l'éventail doit RESTER ouvert (c'est le bug qu'on évite).
+	_check(BombPlacement.mobility_target(20.0, 0.1, 64.0) < 0.1, "mobilité: joueur lent => reste basse")
+	# BEAUCOUP de bombes : l'intervalle raccourcit => la mobilité baisse aussi.
+	var m_1_bombe = BombPlacement.mobility_target(300.0, 1.25, 64.0)
+	var m_6_bombes = BombPlacement.mobility_target(300.0, 1.25 / 6.0, 64.0)
+	_check(m_6_bombes < m_1_bombe, "mobilité: plus de bombes => intervalle court => mobilité plus basse")
+	# Bornes et garde-fous.
+	_check(_approx(BombPlacement.mobility_target(9999.0, 1.0, 64.0), 1.0), "mobilité: bornée à 1.0")
+	_check(_approx(BombPlacement.mobility_target(0.0, 1.0, 64.0), 0.0), "mobilité: vitesse 0 => 0.0")
+	_check(_approx(BombPlacement.mobility_target(100.0, 1.0, 0.0), 0.0), "mobilité: rayon 0 => 0.0 (pas de division par zéro)")
+	_check(_approx(BombPlacement.mobility_target(100.0, 0.0, 64.0), 0.0), "mobilité: intervalle 0 => 0.0")
+
+	# --- mobility_step : lissage, montée rapide / descente lente ---
+	_check(BombPlacement.mobility_step(0.0, 1.0, 0.1, 0.2, 0.5) > 0.0, "mobilité: monte vers la cible")
+	_check(BombPlacement.mobility_step(1.0, 0.0, 0.1, 0.2, 0.5) < 1.0, "mobilité: descend vers la cible")
+	# La montée est plus rapide que la descente (constantes 0.2s vs 0.5s).
+	var monte = BombPlacement.mobility_step(0.5, 1.0, 0.1, 0.2, 0.5) - 0.5
+	var descend = 0.5 - BombPlacement.mobility_step(0.5, 0.0, 0.1, 0.2, 0.5)
+	_check(monte > descend, "mobilité: montée plus rapide que descente")
+	_check(_approx(BombPlacement.mobility_step(0.5, 1.0, 0.0, 0.2, 0.5), 0.5), "mobilité: delta 0 => inchangé")
+	_check(BombPlacement.mobility_step(0.9, 1.0, 10.0, 0.2, 0.5) <= 1.0, "mobilité: bornée haut à 1.0")
+	_check(BombPlacement.mobility_step(0.1, 0.0, 10.0, 0.2, 0.5) >= 0.0, "mobilité: bornée bas à 0.0")
+
+	# --- fan_half_width : l'éventail se referme quand la mobilité monte ---
+	_check(_approx(BombPlacement.fan_half_width(0.0), PI), "éventail: mobilité 0 => cercle entier (PI)")
+	_check(_approx(BombPlacement.fan_half_width(1.0), 0.0), "éventail: mobilité 1 => file stricte (0)")
+	_check(BombPlacement.fan_half_width(0.5) < PI and BombPlacement.fan_half_width(0.5) > 0.0, "éventail: mobilité 0.5 => intermédiaire")
+
+	# --- offset : le décalage final ---
+	var rayon := 64.0
+	var dir := Vector2(1, 0)  # le joueur va vers la DROITE => l'arrière est à GAUCHE
+	# La norme du décalage vaut toujours le rayon.
+	var o = BombPlacement.offset(0, 1, 0, dir, 0.0, rayon)
+	_check(_approx(o.length(), rayon), "placement: norme du décalage = rayon")
+	# Mobilité 1 (pleine course) => la bombe part STRICTEMENT derrière (à gauche).
+	var arriere = BombPlacement.offset(0, 1, 7, dir, 1.0, rayon)
+	_check(_approx(arriere.x, -rayon) and _approx(arriere.y, 0.0), "placement: mobilité 1 => strictement derrière")
+	# ... et ce, quel que soit le numéro de pose (l'éventail est fermé).
+	var arriere2 = BombPlacement.offset(2, 4, 13, dir, 1.0, rayon)
+	_check(_approx(arriere2.x, -rayon) and _approx(arriere2.y, 0.0), "placement: mobilité 1 => derrière, quels que soient slot et pose")
+	# Mobilité 0 (à l'arrêt) => les poses successives balaient le cercle : deux poses
+	# successives donnent des décalages nettement différents.
+	var c0 = BombPlacement.offset(0, 1, 0, dir, 0.0, rayon)
+	var c1 = BombPlacement.offset(0, 1, 1, dir, 0.0, rayon)
+	_check((c0 - c1).length() > rayon * 0.5, "placement: mobilité 0 => poses successives bien écartées")
+	# Direction nulle (début de vague, aucun mouvement mémorisé) : pas de crash.
+	var od = BombPlacement.offset(0, 1, 0, Vector2.ZERO, 0.0, rayon)
+	_check(_approx(od.length(), rayon), "placement: direction nulle => pas de crash, norme conservée")
 
 
 func _check(cond, name):
