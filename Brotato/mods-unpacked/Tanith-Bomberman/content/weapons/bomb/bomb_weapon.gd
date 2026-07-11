@@ -198,7 +198,7 @@ func on_ice_hit(thing_hit, _damage_dealt, slow_pct: float) -> void:
 # `additional_cooldown_every_x_shots`, qui vaut -1 (désactivé) dans tous nos .tres ; et
 # le plafond `at_wave_begin` ne s'applique qu'au-delà de 180, très loin de nos 75.
 func get_next_cooldown(_at_wave_begin: bool = false) -> float:
-	return current_stats.cooldown
+	return float(current_stats.cooldown)
 
 
 # --- Déphasage par slot ("train de bombes") ---
