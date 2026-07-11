@@ -20,19 +20,16 @@ const EXPLOSION_SCALE := 1.5
 # Non cumulatif par nature : add_outline dédoublonne par couleur.
 const FROST_OUTLINE_COLOR := Color("5bc8ff")
 
-# --- Mémoire du mouvement (pour orienter la traînée) ---
-# Le joueur PEUT poser en mouvement : weapon.gd:273-283 se lit « ne tire que si immobile,
-# SAUF can_attack_while_moving », mais cet effet vaut 1 PAR DÉFAUT pour tout joueur
-# (player_run_data.gd:498). _current_movement est donc non nul au moment de la pose.
-# On entretient quand même une mémoire, à chaque frame, pour deux raisons :
-#   - LISSER : le kiting est un va-et-vient permanent ; sans lissage, l'éventail
-#     claquerait du cercle complet à la file stricte à chaque freinage ;
-#   - GARDER UNE DIRECTION quand le joueur est réellement à l'arrêt (_current_movement
-#     vaut alors Vector2.ZERO et il n'y a plus rien à lire).
-var _last_dir := Vector2.ZERO
-var _mobility := 0.0
-var _last_pos := Vector2.ZERO
-var _has_last_pos := false
+# Position du joueur au moment où CETTE arme a posé sa bombe précédente. Elle sert à
+# mesurer le déplacement NET depuis lors (cf. BombPlacement.mobility_from_travel), qui
+# porte à la fois la DIRECTION de la traînée et son écartement.
+#
+# Pourquoi un déplacement NET, mesuré d'une bombe à l'autre, plutôt qu'une vitesse suivie
+# à chaque frame : un joueur qui frétille sur place (aller-retour rapide pour esquiver) a
+# une vitesse élevée mais ne parcourt AUCUNE distance nette. Se fier à la vitesse
+# refermerait l'éventail et empilerait les bombes au même endroit.
+var _last_shot_pos := Vector2.ZERO
+var _has_last_shot_pos := false
 
 # Surcharge : applique le skin de bombe (déterminé par l'élément) au sprite tenu
 # AVANT le _ready() vanilla, qui capture `sprite.texture` dans `_original_sprite` (ligne 74)
@@ -69,65 +66,6 @@ func _clear_hitbox_signal_dupes() -> void:
 			_hitbox.disconnect(p[0], self, p[1])
 
 
-# Surcharge : on laisse vanilla faire son travail (décrément du cooldown, visée), puis
-# on met à jour la mémoire du mouvement du joueur.
-func _physics_process(delta: float) -> void:
-	._physics_process(delta)
-	_update_movement_memory(delta)
-
-
-# Mémoire du mouvement, mise à jour CHAQUE frame.
-#
-# On mesure le DÉPLACEMENT RÉEL (variation de la position du joueur), et non
-# get_move_speed() (la stat de vitesse) ni _current_movement (le vecteur d'ENTRÉE) :
-# un joueur qui pousse contre un bord d'arène a une entrée non nulle et une stat de
-# vitesse pleine, mais ne parcourt AUCUNE distance. Se fier à la stat ferait saturer
-# la mobilité, refermerait l'éventail, et empilerait toutes les bombes au même point.
-func _update_movement_memory(delta: float) -> void:
-	if not is_instance_valid(_parent):
-		return
-
-	var pos: Vector2 = _parent.global_position
-	var travelled := 0.0
-	if _has_last_pos:
-		var step: Vector2 = pos - _last_pos
-		travelled = step.length()
-		# Direction réellement suivie (et non la direction demandée à la manette).
-		if travelled > 0.0001:
-			_last_dir = step.normalized()
-	_last_pos = pos
-	_has_last_pos = true
-
-	var speed := 0.0
-	if delta > 0.0:
-		speed = travelled / delta
-
-	var target := BombPlacement.mobility_target(
-		speed,
-		_placement_interval_seconds(),
-		BombPlacement.RADIUS
-	)
-
-	_mobility = BombPlacement.mobility_step(
-		_mobility,
-		target,
-		delta,
-		BombPlacement.MOBILITY_RISE_SECONDS,
-		BombPlacement.MOBILITY_FALL_SECONDS
-	)
-
-
-# Intervalle réel entre deux poses de bombe, TOUTES bombes confondues, en secondes.
-# Les armes bombe étant entrelacées et de même période, il tombe une bombe tous les
-# `cooldown / nb_bombes` frames. Le cooldown est en FRAMES (weapon.gd:193 le décrémente
-# de 60 x delta), d'où la division par 60.
-func _placement_interval_seconds() -> float:
-	var nb := _bomb_slot_count()
-	if nb <= 0:
-		nb = 1
-	return (current_stats.cooldown / float(nb)) / 60.0
-
-
 # Surcharge : tirer dès que le cooldown est prêt, SANS exiger de cible/portée.
 # Respecte la règle de mouvement vanilla (immobile, sauf effet "attaque en bougeant").
 func should_shoot() -> bool:
@@ -148,15 +86,31 @@ func shoot() -> void:
 	var bomb = BombEntity.instance()
 	Utils.get_scene_node().add_child(bomb)
 	# Position sur la couronne à éventail, plutôt que sous les pieds du joueur.
+	#
+	# Le déplacement NET depuis la bombe précédente de cette arme porte TOUT : sa
+	# DIRECTION centre l'éventail à l'opposé (la traînée part derrière le joueur), et sa
+	# LONGUEUR décide de l'ouverture (l'éventail se referme quand la distance parcourue
+	# suffit déjà à espacer les bombes ; il reste ouvert sinon, et c'est alors l'angle qui
+	# les espace).
+	var nb := _bomb_slot_count()
+	if nb <= 0:
+		nb = 1
+	var travel := Vector2.ZERO
+	if _has_last_shot_pos:
+		travel = _parent.global_position - _last_shot_pos
+	var mobility := BombPlacement.mobility_from_travel(travel.length(), nb, BombPlacement.RADIUS)
 	# `_nb_shots_taken` vient d'être incrémenté ci-dessus : c'est le numéro de la pose.
+	# `offset` normalise `travel` lui-même et retombe sur un axe arbitraire s'il est nul.
 	bomb.global_position = _parent.global_position + BombPlacement.offset(
 		_bomb_slot_index(),
-		_bomb_slot_count(),
+		nb,
 		_nb_shots_taken,
-		_last_dir,
-		_mobility,
+		travel,
+		mobility,
 		BombPlacement.RADIUS
 	)
+	_last_shot_pos = _parent.global_position
+	_has_last_shot_pos = true
 	# Utilise `tier` directement (membre de Weapon) — `data` n'existe pas dans weapon.gd.
 	# Dégât d'explosion calculé depuis les stats de BASE (pas current_stats) pour
 	# inclure le bonus explosion_damage (buff ingé) sans double-compter le %Damage.
@@ -299,21 +253,33 @@ func _fix_poison_burning_scaling() -> void:
 	current_stats.burning_data.from = self
 
 
-# Surcharge de init_stats (Weapon) : après l'init vanilla, déphase le premier cooldown
-# pour égrener les bombes ("train").
+# Surcharge de init_stats (Weapon) : déphase le premier cooldown pour égrener les bombes
+# ("train") — une bombe toutes les cooldown/N frames.
 #
-# On SOUSTRAIT le déphasage (au lieu de l'ajouter) : _current_cooldown reste ainsi
-# <= cooldown, sinon reset_cooldown() (weapon.gd:332-334) l'écraserait par son
-# min(_current_cooldown, cooldown) et re-synchroniserait toutes les bombes.
-# On l'applique à CHAQUE init_stats (et pas seulement au début de vague) : vanilla
-# rappelle init_stats(false) à chaque recalcul de stat en cours de vague, ce qui
-# remettrait sinon toutes les bombes en phase.
+# On POSE une valeur ABSOLUE (cooldown - phase) : l'opération est donc IDEMPOTENTE. Une
+# application cumulative (`-= phase`) ferait dériver les phases à chaque recalcul de stat
+# en cours de vague — init_stats(false) est rappelée à chaque montée de niveau, objet ou
+# stat temporaire — jusqu'à resynchroniser toutes les bombes, voire les faire tirer en
+# rafale une fois la soustraction devenue plus grande que le cooldown restant.
+#
+# On SOUSTRAIT la phase au lieu de l'ajouter : la valeur reste ainsi <= cooldown, sinon
+# reset_cooldown() (weapon.gd:332-334) la raboterait par son min(_current_cooldown,
+# cooldown). C'est ce clamp qui écrasait l'ancien déphasage additif — lequel n'a donc
+# JAMAIS fonctionné depuis l'origine du mod.
+#
+# Quand l'applique-t-on ? Au début de vague (vanilla n'y repose le cooldown que dans ce
+# cas, weapon.gd:161-162), et aussi lorsque reset_cooldown() vient de RABOTER notre
+# valeur : un cooldown qui diminue en cours de vague (vitesse d'attaque) aplatit toutes
+# les bombes sur la même valeur, il faut alors les re-déphaser.
 func init_stats(at_wave_begin: bool = true) -> void:
+	var before := _current_cooldown
 	.init_stats(at_wave_begin)
 	_fix_poison_burning_scaling()
-	var phase = BombTiming.slot_phase_offset(
-		_bomb_slot_index(),
-		_bomb_slot_count(),
-		get_next_cooldown(at_wave_begin)
-	)
-	_current_cooldown = max(1.0, _current_cooldown - phase)
+	if at_wave_begin or _current_cooldown < before:
+		var cd := get_next_cooldown(at_wave_begin)
+		var phase = BombTiming.slot_phase_offset(
+			_bomb_slot_index(),
+			_bomb_slot_count(),
+			cd
+		)
+		_current_cooldown = max(1.0, cd - phase)

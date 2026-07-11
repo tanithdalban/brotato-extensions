@@ -283,36 +283,25 @@ func _test_bomb_placement():
 	_check(_approx(BombPlacement.raw_angle(0, 0, 0), 0.0), "placement: nb_slots 0 => ramené à 1, angle 0 (pas de division par zéro)")
 	_check(_approx(BombPlacement.raw_angle(-3, 4, 0), BombPlacement.raw_angle(0, 4, 0)), "placement: slot négatif => traité comme 0")
 
-	# --- mobility_target : « le déplacement suffit-il à espacer les bombes ? » ---
-	# Déplacement entre deux poses == 2 x RAYON => mobilité pleine.
-	_check(_approx(BombPlacement.mobility_target(128.0, 1.0, 64.0), 1.0), "mobilité: déplacement = 2xRAYON => 1.0")
+	# --- mobility_from_travel : « le déplacement NET suffit-il à espacer les bombes ? » ---
+	# 1 bombe, déplacement net = 2 x RAYON (le diamètre de la couronne) => mobilité pleine.
+	_check(_approx(BombPlacement.mobility_from_travel(128.0, 1, 64.0), 1.0), "mobilité: 1 bombe, 2xRAYON parcourus => 1.0")
 	# Moitié du seuil => moitié de la mobilité.
-	_check(_approx(BombPlacement.mobility_target(64.0, 1.0, 64.0), 0.5), "mobilité: déplacement = RAYON => 0.5")
-	# Joueur LENT : l'éventail doit RESTER ouvert (c'est le bug qu'on évite).
-	_check(BombPlacement.mobility_target(20.0, 0.1, 64.0) < 0.1, "mobilité: joueur lent => reste basse")
-	# BEAUCOUP de bombes : l'intervalle raccourcit => la mobilité baisse aussi.
-	# Vitesse choisie pour que m_1_bombe NE SATURE PAS (sinon le test ne comparerait
-	# qu'à 1.0 et passerait quelle que soit l'implémentation).
-	var m_1_bombe = BombPlacement.mobility_target(100.0, 1.25, 64.0)
-	var m_6_bombes = BombPlacement.mobility_target(100.0, 1.25 / 6.0, 64.0)
-	_check(m_1_bombe < 1.0, "mobilité: le cas de référence n'est pas saturé (test discriminant)")
-	_check(m_6_bombes < m_1_bombe * 0.5, "mobilité: 6 bombes => mobilité nettement plus basse qu'avec 1")
+	_check(_approx(BombPlacement.mobility_from_travel(64.0, 1, 64.0), 0.5), "mobilité: 1 bombe, RAYON parcouru => 0.5")
+	# FRÉTILLEMENT SUR PLACE : déplacement net nul => l'éventail RESTE ouvert (couronne).
+	# C'est exactement le cas que la mesure en distance NETTE existe pour attraper : une
+	# vitesse instantanée serait élevée et refermerait l'éventail, empilant les bombes.
+	_check(_approx(BombPlacement.mobility_from_travel(0.0, 1, 64.0), 0.0), "mobilité: déplacement net nul => 0.0 (couronne, pas d'empilement)")
+	# Plus de bombes => elles se relaient, donc chacune doit parcourir N fois plus pour
+	# obtenir la même mobilité.
+	var m_1 = BombPlacement.mobility_from_travel(64.0, 1, 64.0)
+	var m_6 = BombPlacement.mobility_from_travel(64.0, 6, 64.0)
+	_check(m_1 < 1.0, "mobilité: le cas de référence n'est pas saturé (test discriminant)")
+	_check(_approx(m_6, m_1 / 6.0), "mobilité: 6 bombes => mobilité divisée par 6")
 	# Bornes et garde-fous.
-	_check(_approx(BombPlacement.mobility_target(9999.0, 1.0, 64.0), 1.0), "mobilité: bornée à 1.0")
-	_check(_approx(BombPlacement.mobility_target(0.0, 1.0, 64.0), 0.0), "mobilité: vitesse 0 => 0.0")
-	_check(_approx(BombPlacement.mobility_target(100.0, 1.0, 0.0), 0.0), "mobilité: rayon 0 => 0.0 (pas de division par zéro)")
-	_check(_approx(BombPlacement.mobility_target(100.0, 0.0, 64.0), 0.0), "mobilité: intervalle 0 => 0.0")
-
-	# --- mobility_step : lissage, montée rapide / descente lente ---
-	_check(BombPlacement.mobility_step(0.0, 1.0, 0.1, 0.2, 0.5) > 0.0, "mobilité: monte vers la cible")
-	_check(BombPlacement.mobility_step(1.0, 0.0, 0.1, 0.2, 0.5) < 1.0, "mobilité: descend vers la cible")
-	# La montée est plus rapide que la descente (constantes 0.2s vs 0.5s).
-	var monte = BombPlacement.mobility_step(0.5, 1.0, 0.1, 0.2, 0.5) - 0.5
-	var descend = 0.5 - BombPlacement.mobility_step(0.5, 0.0, 0.1, 0.2, 0.5)
-	_check(monte > descend, "mobilité: montée plus rapide que descente")
-	_check(_approx(BombPlacement.mobility_step(0.5, 1.0, 0.0, 0.2, 0.5), 0.5), "mobilité: delta 0 => inchangé")
-	_check(BombPlacement.mobility_step(0.9, 1.0, 10.0, 0.2, 0.5) <= 1.0, "mobilité: bornée haut à 1.0")
-	_check(BombPlacement.mobility_step(0.1, 0.0, 10.0, 0.2, 0.5) >= 0.0, "mobilité: bornée bas à 0.0")
+	_check(_approx(BombPlacement.mobility_from_travel(99999.0, 1, 64.0), 1.0), "mobilité: bornée à 1.0")
+	_check(_approx(BombPlacement.mobility_from_travel(100.0, 1, 0.0), 0.0), "mobilité: rayon 0 => 0.0 (pas de division par zéro)")
+	_check(_approx(BombPlacement.mobility_from_travel(100.0, 0, 64.0), BombPlacement.mobility_from_travel(100.0, 1, 64.0)), "mobilité: nb_bombs 0 => ramené à 1")
 
 	# --- fan_half_width : l'éventail se referme quand la mobilité monte ---
 	_check(_approx(BombPlacement.fan_half_width(0.0), PI), "éventail: mobilité 0 => cercle entier (PI)")

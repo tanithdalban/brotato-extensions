@@ -14,12 +14,6 @@ extends Reference
 # centaines de pixels en fin de run et on perdrait la traînée.
 const RADIUS := 64.0
 
-# Constantes de temps du lissage de la mobilité. La descente est plus lente que la
-# montée : elle laisse le joueur freiner, tourner et repartir sans que la traînée se
-# retransforme en couronne au moindre à-coup du kiting.
-const MOBILITY_RISE_SECONDS := 0.2
-const MOBILITY_FALL_SECONDS := 0.5
-
 # Angle d'or (137,5°) : PI * (3 - sqrt(5)). Il ne reboucle jamais, donc les poses
 # successives d'une MÊME arme se répartissent d'elles-mêmes autour du cercle sans
 # retomber au même endroit. C'est ce qui règle le cas critique d'UNE SEULE bombe en
@@ -40,25 +34,23 @@ static func raw_angle(slot_index: int, nb_slots: int, shot_index: int) -> float:
 
 
 # « Le déplacement suffit-il, à lui seul, à espacer les bombes ? » -> [0, 1].
-# Seuil = 2 x rayon (le DIAMÈTRE de la couronne, soit l'espacement qu'elle fournirait
-# à elle seule). Retourne 0 si un paramètre est nul (pas de division par zéro).
-static func mobility_target(move_speed: float, interval_seconds: float, radius: float) -> float:
-	if move_speed <= 0.0 or interval_seconds <= 0.0 or radius <= 0.0:
+#
+# `travelled` = distance NETTE parcourue par le joueur depuis SA bombe précédente
+# (celle de cette même arme). Avec N armes bombe entrelacées, cette arme ne tire qu'une
+# fois tous les N tirs du groupe : la distance entre deux bombes CONSÉCUTIVES (toutes
+# armes confondues) vaut donc travelled / N.
+# On la compare à 2 x rayon, le DIAMÈTRE de la couronne, c'est-à-dire l'espacement que
+# la couronne fournirait à elle seule.
+#
+# On mesure une distance NETTE, et non une vitesse instantanée : un joueur qui frétille
+# sur place (aller-retour rapide pour esquiver) a une vitesse élevée mais un déplacement
+# net nul. Se fier à la vitesse refermerait l'éventail et empilerait les bombes — c'est
+# précisément le bug que ce module existe pour tuer.
+static func mobility_from_travel(travelled: float, nb_bombs: int, radius: float) -> float:
+	if travelled <= 0.0 or radius <= 0.0:
 		return 0.0
-	var travelled := move_speed * interval_seconds
-	return clamp(travelled / (2.0 * radius), 0.0, 1.0)
-
-
-# Lissage temporel de la mobilité vers sa cible. Montée et descente ont des constantes
-# de temps distinctes. Borné dans [0, 1]. delta = 0 -> inchangé.
-static func mobility_step(current: float, target: float, delta: float, rise_seconds: float, fall_seconds: float) -> float:
-	if delta <= 0.0:
-		return clamp(current, 0.0, 1.0)
-	var seconds := rise_seconds if target > current else fall_seconds
-	if seconds <= 0.0:
-		return clamp(target, 0.0, 1.0)
-	var t := clamp(delta / seconds, 0.0, 1.0)
-	return clamp(current + (target - current) * t, 0.0, 1.0)
+	var n := int(max(1, nb_bombs))
+	return clamp(travelled / (float(n) * 2.0 * radius), 0.0, 1.0)
 
 
 # Demi-ouverture de l'éventail, centré derrière le joueur.
