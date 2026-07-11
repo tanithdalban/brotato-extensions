@@ -31,6 +31,8 @@ const FROST_OUTLINE_COLOR := Color("5bc8ff")
 #     vaut alors Vector2.ZERO et il n'y a plus rien à lire).
 var _last_dir := Vector2.ZERO
 var _mobility := 0.0
+var _last_pos := Vector2.ZERO
+var _has_last_pos := false
 
 # Surcharge : applique le skin de bombe (déterminé par l'élément) au sprite tenu
 # AVANT le _ready() vanilla, qui capture `sprite.texture` dans `_original_sprite` (ligne 74)
@@ -74,26 +76,37 @@ func _physics_process(delta: float) -> void:
 	_update_movement_memory(delta)
 
 
-# Mémoire du mouvement, mise à jour CHAQUE frame (et pas seulement au moment du tir) :
-# c'est ce qui lisse le va-et-vient du kiting et conserve une direction à l'arrêt.
+# Mémoire du mouvement, mise à jour CHAQUE frame.
+#
+# On mesure le DÉPLACEMENT RÉEL (variation de la position du joueur), et non
+# get_move_speed() (la stat de vitesse) ni _current_movement (le vecteur d'ENTRÉE) :
+# un joueur qui pousse contre un bord d'arène a une entrée non nulle et une stat de
+# vitesse pleine, mais ne parcourt AUCUNE distance. Se fier à la stat ferait saturer
+# la mobilité, refermerait l'éventail, et empilerait toutes les bombes au même point.
 func _update_movement_memory(delta: float) -> void:
 	if not is_instance_valid(_parent):
 		return
 
-	var movement = _parent._current_movement
-	var is_moving: bool = movement != Vector2.ZERO
-	if is_moving:
-		_last_dir = movement.normalized()
+	var pos: Vector2 = _parent.global_position
+	var travelled := 0.0
+	if _has_last_pos:
+		var step: Vector2 = pos - _last_pos
+		travelled = step.length()
+		# Direction réellement suivie (et non la direction demandée à la manette).
+		if travelled > 0.0001:
+			_last_dir = step.normalized()
+	_last_pos = pos
+	_has_last_pos = true
 
-	# Cible de mobilité : « le déplacement suffit-il, à lui seul, à espacer les
-	# bombes ? ». Nulle si le joueur est à l'arrêt.
-	var target := 0.0
-	if is_moving:
-		target = BombPlacement.mobility_target(
-			_parent.get_move_speed(),
-			_placement_interval_seconds(),
-			BombPlacement.RADIUS
-		)
+	var speed := 0.0
+	if delta > 0.0:
+		speed = travelled / delta
+
+	var target := BombPlacement.mobility_target(
+		speed,
+		_placement_interval_seconds(),
+		BombPlacement.RADIUS
+	)
 
 	_mobility = BombPlacement.mobility_step(
 		_mobility,
@@ -203,38 +216,38 @@ func get_next_cooldown(_at_wave_begin: bool = false) -> float:
 
 # --- Déphasage par slot ("train de bombes") ---
 
-# Liste des armes BOMBE actuellement équipées par le joueur, dans l'ordre des slots.
-# `current_weapons` (player.gd:22) contient TOUTES les armes : Bomberto peut acheter des
-# lance-roquettes ou des armes de mêlée à knockback. Seules les bombes s'entrelacent.
-func _bomb_weapons() -> Array:
-	var out := []
-	if not is_instance_valid(_parent):
-		return out
-	# On compare les SCRIPTS, pas les types : `w is BombWeapon` est interdit ici, car
-	# ce fichier déclare lui-même `class_name BombWeapon` et Godot 3 refuse qu'une
-	# classe se référence par son propre nom (référence cyclique -> script invalide).
-	# Les 4 bombes (normale, glace, poison, foudre) partagent la même scène, donc le
-	# même script : cette comparaison les identifie exactement.
-	var bomb_script = get_script()
-	for w in _parent.current_weapons:
-		if is_instance_valid(w) and w.get_script() == bomb_script:
-			out.push_back(w)
-	return out
+# Préfixe partagé par les 4 armes bombe (normale, glace, poison, foudre).
+# Même convention que content/logic/shop_pool.gd.
+const _BOMB_ID_PREFIX := "weapon_bomb"
 
 
-# Index de CETTE arme parmi les seules armes bombe du joueur.
-# Retourne -1 si introuvable (garde-fou : slot_phase_offset renverra alors 0).
+# Index de CETTE arme parmi les seules armes BOMBE du joueur (0 = la première).
+# Nombre d'armes BOMBE équipées par le joueur.
+#
+# ⚠️ On lit les DONNÉES de run, PAS les nœuds d'armes (_parent.current_weapons).
+# player.gd:387-389 fait add_child(instance) PUIS current_weapons.push_back(instance),
+# et add_child déclenche _ready() -> init_stats() SYNCHRONEMENT : au moment où l'on
+# calcule le déphasage, l'arme n'est pas encore dans current_weapons. Scanner les
+# nœuds renvoyait donc "introuvable" et le déphasage valait 0 pour TOUTES les bombes,
+# qui tiraient alors exactement la même frame, au même pixel.
+# RunData, lui, est complet avant le spawn ; et weapon_pos est posé (player.gd:374)
+# avant add_child, donc il est fiable ici.
 func _bomb_slot_index() -> int:
-	var bombs := _bomb_weapons()
-	for i in bombs.size():
-		if bombs[i] == self:
-			return i
-	return -1
+	var weapons = RunData.get_player_weapons_ref(player_index)
+	var i := 0
+	var limit: int = int(min(weapon_pos, weapons.size()))
+	for pos in range(limit):
+		if weapons[pos].weapon_id.begins_with(_BOMB_ID_PREFIX):
+			i += 1
+	return i
 
 
-# Nombre d'armes BOMBE équipées.
 func _bomb_slot_count() -> int:
-	return _bomb_weapons().size()
+	var n := 0
+	for w in RunData.get_player_weapons_ref(player_index):
+		if w.weapon_id.begins_with(_BOMB_ID_PREFIX):
+			n += 1
+	return n
 
 
 # --- DOT du poison : brûlure de STRUCTURE, pas d'arme tenue ---
@@ -286,17 +299,21 @@ func _fix_poison_burning_scaling() -> void:
 	current_stats.burning_data.from = self
 
 
-# Surcharge de init_stats (Weapon) : après l'init vanilla du cooldown de début
-# de vague, ajoute un déphasage par slot pour égrener les bombes ("train").
+# Surcharge de init_stats (Weapon) : après l'init vanilla, déphase le premier cooldown
+# pour égrener les bombes ("train").
+#
+# On SOUSTRAIT le déphasage (au lieu de l'ajouter) : _current_cooldown reste ainsi
+# <= cooldown, sinon reset_cooldown() (weapon.gd:332-334) l'écraserait par son
+# min(_current_cooldown, cooldown) et re-synchroniserait toutes les bombes.
+# On l'applique à CHAQUE init_stats (et pas seulement au début de vague) : vanilla
+# rappelle init_stats(false) à chaque recalcul de stat en cours de vague, ce qui
+# remettrait sinon toutes les bombes en phase.
 func init_stats(at_wave_begin: bool = true) -> void:
 	.init_stats(at_wave_begin)
 	_fix_poison_burning_scaling()
-	if at_wave_begin:
-		# Égrener les bombes des différents slots : décaler le 1er cooldown
-		# de chaque arme selon son index, pour former une traînée nette.
-		var phase = BombTiming.slot_phase_offset(
-			_bomb_slot_index(),
-			_bomb_slot_count(),
-			get_next_cooldown(true)
-		)
-		_current_cooldown += phase
+	var phase = BombTiming.slot_phase_offset(
+		_bomb_slot_index(),
+		_bomb_slot_count(),
+		get_next_cooldown(at_wave_begin)
+	)
+	_current_cooldown = max(1.0, _current_cooldown - phase)

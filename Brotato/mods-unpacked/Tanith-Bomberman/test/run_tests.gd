@@ -291,9 +291,12 @@ func _test_bomb_placement():
 	# Joueur LENT : l'éventail doit RESTER ouvert (c'est le bug qu'on évite).
 	_check(BombPlacement.mobility_target(20.0, 0.1, 64.0) < 0.1, "mobilité: joueur lent => reste basse")
 	# BEAUCOUP de bombes : l'intervalle raccourcit => la mobilité baisse aussi.
-	var m_1_bombe = BombPlacement.mobility_target(300.0, 1.25, 64.0)
-	var m_6_bombes = BombPlacement.mobility_target(300.0, 1.25 / 6.0, 64.0)
-	_check(m_6_bombes < m_1_bombe, "mobilité: plus de bombes => intervalle court => mobilité plus basse")
+	# Vitesse choisie pour que m_1_bombe NE SATURE PAS (sinon le test ne comparerait
+	# qu'à 1.0 et passerait quelle que soit l'implémentation).
+	var m_1_bombe = BombPlacement.mobility_target(100.0, 1.25, 64.0)
+	var m_6_bombes = BombPlacement.mobility_target(100.0, 1.25 / 6.0, 64.0)
+	_check(m_1_bombe < 1.0, "mobilité: le cas de référence n'est pas saturé (test discriminant)")
+	_check(m_6_bombes < m_1_bombe * 0.5, "mobilité: 6 bombes => mobilité nettement plus basse qu'avec 1")
 	# Bornes et garde-fous.
 	_check(_approx(BombPlacement.mobility_target(9999.0, 1.0, 64.0), 1.0), "mobilité: bornée à 1.0")
 	_check(_approx(BombPlacement.mobility_target(0.0, 1.0, 64.0), 0.0), "mobilité: vitesse 0 => 0.0")
