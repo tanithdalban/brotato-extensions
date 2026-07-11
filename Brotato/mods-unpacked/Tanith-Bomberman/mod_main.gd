@@ -27,3 +27,4 @@ func _install_extensions() -> void:
 	ModLoaderMod.install_script_extension("res://mods-unpacked/Tanith-Bomberman/extensions/particles/burning/burning_particles.gd")
 	ModLoaderMod.install_script_extension("res://mods-unpacked/Tanith-Bomberman/extensions/singletons/challenge_service.gd")
 	ModLoaderMod.install_script_extension("res://mods-unpacked/Tanith-Bomberman/extensions/singletons/run_data.gd")
+	ModLoaderMod.install_script_extension("res://mods-unpacked/Tanith-Bomberman/extensions/ui/menus/run/character_selection.gd")
