@@ -20,21 +20,36 @@ extends "res://ui/menus/run/character_selection.gd"
 const BombermanModLog = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/mod_log.gd")
 const BombChallenges = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_challenges.gd")
 
+# Le dialogue de migration actuellement ouvert (null sinon). Sert à le refermer si la
+# coop démarre, et à ne jamais en empiler deux.
+var _bomberman_migration_dialog = null
+
 
 func _ready() -> void:
 	._ready()
 
-	# ⚠️ Ce test ne filtre que le cas évident : à cet instant, RunData.is_coop_run
-	# reflète encore le mode de la run PRÉCÉDENTE (RunData.play_mode n'est pas remis
-	# à zéro entre les runs). Les joueurs coop rejoignent la partie sur CET écran,
-	# APRÈS ce _ready() : un second appui pourrait démarrer la coop pendant que le
-	# popup est déjà affiché. D'où la re-vérification dans chaque gestionnaire de
-	# réponse (_on_migration_relock / _on_migration_keep), seule garantie fiable.
-	# Limite connue et ASSUMÉE : un joueur dont la run précédente était en coop ne
-	# verra donc pas le popup à sa première visite de cet écran en solo ; il le
-	# verra à la visite suivante. Désagrément mineur, pas un risque : on ne cherche
-	# pas à le contourner.
+	# L'écran porte SA PROPRE vérité sur le mode de jeu : le CheckButton coop émet
+	# `coop_initialized(active)` à CHAQUE bascule, et c'est l'intention RÉELLE du
+	# joueur pour la run à venir. `RunData.is_coop_run`, lui, ne reflète à cet instant
+	# que le mode de la run PRÉCÉDENTE (`play_mode` n'est pas remis à zéro entre deux
+	# runs) — s'y fier seul priverait du popup le joueur dont la dernière partie était
+	# en coop et qui revient jouer en solo.
+	#
+	# On s'abonne EN PLUS du vanilla (plusieurs abonnés à un même signal est légal ;
+	# on ne touche pas à sa connexion). `_coop_button` est un `onready` du script
+	# vanilla : il n'existe qu'APRÈS `._ready()`.
+	if _coop_button != null:
+		var _e = _coop_button.connect("coop_initialized", self, "_on_bomberman_coop_toggled")
+
+	_bomberman_try_propose_migration()
+
+
+# Propose la migration si, et seulement si, on est en solo et qu'il reste des bombes
+# possédées mais non gagnées. Idempotent : ne rouvre jamais un dialogue déjà ouvert.
+func _bomberman_try_propose_migration() -> void:
 	if RunData.is_coop_run:
+		return
+	if _bomberman_migration_dialog != null:
 		return
 
 	var pending: Array = _unearned_bombs()
@@ -42,6 +57,41 @@ func _ready() -> void:
 		return
 
 	call_deferred("_show_migration_popup", pending)
+
+
+# Bascule du bouton coop de l'écran.
+#
+# - Coop ACTIVÉE : on referme le dialogue sans RIEN persister. Les joueurs rejoignent
+#   la partie avec leurs manettes sur cet écran, et un popup natif capte n'importe
+#   quel device : l'invité répondrait à la place de l'hôte, sur la sauvegarde de
+#   l'hôte, et le choix est irréversible. La question sera reposée plus tard, en solo.
+# - Coop DÉSACTIVÉE : le joueur revient au solo (typiquement, sa run précédente était
+#   en coop, donc `_ready()` s'était abstenu). C'est le moment de lui proposer.
+func _on_bomberman_coop_toggled(active: bool) -> void:
+	if active:
+		_bomberman_close_migration_dialog()
+	else:
+		_bomberman_try_propose_migration()
+
+
+func _bomberman_close_migration_dialog() -> void:
+	if _bomberman_migration_dialog == null:
+		return
+
+	if is_instance_valid(_bomberman_migration_dialog):
+		_bomberman_migration_dialog.hide()
+		_bomberman_migration_dialog.queue_free()
+
+	_bomberman_migration_dialog = null
+
+
+# Le dialogue s'est fermé, quelle qu'en soit la raison (réponse, Échap, coop qui
+# démarre) : on libère la référence pour qu'une bascule ultérieure puisse reproposer.
+func _on_bomberman_migration_dialog_hidden() -> void:
+	if _bomberman_migration_dialog != null and is_instance_valid(_bomberman_migration_dialog):
+		_bomberman_migration_dialog.queue_free()
+
+	_bomberman_migration_dialog = null
 
 
 # Les bombes possédées mais non gagnées (calcul pur dans BombChallenges).
@@ -60,6 +110,11 @@ func _unearned_bombs() -> Array:
 
 
 func _show_migration_popup(pending: Array) -> void:
+	# La proposition est différée (call_deferred) : la coop a pu démarrer entre-temps,
+	# ou un dialogue avoir déjà été ouvert. On revalide.
+	if RunData.is_coop_run or _bomberman_migration_dialog != null:
+		return
+
 	var dialog := ConfirmationDialog.new()
 	dialog.window_title = tr("BOMB_MIGRATION_TITLE")
 	dialog.dialog_text = tr("BOMB_MIGRATION_TEXT")
@@ -77,7 +132,9 @@ func _show_migration_popup(pending: Array) -> void:
 	# Échapper ferme sans choisir : la question sera reposée au prochain lancement.
 	dialog.connect("confirmed", self, "_on_migration_relock", [pending])
 	dialog.get_cancel().connect("pressed", self, "_on_migration_keep", [pending])
+	dialog.connect("popup_hide", self, "_on_bomberman_migration_dialog_hidden")
 
+	_bomberman_migration_dialog = dialog
 	add_child(dialog)
 	dialog.popup_centered(Vector2(700, 260))
 
