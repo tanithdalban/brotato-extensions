@@ -100,3 +100,5 @@ In-game text is bilingual (FR/EN); the source, comments and documentation are in
 [MIT](LICENSE) — © 2026 Tanith Dalban.
 
 La licence couvre le **code des mods** de ce dépôt. Elle ne couvre ni Brotato, ni ses assets.
+
+Les images des mods (sprites de bombes, personnage, icônes) ont été **générées par IA**, puis retouchées et assemblées par script. Elles n'empruntent à aucune œuvre tierce et ne demandent donc aucune attribution.
