@@ -13,6 +13,7 @@ const BombElement = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/
 const BombIceSlow = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_ice_slow.gd")
 const PoisonFire = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/poison_fire.gd")
 const BombPlacement = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_placement.gd")
+const BombChallenges = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_challenges.gd")
 
 var _failures := 0
 var _count := 0
@@ -58,6 +59,7 @@ func _init():
 	_test_bomb_ice_slow()
 	_test_poison_fire()
 	_test_bomb_placement()
+	_test_bomb_challenges()
 	print("=== %d tests, %d échec(s) ===" % [_count, _failures])
 	quit(_failures)
 
@@ -328,6 +330,58 @@ func _test_bomb_placement():
 	# Direction nulle (début de vague, aucun mouvement mémorisé) : pas de crash.
 	var od = BombPlacement.offset(0, 1, 0, Vector2.ZERO, 0.0, rayon)
 	_check(_approx(od.length(), rayon), "placement: direction nulle => pas de crash, norme conservée")
+
+
+func _test_bomb_challenges() -> void:
+	# ⚠️ Signature du helper existant : _check(cond, name) — la CONDITION d'abord.
+
+	# La chaîne : chaque bombe au tier IV débloque la suivante.
+	_check(BombChallenges.challenge_for("weapon_bomb", 3) == "chal_bomb_ice",
+		"défis: Bombe IV -> défi glace")
+	_check(BombChallenges.challenge_for("weapon_bomb_ice", 3) == "chal_bomb_storm",
+		"défis: Glace IV -> défi foudre")
+	_check(BombChallenges.challenge_for("weapon_bomb_storm", 3) == "chal_bomb_poison",
+		"défis: Foudre IV -> défi poison")
+
+	# Fin de chaîne : le poison ne débloque rien.
+	_check(BombChallenges.challenge_for("weapon_bomb_poison", 3) == "",
+		"défis: Poison IV ne complète rien (fin de chaîne)")
+
+	# Seul le tier IV compte.
+	_check(BombChallenges.challenge_for("weapon_bomb", 2) == "",
+		"défis: Bombe III ne complète rien")
+	_check(BombChallenges.challenge_for("weapon_bomb", 0) == "",
+		"défis: Bombe I ne complète rien")
+
+	# Une arme étrangère ne complète rien.
+	_check(BombChallenges.challenge_for("weapon_pistol", 3) == "",
+		"défis: arme non-bombe ne complète rien")
+
+	# ⚠️ "weapon_bomb" est un préfixe des autres : la correspondance doit être EXACTE.
+	# Ce test échoue si l'implémentation utilise begins_with().
+	_check(BombChallenges.challenge_for("weapon_bomb_ice", 3) != "chal_bomb_ice",
+		"défis: correspondance exacte, pas par préfixe")
+
+	# Cohérence interne : toute récompense de la chaîne est une bombe connue.
+	var coherent := true
+	for weapon_id in BombChallenges.CHAIN:
+		var chal_id = BombChallenges.CHAIN[weapon_id]
+		if not BombChallenges.REWARD.has(chal_id):
+			coherent = false
+	_check(coherent, "défis: chaque défi de la chaîne a une récompense")
+
+	# Migration : bombes possédées mais non gagnées.
+	_check(BombChallenges.unearned_bombs([], []).empty(),
+		"migration: rien de possédé => rien à proposer")
+	_check(BombChallenges.unearned_bombs(["weapon_bomb_ice"], []) == ["weapon_bomb_ice"],
+		"migration: glace possédée et non gagnée => à proposer")
+	_check(BombChallenges.unearned_bombs(["weapon_bomb_ice"], ["chal_bomb_ice"]).empty(),
+		"migration: glace possédée ET gagnée => rien à proposer")
+	_check(BombChallenges.unearned_bombs(
+			["weapon_bomb_ice", "weapon_bomb_storm", "weapon_bomb_poison"], []).size() == 3,
+		"migration: les trois possédées => les trois à proposer")
+	_check(BombChallenges.unearned_bombs(["weapon_bomb"], []).empty(),
+		"migration: la bombe normale n'est jamais concernée")
 
 
 func _check(cond, name):
