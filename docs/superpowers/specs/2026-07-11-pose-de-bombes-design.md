@@ -135,7 +135,7 @@ différencie rien.
 
 **Le repliement vers l'arrière.** L'angle brut n'est pas utilisé tel quel : il est
 **projeté** sur un éventail centré derrière le joueur, dont la demi-ouverture rétrécit
-quand la mobilité récente augmente.
+quand la mobilité augmente.
 
 ```
 demi_ouverture = PI * (1 - mobilite)        # mobilite ∈ [0, 1]
@@ -144,16 +144,53 @@ angle_final    = arriere.angle() + t * demi_ouverture
 decalage       = Vector2(cos(angle_final), sin(angle_final)) * RAYON
 ```
 
-- **mobilité = 0** (joueur campé) → demi-ouverture = `PI` → l'éventail est le **cercle
-  entier** : les bombes entourent le joueur.
-- **mobilité = 1** (pleine course) → demi-ouverture = `0` → toutes les bombes partent
-  **strictement derrière** : c'est une file. L'espacement de la traînée est alors
-  produit par le **déplacement réel** du joueur entre deux poses.
+- **mobilité = 0** → demi-ouverture = `PI` → l'éventail est le **cercle entier** : les
+  bombes entourent le joueur.
+- **mobilité = 1** → demi-ouverture = `0` → toutes les bombes partent **strictement
+  derrière** : c'est une file, et l'espacement est produit par le **déplacement réel**
+  du joueur entre deux poses.
 
 Une seule formule continue, aucune bascule entre deux modes.
 
 **Le rayon est une constante fixe** (`RAYON ≈ 64 px`, à régler en jeu). Pas d'indexation
 sur le rayon d'explosion (cf. « L'intention »).
+
+#### La mobilité n'est PAS « le joueur bouge-t-il ? »
+
+C'est le point délicat du design, et le piéger serait de le rater.
+
+La vitesse de déplacement du joueur est **variable en jeu** (objets, bonus). Si
+l'éventail se refermait dès que le joueur bouge — sans regarder **à quelle vitesse** —
+on réintroduirait l'empilement qu'on cherche à tuer : un joueur **lent** (ou qui a
+**beaucoup de bombes**, donc un intervalle de pose très court) verrait l'éventail se
+fermer alors qu'il n'a parcouru que quelques pixels entre deux poses. Les bombes
+viseraient toutes le même point derrière lui.
+
+La mobilité mesure donc **« le déplacement suffit-il, à lui seul, à espacer les
+bombes ? »** :
+
+```
+intervalle       = (cooldown_courant / nb_bombes) / 60.0     # secondes entre deux poses
+deplacement      = vitesse_reelle * intervalle               # pixels parcourus entre deux poses
+mobilite_cible   = clamp(deplacement / (2.0 * RAYON), 0, 1)
+```
+
+Le seuil `2 × RAYON` est le **diamètre de la couronne** : c'est l'espacement que la
+couronne fournirait à elle seule. La règle devient auto-régulante :
+
+- **le déplacement fait le travail** (joueur rapide, peu de bombes) → mobilité → 1 →
+  l'éventail se ferme → file nette derrière ;
+- **le déplacement ne suffit pas** (joueur lent, ou six bombes qui tombent coup sur
+  coup) → mobilité basse → l'éventail **reste ouvert** → c'est l'**angle** qui fournit
+  l'espacement, en éparpillant les bombes autour du joueur.
+
+Les deux sources d'espacement — la **distance parcourue** et l'**angle** — se relaient
+automatiquement. Ce seul mécanisme absorbe la vitesse variable du joueur, le nombre de
+bombes équipées **et** la vitesse d'attaque (qui raccourcissent l'intervalle).
+
+La vitesse réelle se lit sur le joueur : `_parent.get_move_speed()`
+(`entities/units/unit/unit.gd:222` — inclut `current_stats.speed`, `bonus_speed` et
+`decaying_bonus_speed`).
 
 ### 3. Le mouvement mémorisé
 
@@ -163,26 +200,38 @@ du tir, et entretient deux valeurs :
 - **`_last_dir`** : la dernière direction de déplacement **non nulle**
   (`_parent._current_movement.normalized()`). Elle définit « l'arrière »
   (`arriere = -_last_dir`).
-- **`_mobility`** : un facteur de **mobilité récente** dans `[0, 1]`. Il monte vers 1
-  quand le joueur bouge, retombe vers 0 quand il s'arrête, avec des constantes de temps
-  distinctes (montée rapide, descente plus lente — de l'ordre de 0,2 s et 0,5 s, à
-  régler).
+- **`_mobility`** : le facteur `[0, 1]` défini plus haut, **lissé dans le temps**. À
+  chaque frame on calcule la `mobilite_cible` (0 si le joueur est immobile, sinon la
+  formule `deplacement / (2 × RAYON)`), et `_mobility` glisse vers elle avec des
+  constantes de temps distinctes : **montée rapide, descente plus lente** (de l'ordre de
+  0,2 s et 0,5 s, à régler).
 
-On construit délibérément un facteur de **mobilité**, et non une vitesse en pixels :
-`_current_movement` est un vecteur d'entrée, pas une vitesse (cf. plus haut), et
-l'éventail n'a besoin que d'un ratio.
+Le lissage est ce qui fait vivre tout le système : c'est lui qui garde la mémoire de la
+course pendant le micro-arrêt où la bombe est effectivement posée. Sans lui, la mobilité
+serait nulle à chaque pose (le joueur est immobile au moment du tir) et l'éventail
+serait toujours grand ouvert.
+
+La descente plus lente que la montée est délibérée : elle laisse le temps au joueur de
+s'arrêter, poser, et repartir sans que la traînée se transforme en couronne à chaque
+freinage.
 
 La fonction d'intégration est **pure** et vit dans `bomb_placement.gd` :
 
 ```gdscript
-static func mobility_step(current: float, is_moving: bool, delta: float,
+static func mobility_target(move_speed: float, interval_seconds: float,
+                            radius: float) -> float
+
+static func mobility_step(current: float, target: float, delta: float,
                           rise_seconds: float, fall_seconds: float) -> float
 ```
 
-**Effet concret.** Le joueur court, s'arrête une demi-seconde pour lâcher une bombe :
-la mobilité mémorisée est encore haute → la bombe part **derrière lui**, dans l'axe de
-sa course. Il campe sur place : la mobilité retombe → la couronne se rouvre et les
-bombes l'entourent. La transition se fait toute seule.
+**Effet concret.** Le joueur court vite, s'arrête une demi-seconde pour lâcher une
+bombe : la mobilité mémorisée est encore haute → la bombe part **derrière lui**, dans
+l'axe de sa course. Il campe sur place : la mobilité retombe → la couronne se rouvre et
+les bombes l'entourent. Il se traîne à faible vitesse avec six bombes en main : la
+mobilité reste **basse malgré le mouvement**, l'éventail reste ouvert, et les bombes
+s'éparpillent autour de lui au lieu de se tasser derrière. La transition entre ces trois
+régimes se fait toute seule, sans bascule.
 
 Si le joueur possède `can_attack_while_moving`, le déplacement est réellement non nul à
 la pose : le mécanisme fonctionne à l'identique, en plus direct.
@@ -203,7 +252,11 @@ devient simplement fiable.
 
 **Headless (logique pure, `bomb_placement.gd`)** :
 
-- `mobility_step` : monte vers 1 en mouvement, retombe vers 0 à l'arrêt, reste borné
+- `mobility_target` : vaut 1 quand le déplacement entre deux poses atteint `2 × RAYON` ;
+  **décroît quand la vitesse du joueur baisse** ; **décroît aussi quand le nombre de
+  bombes augmente** (l'intervalle raccourcit, donc le déplacement par pose aussi) ;
+  borné dans `[0, 1]` ; ne divise pas par zéro si `radius` ou `interval` valent 0.
+- `mobility_step` : glisse vers la cible, monte plus vite qu'il ne descend, reste borné
   dans `[0, 1]`, idempotent à `delta = 0`.
 - Angle brut : deux slots différents donnent des azimuts différents ; deux poses
   successives d'un **même** slot donnent des azimuts différents (propriété de l'angle
