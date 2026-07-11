@@ -112,6 +112,25 @@ func on_ice_hit(thing_hit, _damage_dealt, slow_pct: float) -> void:
 		thing_hit.add_outline(FROST_OUTLINE_COLOR)
 
 
+# Surcharge : cooldown DÉTERMINISTE (pas de rand_range).
+#
+# Vanilla (weapon.gd:337-354) bruite le cooldown à CHAQUE tir — jusqu'à ±33 % avec 6
+# armes — pour désynchroniser des armes identiques. Chez nous, cette gigue pulvérise le
+# déphasage par slot (slot_phase_offset) en quelques cycles : le « train de bombes »
+# ne tient jamais. On la retire : toutes les armes bombe partagent le même cooldown
+# (75) et restent donc en phase toute la vague.
+#
+# La seule chose qui module encore ce cooldown est la vitesse d'attaque, qui est une
+# stat du JOUEUR : elle s'applique à l'identique à toutes ses armes bombe (nos .tres
+# gardent attack_speed_mod = 0), donc elle ne les désynchronise pas.
+#
+# On ne perd rien de la logique vanilla : `is_big_reload_active` dépend de
+# `additional_cooldown_every_x_shots`, qui vaut -1 (désactivé) dans tous nos .tres ; et
+# le plafond `at_wave_begin` ne s'applique qu'au-delà de 180, très loin de nos 75.
+func get_next_cooldown(_at_wave_begin: bool = false) -> float:
+	return current_stats.cooldown
+
+
 # --- Déphasage par slot ("train de bombes") ---
 
 # Index de ce slot d'arme parmi les armes du joueur.
