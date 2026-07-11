@@ -9,6 +9,10 @@ const ShopPool = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/sho
 const BombSkin = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_skin.gd")
 const TrollLogic = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/troll_bomb_logic.gd")
 const AnimatedIcon = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/animated_icon.gd")
+const BombElement = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_element.gd")
+const BombIceSlow = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_ice_slow.gd")
+const PoisonFire = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/poison_fire.gd")
+const BombPlacement = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_placement.gd")
 
 var _failures := 0
 var _count := 0
@@ -40,7 +44,8 @@ func _init():
 	_test_fuse_seconds()
 	_test_slot_phase_offset()
 	_test_keep_allowed_weapons()
-	_test_bomb_skin()
+	_test_bomb_icon_background()
+	_test_bomb_skin_element()
 	_test_troll_should_wake()
 	_test_troll_wake_delay()
 	_test_troll_nearest_target()
@@ -49,6 +54,10 @@ func _init():
 	_test_troll_min_living_hp()
 	_test_troll_keep_distance()
 	_test_animated_icon_helpers()
+	_test_bomb_element()
+	_test_bomb_ice_slow()
+	_test_poison_fire()
+	_test_bomb_placement()
 	print("=== %d tests, %d échec(s) ===" % [_count, _failures])
 	quit(_failures)
 
@@ -110,19 +119,32 @@ func _test_keep_allowed_weapons():
 	_check(pool.size() == 5, "pool: n'altère pas la liste d'entrée")
 	_check(ShopPool.keep_allowed_weapons([]).size() == 0, "pool: vide => vide")
 
-func _test_bomb_skin():
-	# Mapping tier -> couleur (rareté Brotato).
-	_check(BombSkin.color_for_tier(0) == "gray", "skin: T1 = gray")
-	_check(BombSkin.color_for_tier(1) == "blue", "skin: T2 = blue")
-	_check(BombSkin.color_for_tier(2) == "purple", "skin: T3 = purple")
-	_check(BombSkin.color_for_tier(3) == "red", "skin: T4 = red")
-	# Clamps.
-	_check(BombSkin.color_for_tier(-3) == "gray", "skin: clamp bas = gray")
-	_check(BombSkin.color_for_tier(99) == "red", "skin: clamp haut = red")
-	# Chemins construits : icône 96 vs sprite en jeu 48.
-	_check(BombSkin.texture_path(2).ends_with("/skins/bomb_purple.png"), "skin: icône T3 = bomb_purple.png")
-	_check(BombSkin.world_texture_path(2).ends_with("/skins/bomb_purple_48.png"), "skin: en jeu T3 = bomb_purple_48.png")
-	_check(BombSkin.world_texture_path(0).ends_with("/skins/bomb_gray_48.png"), "skin: en jeu T1 = bomb_gray_48.png")
+	# Préfixe weapon_bomb : la glace passe même sans set explosive.
+	_check(ShopPool.is_allowed(_StubWeapon.new("weapon_bomb_ice", [], 0, 1)), "pool: weapon_bomb_ice accepté (préfixe)")
+	_check(ShopPool.is_allowed(_StubWeapon.new("weapon_bomb", [], 0, 1)), "pool: weapon_bomb accepté (préfixe)")
+	_check(not ShopPool.is_allowed(_StubWeapon.new("weapon_smg", [], 0, 1)), "pool: weapon_smg rejeté")
+	_check(ShopPool.is_allowed(_StubWeapon.new("weapon_bomb_storm", [], 0, 1)), "pool: weapon_bomb_storm accepté (préfixe)")
+
+func _test_bomb_icon_background():
+	# Repli gris quand la couleur de rareté vaut blanc (tier commun).
+	_check(BombSkin.icon_background_color(Color.white) == BombSkin.COMMON_BG, "icone: fond blanc (commun) -> gris")
+	# Sinon, on conserve la couleur de rareté du jeu telle quelle.
+	var red := Color(1.0, 0.231, 0.231, 1.0)
+	_check(BombSkin.icon_background_color(red) == red, "icone: fond rareté conservé (rouge)")
+	var purple := Color(0.678, 0.353, 1.0, 1.0)
+	_check(BombSkin.icon_background_color(purple) == purple, "icone: fond rareté conservé (violet)")
+
+
+func _test_bomb_skin_element():
+	var normal_path = BombSkin.element_sprite_path("normal")
+	var ice_path = BombSkin.element_sprite_path("ice")
+	_check(normal_path.ends_with("bombe_normale.png"), "skin: normal -> bombe_normale.png")
+	_check(ice_path.ends_with("glace.png"), "skin: ice -> glace.png")
+	# Élément inconnu => repli sur normal (pas de crash).
+	_check(BombSkin.element_sprite_path("inconnu").ends_with("bombe_normale.png"), "skin: inconnu -> repli normal")
+	var storm_path = BombSkin.element_sprite_path("storm")
+	_check(storm_path.ends_with("storm.png"), "skin: storm -> storm.png")
+	_check(BombSkin.element_sprite_path("poison").ends_with("poison.png"), "skin: poison -> poison.png")
 
 
 func _test_troll_should_wake():
@@ -202,6 +224,110 @@ func _test_animated_icon_helpers():
 	_check(AnimatedIcon.usable_frame_count(0) == 0, "anim: 0 frame => 0")
 	_check(AnimatedIcon.usable_frame_count(-3) == 0, "anim: négatif => 0")
 	_check(AnimatedIcon.usable_frame_count(300) == AnimatedIcon.MAX_FRAMES, "anim: au-delà de 256 => 256")
+
+
+func _test_bomb_element():
+	_check(BombElement.from_weapon_id("weapon_bomb") == BombElement.NORMAL, "element: weapon_bomb => normal")
+	_check(BombElement.from_weapon_id("weapon_bomb_ice") == BombElement.ICE, "element: weapon_bomb_ice => ice")
+	_check(BombElement.from_weapon_id("weapon_bomb_poison") == BombElement.POISON, "element: poison")
+	_check(BombElement.from_weapon_id("weapon_bomb_storm") == BombElement.STORM, "element: storm")
+	_check(BombElement.from_weapon_id("weapon_smg") == BombElement.NORMAL, "element: inconnu => normal (repli)")
+	_check(BombElement.from_weapon_id("") == BombElement.NORMAL, "element: vide => normal")
+	_check(BombElement.is_effect(BombElement.ICE), "element: ice est un effet")
+	_check(not BombElement.is_effect(BombElement.NORMAL), "element: normal n'est pas un effet")
+
+
+func _test_bomb_ice_slow():
+	# slow_pct_for : magnitude du champ (négatif dans le .tres).
+	_check(_approx(BombIceSlow.slow_pct_for(-30), 30.0), "ice: slow_pct_for(-30) = 30")
+	_check(_approx(BombIceSlow.slow_pct_for(-60), 60.0), "ice: slow_pct_for(-60) = 60")
+	# apply : coupe vers la vitesse cible (max_speed=100, slow 30% => cible 70).
+	_check(_approx(BombIceSlow.apply(100.0, 100.0, 30.0), 70.0), "ice: 100 -> cible 70 (slow 30%)")
+	# non cumulatif : déjà à 70, re-slow 30% => cible 70 => no-op.
+	_check(_approx(BombIceSlow.apply(70.0, 100.0, 30.0), 70.0), "ice: non cumulatif (même tier = no-op)")
+	# slow plus fort écrase : à 70, slow 50% => cible 50.
+	_check(_approx(BombIceSlow.apply(70.0, 100.0, 50.0), 50.0), "ice: slow plus fort écrase (70 -> 50)")
+	# slow plus faible après plus fort = no-op : à 50, slow 30% => cible 70 > 50 => reste 50.
+	_check(_approx(BombIceSlow.apply(50.0, 100.0, 30.0), 50.0), "ice: slow plus faible = no-op (garde le plus lent)")
+	# garde-fou max_speed 0 => inchangé.
+	_check(_approx(BombIceSlow.apply(42.0, 0.0, 50.0), 42.0), "ice: max_speed 0 => inchangé")
+
+
+func _test_poison_fire():
+	# Marqueur de source : le weapon_id partagé des 4 tiers commence par weapon_bomb_poison.
+	_check(PoisonFire.is_poison_source("weapon_bomb_poison"), "poison: weapon_bomb_poison reconnu")
+	_check(PoisonFire.is_poison_source("weapon_bomb_poison_3"), "poison: variante tier reconnue")
+	_check(not PoisonFire.is_poison_source("weapon_bomb"), "poison: bombe normale non reconnue")
+	_check(not PoisonFire.is_poison_source("weapon_turret"), "poison: tourelle (ingé bleu) non reconnue")
+	_check(not PoisonFire.is_poison_source(""), "poison: vide non reconnu")
+	# Dégradés verts : Gradient à points, 1re couleur plus verte que rouge.
+	var g = PoisonFire.green_gradient()
+	_check(g is Gradient, "poison: green_gradient est un Gradient")
+	_check(g.colors.size() >= 2, "poison: green_gradient a >= 2 points")
+	_check(g.colors[0].g > g.colors[0].r, "poison: 1re couleur verdâtre (g > r)")
+	var gs = PoisonFire.green_gradient_secondary()
+	_check(gs is Gradient, "poison: green_gradient_secondary est un Gradient")
+	_check(gs.colors[0].g > gs.colors[0].r, "poison: secondaire verdâtre (g > r)")
+
+
+func _test_bomb_placement():
+	# --- raw_angle : deux sources d'unicité ---
+	# Deux SLOTS différents visent des azimuts différents.
+	_check(not _approx(BombPlacement.raw_angle(0, 4, 0), BombPlacement.raw_angle(1, 4, 0)), "placement: slots différents => angles différents")
+	# Deux POSES successives d'un MÊME slot visent des azimuts différents.
+	# C'est le cas critique : une seule bombe en main (le slot ne différencie rien).
+	_check(not _approx(BombPlacement.raw_angle(0, 1, 0), BombPlacement.raw_angle(0, 1, 1)), "placement: poses successives (1 seule bombe) => angles différents")
+	_check(not _approx(BombPlacement.raw_angle(0, 1, 1), BombPlacement.raw_angle(0, 1, 2)), "placement: angle d'or ne reboucle pas")
+	# Garde-fous : pas de division par zéro. nb_slots 0 est ramené à 1, donc le terme de
+	# slot vaut 0 ; avec shot_index 0, l'angle brut vaut exactement 0.
+	_check(_approx(BombPlacement.raw_angle(0, 0, 0), 0.0), "placement: nb_slots 0 => ramené à 1, angle 0 (pas de division par zéro)")
+	_check(_approx(BombPlacement.raw_angle(-3, 4, 0), BombPlacement.raw_angle(0, 4, 0)), "placement: slot négatif => traité comme 0")
+
+	# --- mobility_from_travel : « le déplacement NET suffit-il à espacer les bombes ? » ---
+	# 1 bombe, déplacement net = 2 x RAYON (le diamètre de la couronne) => mobilité pleine.
+	_check(_approx(BombPlacement.mobility_from_travel(128.0, 1, 64.0), 1.0), "mobilité: 1 bombe, 2xRAYON parcourus => 1.0")
+	# Moitié du seuil => moitié de la mobilité.
+	_check(_approx(BombPlacement.mobility_from_travel(64.0, 1, 64.0), 0.5), "mobilité: 1 bombe, RAYON parcouru => 0.5")
+	# FRÉTILLEMENT SUR PLACE : déplacement net nul => l'éventail RESTE ouvert (couronne).
+	# C'est exactement le cas que la mesure en distance NETTE existe pour attraper : une
+	# vitesse instantanée serait élevée et refermerait l'éventail, empilant les bombes.
+	_check(_approx(BombPlacement.mobility_from_travel(0.0, 1, 64.0), 0.0), "mobilité: déplacement net nul => 0.0 (couronne, pas d'empilement)")
+	# Plus de bombes => elles se relaient, donc chacune doit parcourir N fois plus pour
+	# obtenir la même mobilité.
+	var m_1 = BombPlacement.mobility_from_travel(64.0, 1, 64.0)
+	var m_6 = BombPlacement.mobility_from_travel(64.0, 6, 64.0)
+	_check(m_1 < 1.0, "mobilité: le cas de référence n'est pas saturé (test discriminant)")
+	_check(_approx(m_6, m_1 / 6.0), "mobilité: 6 bombes => mobilité divisée par 6")
+	# Bornes et garde-fous.
+	_check(_approx(BombPlacement.mobility_from_travel(99999.0, 1, 64.0), 1.0), "mobilité: bornée à 1.0")
+	_check(_approx(BombPlacement.mobility_from_travel(100.0, 1, 0.0), 0.0), "mobilité: rayon 0 => 0.0 (pas de division par zéro)")
+	_check(_approx(BombPlacement.mobility_from_travel(100.0, 0, 64.0), BombPlacement.mobility_from_travel(100.0, 1, 64.0)), "mobilité: nb_bombs 0 => ramené à 1")
+
+	# --- fan_half_width : l'éventail se referme quand la mobilité monte ---
+	_check(_approx(BombPlacement.fan_half_width(0.0), PI), "éventail: mobilité 0 => cercle entier (PI)")
+	_check(_approx(BombPlacement.fan_half_width(1.0), 0.0), "éventail: mobilité 1 => file stricte (0)")
+	_check(BombPlacement.fan_half_width(0.5) < PI and BombPlacement.fan_half_width(0.5) > 0.0, "éventail: mobilité 0.5 => intermédiaire")
+
+	# --- offset : le décalage final ---
+	var rayon := 64.0
+	var dir := Vector2(1, 0)  # le joueur va vers la DROITE => l'arrière est à GAUCHE
+	# La norme du décalage vaut toujours le rayon.
+	var o = BombPlacement.offset(0, 1, 0, dir, 0.0, rayon)
+	_check(_approx(o.length(), rayon), "placement: norme du décalage = rayon")
+	# Mobilité 1 (pleine course) => la bombe part STRICTEMENT derrière (à gauche).
+	var arriere = BombPlacement.offset(0, 1, 7, dir, 1.0, rayon)
+	_check(_approx(arriere.x, -rayon) and _approx(arriere.y, 0.0), "placement: mobilité 1 => strictement derrière")
+	# ... et ce, quel que soit le numéro de pose (l'éventail est fermé).
+	var arriere2 = BombPlacement.offset(2, 4, 13, dir, 1.0, rayon)
+	_check(_approx(arriere2.x, -rayon) and _approx(arriere2.y, 0.0), "placement: mobilité 1 => derrière, quels que soient slot et pose")
+	# Mobilité 0 (à l'arrêt) => les poses successives balaient le cercle : deux poses
+	# successives donnent des décalages nettement différents.
+	var c0 = BombPlacement.offset(0, 1, 0, dir, 0.0, rayon)
+	var c1 = BombPlacement.offset(0, 1, 1, dir, 0.0, rayon)
+	_check((c0 - c1).length() > rayon * 0.5, "placement: mobilité 0 => poses successives bien écartées")
+	# Direction nulle (début de vague, aucun mouvement mémorisé) : pas de crash.
+	var od = BombPlacement.offset(0, 1, 0, Vector2.ZERO, 0.0, rayon)
+	_check(_approx(od.length(), rayon), "placement: direction nulle => pas de crash, norme conservée")
 
 
 func _check(cond, name):

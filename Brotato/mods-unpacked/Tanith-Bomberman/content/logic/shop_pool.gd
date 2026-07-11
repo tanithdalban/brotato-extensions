@@ -4,9 +4,10 @@ extends Reference
 # n'est consulté QUE pour les items, jamais les armes) : on filtre nous-mêmes le pool
 # d'armes pour ne garder que le roster du Bomberto.
 #
-# Une arme est conservée si : c'est une Bombe, OU elle appartient au set explosive,
-# OU elle a un knockback >= 20 ET est une arme de mêlée (les armes à distance qui
-# atteignent 20 au tier 4 — sniper, potato thrower — sont exclues, hors thème).
+# Une arme est conservée si : son ID commence par le préfixe "weapon_bomb" (bombes standard
+# et élémentaires), OU elle appartient au set explosive, OU elle a un knockback >= 20 ET
+# est une arme de mêlée (les armes à distance qui atteignent 20 au tier 4 — sniper,
+# potato thrower — sont exclues, hors thème).
 
 const BOMB_WEAPON_ID := "weapon_bomb"
 const EXPLOSIVE_SET_ID := "set_explosive"
@@ -18,7 +19,7 @@ const TYPE_MELEE := 0  # WeaponData.Type.MELEE
 static func is_allowed(weapon) -> bool:
 	if weapon == null:
 		return false
-	if ("weapon_id" in weapon) and weapon.weapon_id == BOMB_WEAPON_ID:
+	if ("weapon_id" in weapon) and (weapon.weapon_id as String).begins_with(BOMB_WEAPON_ID):
 		return true
 	if _in_explosive_set(weapon):
 		return true

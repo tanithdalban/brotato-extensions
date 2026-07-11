@@ -13,6 +13,7 @@ extends Node2D
 # visage fâché en surcouche. Vitesse FIXE (indépendante de la stat vitesse).
 
 const BombSkin = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_skin.gd")
+const ExplosionVisual = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/explosion_visual.gd")
 const TrollBombLogic = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/troll_bomb_logic.gd")
 
 const _FACE_PATH := "res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb/skins/troll_bomb_face.png"
@@ -76,8 +77,8 @@ func arm(p_player_index: int, p_stats: WeaponStats, p_tier: int, p_explosion_sca
 	if _exploding_effect != null:
 		_exploding_effect.scale = _explosion_scale
 
-	# Corps coloré par le tier d'origine (sprite en jeu 48 réutilisé).
-	var body_tex = BombSkin.load_world_texture(p_tier)
+	# Corps = skin de bombe CONSTANT (sprite en jeu 48 réutilisé ; le tier ne colore que l'icône de boutique).
+	var body_tex = BombSkin.build_normal_world_texture()
 	if body_tex != null and is_instance_valid(_body):
 		_body.texture = body_tex
 	# Visage fâché en surcouche (placeholder -> art final).
@@ -85,13 +86,15 @@ func arm(p_player_index: int, p_stats: WeaponStats, p_tier: int, p_explosion_sca
 	if face_tex != null and is_instance_valid(_face):
 		_face.texture = face_tex
 
-	# Grossissement purement VISUEL (×1.25, comme la bombe posée en T7) : on scale
-	# le corps ET le visage, jamais la racine (sinon la Hitbox/rayon de contact
-	# serait agrandie aussi). Le rayon d'explosion reste géré par _explosion_scale.
+	# Grossissement purement VISUEL : la troll bombe est volontairement IMPOSANTE
+	# (~96px = presque la taille d'un ennemi de base 100×100) pour bien se voir comme
+	# un danger. On scale le corps ET le visage, jamais la racine (sinon la Hitbox/
+	# rayon de contact serait agrandie aussi). Le rayon d'explosion reste géré par
+	# _explosion_scale. Constante à régler ici si besoin (sprite source = 48px).
 	if is_instance_valid(_body):
-		_body.scale = Vector2(1.25, 1.25)
+		_body.scale = Vector2(2.0, 2.0)
 	if is_instance_valid(_face):
-		_face.scale = Vector2(1.25, 1.25)
+		_face.scale = Vector2(2.0, 2.0)
 
 	# Dégâts bruts de la bombe : plafonnés à chaque frame pour rester NON LÉTAUX.
 	_base_damage = int(_stats.damage) if _stats != null else 1
@@ -255,3 +258,5 @@ func _spawn_visual_explosion() -> void:
 	_explode_args.from = null
 	_explode_args.damage_tracking_key_hash = Keys.empty_hash
 	var _inst = WeaponService.explode(_exploding_effect, _explode_args)
+	# Anti-épilepsie : plafonne l'opacité du sprite d'AOE (visuel seul).
+	ExplosionVisual.cap_aoe_opacity(_inst)

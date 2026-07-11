@@ -7,6 +7,7 @@ const ModLog = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/mod_l
 const ShopPool = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/shop_pool.gd")
 const BombSkin = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_skin.gd")
 const AnimatedIcon = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/animated_icon.gd")
+const BombElement = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_element.gd")
 
 const _BOMBERMAN_ID := "character_bomberman"
 
@@ -28,21 +29,39 @@ const _BOMB_WEAPONS := [
 	"res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb/bomb_4_data.tres",
 ]
 
+const _BOMB_ICE_WEAPONS := [
+	"res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb/bomb_ice_1_data.tres",
+	"res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb/bomb_ice_2_data.tres",
+	"res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb/bomb_ice_3_data.tres",
+	"res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb/bomb_ice_4_data.tres",
+]
+
+const _BOMB_STORM_WEAPONS := [
+	"res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb/bomb_storm_1_data.tres",
+	"res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb/bomb_storm_2_data.tres",
+	"res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb/bomb_storm_3_data.tres",
+	"res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb/bomb_storm_4_data.tres",
+]
+
+const _BOMB_POISON_WEAPONS := [
+	"res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb/bomb_poison_1_data.tres",
+	"res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb/bomb_poison_2_data.tres",
+	"res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb/bomb_poison_3_data.tres",
+	"res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb/bomb_poison_4_data.tres",
+]
+
 const _BOMBERMAN_CHAR := "res://mods-unpacked/Tanith-Bomberman/content/characters/bomberman/bomberman_data.tres"
 
 func _ready() -> void:
 	# Injecter nos armes dans le pool vanilla avant le recâblage des upgrades.
 	for path in _BOMB_WEAPONS:
-		var w = load(path)
-		if w != null:
-			# Icône colorée par tier (chargée au runtime, hors cache d'import).
-			# On mute la WeaponData partagée : le magasin/inventaire lit son icon.
-			var skin = BombSkin.load_texture(w.tier)
-			if skin != null:
-				w.icon = skin
-		if w != null and not weapons.has(w):
-			weapons.append(w)
-			ModLog.info("arme enregistrée: " + str(w.my_id))
+		_register_bomb_weapon(path)
+	for path in _BOMB_ICE_WEAPONS:
+		_register_bomb_weapon(path)
+	for path in _BOMB_STORM_WEAPONS:
+		_register_bomb_weapon(path)
+	for path in _BOMB_POISON_WEAPONS:
+		_register_bomb_weapon(path)
 
 	# Enregistrer le personnage Bomberman dans le pool de personnages.
 	var character = load(_BOMBERMAN_CHAR)
@@ -84,6 +103,22 @@ func _ready() -> void:
 
 	# Le _ready() parent fixe upgrades_into.previous_upgrade pour toutes les armes.
 	._ready()
+
+
+# Charge une arme-bombe, pose son icône (bombe de l'élément sur disque de rareté)
+# et l'injecte dans le pool. Idempotent. Icône runtime (null en headless => on
+# garde l'icône du .tres).
+func _register_bomb_weapon(path: String) -> void:
+	var w = load(path)
+	if w == null:
+		return
+	var element = BombElement.from_weapon_id(w.weapon_id)
+	var skin = BombSkin.build_icon(element, get_color_from_tier(w.tier))
+	if skin != null:
+		w.icon = skin
+	if not weapons.has(w):
+		weapons.append(w)
+		ModLog.info("arme enregistrée: " + str(w.my_id))
 
 
 # --- Magasin « roster Bomberto : bombe + explosive + knockback mêlée » ---

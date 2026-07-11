@@ -1,0 +1,40 @@
+[gd_resource type="Resource" load_steps=8 format=2]
+
+[ext_resource path="res://items/global/weapon_data.gd" type="Script" id=1]
+[ext_resource path="res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb/bomb_icon.png" type="Texture" id=2]
+[ext_resource path="res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb/bomb.tscn" type="PackedScene" id=3]
+[ext_resource path="res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb/bomb_ice_4_stats.tres" type="Resource" id=4]
+[ext_resource path="res://items/sets/explosive/explosive_set_data.tres" type="Resource" id=5]
+[ext_resource path="res://effects/weapons/null_effect.gd" type="Script" id=6]
+
+[sub_resource type="Resource" id=1]
+script = ExtResource( 6 )
+key = "stat_speed"
+text_key = "WEAPON_BOMB_ICE_SLOW"
+value = 75
+custom_key = ""
+storage_method = 0
+effect_sign = 0
+custom_args = [  ]
+
+[resource]
+script = ExtResource( 1 )
+my_id = "weapon_bomb_ice_4"
+unlocked_by_default = true
+can_be_looted = true
+icon = ExtResource( 2 )
+name = "WEAPON_BOMB_ICE"
+tier = 3
+value = 149
+effects = [ SubResource( 1 ) ]
+tracking_text = ""
+is_lockable = true
+unlock_codex_descr_after_get_it = 1
+is_cursed = false
+curse_factor = 0.0
+weapon_id = "weapon_bomb_ice"
+type = 1
+sets = [ ExtResource( 5 ) ]
+scene = ExtResource( 3 )
+stats = ExtResource( 4 )
+add_to_chars_as_starting = [  ]

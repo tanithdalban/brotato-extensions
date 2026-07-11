@@ -7,6 +7,53 @@ et mise sur les dégâts d'explosion et le scaling élémentaire/ingénierie.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.0.0] — 2026-07-11
+
+Refonte complète de **la façon dont les bombes se posent**. Jusqu'ici elles tombaient
+toutes sous les pieds du joueur, au même pixel, à une cadence erratique. Elles
+dessinent désormais une **traînée lisible** derrière Bomberto.
+
+### Modifié
+- **Les bombes ne tombent plus sous vos pieds.** Chaque bombe se pose maintenant sur une **couronne** autour du joueur, à distance fixe. L'ouverture de cette couronne s'adapte toute seule à votre façon de jouer : **en course, elle se referme derrière vous** et les bombes forment une traînée dans l'axe de votre fuite ; **à l'arrêt, elle s'ouvre en cercle complet** et les bombes vous entourent. Entre les deux, la transition est continue — aucun basculement brutal. Le mod tient compte du **déplacement réellement parcouru** entre deux poses : si courir suffit à espacer les bombes, il laisse la course faire le travail ; sinon (joueur lent, ou six bombes qui tombent coup sur coup), il écarte les bombes par l'angle.
+- **Cadence de pose régulière et prévisible.** Toutes les armes-bombe partagent désormais la même période, et le mod retire le **bruit aléatoire** que le jeu ajoute normalement à chaque tir (±33 % avec six armes). Avec N bombes équipées, il en tombe une à intervalle constant, indéfiniment.
+- ⚠️ **Contrepartie assumée : monter en niveau n'accélère plus la pose.** Le rythme est identique du niveau I au niveau IV. La progression passe désormais entièrement par le reste : dégâts, mèche plus courte, poison plus fort, éclairs plus nombreux, ralentissement plus mordant.
+
+### Corrigé
+- **Le décalage entre deux bombes équipées ne fonctionnait pas** — et n'avait en réalité **jamais** fonctionné depuis la création du mod. Deux bombes en main pouvaient donc se poser en même temps, au même endroit. Elles se relaient maintenant proprement.
+
+## [1.9.0] — 2026-07-11
+
+### Ajouté
+- **Nouvelle arme : la Bombe de Poison** (4 niveaux), proposée dans la boutique de Bomberto et sélectionnable comme arme de départ. Elle n'inflige **aucun dégât d'explosion** mais **empoisonne les ennemis touchés** : des dégâts sur la durée qui **ignorent l'armure** et qui scalent sur l'**ingénierie**, à la manière d'une tourelle enflammée. Ses flammes sont **vertes**, et son infobulle annonce des « dégâts de poison » plutôt qu'une brûlure générique.
+
+### Corrigé
+- **Les dégâts de poison ne sont plus amputés des trois quarts.** Le malus de dégâts de Bomberto (-75 %) s'appliquait au poison alors qu'il ne devait pas : l'infobulle affichait la bonne valeur (par exemple 17 par tic) mais les ennemis n'en prenaient que le quart (4). Le poison inflige désormais réellement ce qui est annoncé.
+
+### Modifié
+- **Les éclairs de la Bombe de Foudre repoussent désormais les ennemis.** Comme ils partent en étoile depuis la bombe, les ennemis pris dans la salve sont soufflés vers l'extérieur : la Bombe de Foudre devient une vraie arme de **contrôle**, là où la Glace ralentit. La dispersion s'intensifie avec le niveau, puisque le nombre d'éclairs augmente (6 à 10).
+- **Ralentissement de la Bombe de Glace revu à la hausse** : 30 / 45 / 60 / **75 %** selon le niveau (au lieu de 30 / 40 / 50 / 60 %).
+- **Rééquilibrage des bombes.** La Bombe normale reste la principale source de dégâts de Bomberto, mais son scaling est ramené à 90 % (ingénierie et élémentaire) ; la Bombe de Foudre passe à 100 % ; la Bombe de Poison voit son poison renforcé. Les quatre bombes gardent des rôles distincts : la normale frappe fort, la glace ralentit, la foudre disperse, le poison ronge les blindés.
+
+## [1.8.0] — 2026-07-09
+
+### Ajouté
+- **Nouvelle arme : la Bombe de Foudre** (4 niveaux), proposée dans la boutique de Bomberto et sélectionnable comme arme de départ. À la détonation, elle libère une **salve d'éclairs en cercle** (à la manière de l'objet Tyler) qui portent les dégâts — **sans explosion de zone**. Le nombre d'éclairs et les dégâts croissent selon le niveau, avec du scaling ingénierie et élémentaire.
+
+### Corrigé
+- **Les dégâts des bombes sont désormais comptabilisés** dans l'infobulle de l'arme (« dégâts infligés » de la dernière vague), comme pour les autres armes. Auparavant, les bombes frappant à distance de l'arme (explosion / éclairs), leurs dégâts n'étaient pas attribués et le compteur restait à 0.
+
+## [1.7.0] — 2026-07-09
+
+### Ajouté
+- **Nouvelle arme : la Bombe de Glace** (4 niveaux), proposée dans la boutique de Bomberto et sélectionnable comme arme de départ. Elle n'inflige **aucun dégât d'explosion** mais **ralentit durablement les ennemis touchés** — le ralentissement ne se cumule pas (on garde le plus fort) — et les marque d'un **contour bleu givré**. Son infobulle indique le pourcentage de ralentissement, croissant selon le niveau (30 / 40 / 50 / 60 %).
+
+## [1.6.0] — 2026-07-07
+
+### Modifié
+- Nouveau skin de la Bombe : bombe noire classique partout (icône, arme tenue, bombe posée). Le niveau (tier) se lit via le contour coloré en jeu et un fond coloré sur l'icône de boutique.
+- Troll bombe agrandie (≈ la taille d'un ennemi de base) pour mieux se voir comme un danger.
+- Explosions de bombes plus discrètes : l'opacité de la zone d'effet est réduite (~20 %) pour limiter les flashs répétés (confort visuel / épilepsie). N'affecte ni la zone touchée ni les dégâts.
+
 ## [1.5.1] — 2026-07-02
 
 ### Corrigé

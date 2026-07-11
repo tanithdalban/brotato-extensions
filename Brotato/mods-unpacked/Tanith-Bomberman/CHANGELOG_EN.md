@@ -7,6 +7,53 @@ elemental/engineering scaling.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.0.0] — 2026-07-11
+
+A complete rework of **how bombs are dropped**. Until now they all landed under the
+player's feet, on the very same pixel, at an erratic pace. They now lay down a
+**readable trail** behind Bomberto.
+
+### Changed
+- **Bombs no longer drop at your feet.** Each bomb is now placed on a **ring** around the player, at a fixed distance. How wide that ring opens adapts to the way you play: **while running it closes up behind you**, and the bombs form a trail along your escape route; **while standing still it opens into a full circle**, and the bombs surround you. In between, the transition is continuous — no abrupt switch. The mod looks at the distance **actually travelled** between two drops: if running is enough to space the bombs out, it lets running do the work; if it isn't (slow character, or six bombs landing back to back), it spaces them out by angle instead.
+- **Steady, predictable drop rate.** Every bomb weapon now shares the same period, and the mod strips out the **random jitter** the game normally adds to each shot (±33% with six weapons). With N bombs equipped, one lands at a constant interval, indefinitely.
+- ⚠️ **A deliberate trade-off: tiers no longer speed up the drop rate.** The rhythm is the same from tier I to tier IV. Progression now runs entirely through everything else: damage, shorter fuse, stronger poison, more bolts, harsher slow.
+
+### Fixed
+- **The offset between two equipped bombs did not work** — and in fact had **never** worked since the mod was created. Two bombs in hand could therefore drop at the same time, in the same spot. They now take proper turns.
+
+## [1.9.0] — 2026-07-11
+
+### Added
+- **New weapon: the Poison Bomb** (4 tiers), offered in Bomberto's shop and selectable as a starting weapon. It deals **no explosion damage** but **poisons the enemies it hits**: damage over time that **ignores armor** and scales with **engineering**, much like a burning turret. Its flames are **green**, and its tooltip reads "poison damage" rather than a generic burn.
+
+### Fixed
+- **Poison damage is no longer cut to a quarter.** Bomberto's damage penalty (-75%) was being applied to the poison when it shouldn't have been: the tooltip showed the correct value (17 per tick, say) but enemies only took a quarter of it (4). The poison now actually deals what it advertises.
+
+### Changed
+- **Storm Bomb bolts now knock enemies back.** Since the bolts fly outward in a full circle, enemies caught in the burst are blown away from the blast: the Storm Bomb becomes a genuine **crowd control** weapon, where the Ice Bomb slows. The scattering grows with tier, as the number of bolts increases (6 to 10).
+- **Ice Bomb slow increased**: 30 / 45 / 60 / **75%** by tier (up from 30 / 40 / 50 / 60%).
+- **Bomb rebalance.** The regular Bomb remains Bomberto's main damage source, but its scaling is down to 90% (engineering and elemental); the Storm Bomb is up to 100%; the Poison Bomb's poison is stronger. The four bombs keep distinct roles: the regular one hits hard, ice slows, storm scatters, poison eats through armor.
+
+## [1.8.0] — 2026-07-09
+
+### Added
+- **New weapon: the Storm Bomb** (4 tiers), offered in Bomberto's shop and selectable as a starting weapon. On detonation it releases a **burst of lightning bolts in a full circle** (like the Tyler item) that carry the damage — **with no area explosion**. The number of bolts and the damage increase with tier, with engineering and elemental scaling.
+
+### Fixed
+- **Bomb damage is now tracked** in the weapon tooltip ("damage dealt" for the last wave), like other weapons. Previously, because bombs hit away from the weapon (explosion / bolts), their damage wasn't attributed and the counter stayed at 0.
+
+## [1.7.0] — 2026-07-09
+
+### Added
+- **New weapon: the Ice Bomb** (4 tiers), offered in Bomberto's shop and selectable as a starting weapon. It deals **no explosion damage** but **permanently slows the enemies it hits** — the slow does not stack (the strongest one is kept) — and marks them with a **blue frost outline**. Its tooltip shows the slow percentage, increasing with tier (30 / 40 / 50 / 60%).
+
+## [1.6.0] — 2026-07-07
+
+### Changed
+- New Bomb skin: classic black bomb everywhere (icon, held weapon, placed bomb). Tier reads via the in-game rarity outline and a colored background on the shop icon.
+- Troll bomb enlarged (≈ a basic enemy's size) so it reads more clearly as a threat.
+- Bomb explosions are less flashy: the area-of-effect opacity is reduced (~20%) to limit repeated flashes (visual comfort / epilepsy). Does not affect the hit area or damage.
+
 ## [1.5.1] — 2026-07-02
 
 ### Fixed
