@@ -16,6 +16,7 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/).
 - **Les dégâts de poison ne sont plus amputés des trois quarts.** Le malus de dégâts de Bomberto (-75 %) s'appliquait au poison alors qu'il ne devait pas : l'infobulle affichait la bonne valeur (par exemple 17 par tic) mais les ennemis n'en prenaient que le quart (4). Le poison inflige désormais réellement ce qui est annoncé.
 
 ### Modifié
+- **Les éclairs de la Bombe de Foudre repoussent désormais les ennemis.** Comme ils partent en étoile depuis la bombe, les ennemis pris dans la salve sont soufflés vers l'extérieur : la Bombe de Foudre devient une vraie arme de **contrôle**, là où la Glace ralentit. La dispersion s'intensifie avec le niveau, puisque le nombre d'éclairs augmente (6 à 10).
 - **Ralentissement de la Bombe de Glace revu à la hausse** : 30 / 45 / 60 / **75 %** selon le niveau (au lieu de 30 / 40 / 50 / 60 %).
 - **Rééquilibrage des bombes.** La Bombe normale reste la principale source de dégâts de Bomberto, mais son scaling est ramené à 90 % (ingénierie et élémentaire) ; la Bombe de Foudre passe à 100 % ; la Bombe de Poison voit son poison renforcé. Les quatre bombes gardent des rôles distincts : la normale frappe fort, la glace ralentit, la foudre disperse, le poison ronge les blindés.
 

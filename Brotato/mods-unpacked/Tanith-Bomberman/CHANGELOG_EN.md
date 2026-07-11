@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - **Poison damage is no longer cut to a quarter.** Bomberto's damage penalty (-75%) was being applied to the poison when it shouldn't have been: the tooltip showed the correct value (17 per tick, say) but enemies only took a quarter of it (4). The poison now actually deals what it advertises.
 
 ### Changed
+- **Storm Bomb bolts now knock enemies back.** Since the bolts fly outward in a full circle, enemies caught in the burst are blown away from the blast: the Storm Bomb becomes a genuine **crowd control** weapon, where the Ice Bomb slows. The scattering grows with tier, as the number of bolts increases (6 to 10).
 - **Ice Bomb slow increased**: 30 / 45 / 60 / **75%** by tier (up from 30 / 40 / 50 / 60%).
 - **Bomb rebalance.** The regular Bomb remains Bomberto's main damage source, but its scaling is down to 90% (engineering and elemental); the Storm Bomb is up to 100%; the Poison Bomb's poison is stronger. The four bombs keep distinct roles: the regular one hits hard, ice slows, storm scatters, poison eats through armor.
 
