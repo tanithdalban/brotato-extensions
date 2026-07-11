@@ -1,7 +1,7 @@
 {
     "name": "Bomberman",
     "namespace": "Tanith",
-    "version_number": "1.8.0",
+    "version_number": "1.9.0",
     "description": "Bomberto : personnage qui pose des bombes à mèche et manie aussi les armes explosives et de mêlée à fort knockback.",
     "website_url": "",
     "dependencies": [],
