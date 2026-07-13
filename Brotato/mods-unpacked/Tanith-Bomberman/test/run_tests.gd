@@ -464,55 +464,115 @@ func _test_bomb_leech() -> void:
 	_check(BombLeech.granted(1, -1) == 0, "sangsue: restant négatif => 0 (pas de soin fantôme)")
 	_check(BombLeech.granted(-3, 5) == 0, "sangsue: montant négatif => 0")
 
-	# --- Budget : l'état mutable partagé par les ennemis d'UNE explosion ---
-	# (Array à un élément : passé par référence, donc partagé sans classe.)
-	var b = BombLeech.new_budget(0)  # T1 => 3 PV
-	_check(BombLeech.remaining(b) == 3, "sangsue: budget T1 démarre à 3")
-	_check(BombLeech.take(b, 1) == 1, "sangsue: 1er proc accordé (1 PV)")
-	_check(BombLeech.remaining(b) == 2, "sangsue: budget décrémenté à 2")
-	_check(BombLeech.take(b, 2) == 2, "sangsue: proc double accordé (2 PV)")
-	_check(BombLeech.remaining(b) == 0, "sangsue: budget épuisé")
-	# Plafond JAMAIS dépassé : les ennemis suivants du même souffle ne drainent plus.
-	_check(BombLeech.take(b, 1) == 0, "sangsue: budget épuisé => plus aucun drain")
-	_check(BombLeech.remaining(b) == 0, "sangsue: budget ne devient jamais négatif")
+	# --- Seau à jetons PARTAGÉ PAR JOUEUR (correctif d'équilibrage, revue finale) ---
+	#
+	# L'ANCIEN modèle (un budget frais PAR EXPLOSION) ne bornait rien PAR SECONDE :
+	# 6 sangsues en T4 (cooldown ≈ 1s) auraient fait 6 budgets indépendants, soit
+	# ~36 PV/s. Le nouveau modèle : un seul seau par joueur, qui se RECHARGE dans le
+	# temps (capacité = plafond du tier qui draine, recharge = capacité/seconde).
+	# Le temps est INJECTÉ (`now`, en ms) : jamais d'OS.get_ticks_msec() ici.
+	var t0 := 1000
 
-	# Le partage par RÉFÉRENCE est ce qui fait tenir le plafond entre deux ennemis du
-	# même souffle : si le budget était copié, chacun aurait le sien et le plafond
-	# ne vaudrait plus rien. Test explicite de cette propriété.
-	var shared = BombLeech.new_budget(0)  # T1 => 3 PV
+	# Un seau neuf démarre PLEIN (un joueur qui n'a pas drainé récemment profite du
+	# plein régime dès sa première bombe).
+	var fresh = BombLeech.new_bucket()
+	_check(BombLeech.remaining(fresh, 3, t0) == 3, "sangsue: seau neuf démarre plein (T1 = 3 PV)")
+
+	# Le vider, puis une 2e explosion AU MÊME INSTANT ne doit RIEN accorder : c'est
+	# exactement le cas que l'ancien modèle (budget par explosion) ratait — sous
+	# l'ancien modèle, cette 2e explosion aurait eu son propre budget frais.
+	var bucket = BombLeech.new_bucket()
+	_check(BombLeech.take(bucket, 3, 3, t0) == 3, "sangsue: 1re explosion draine tout le plafond (3 PV)")
+	_check(BombLeech.take(bucket, 3, 1, t0) == 0, "sangsue: 2e explosion AU MÊME INSTANT => 0 (le seau ne s'est pas rechargé)")
+	_check(BombLeech.remaining(bucket, 3, t0) == 0, "sangsue: seau toujours vide au même instant")
+
+	# Recharge complète après 1s (recharge = capacité/seconde).
+	var bucket_full_refill = BombLeech.new_bucket()
+	var _gA = BombLeech.take(bucket_full_refill, 4, 4, t0)  # T2 => 4 PV, vidé
+	_check(BombLeech.remaining(bucket_full_refill, 4, t0 + 1000) == 4, "sangsue: 1s plus tard => seau plein reconstitué (T2 = 4 PV)")
+
+	# Recharge à MOITIÉ après 0.5s, avec troncature (pas de PV en deux morceaux) :
+	# plafond 3, 0.5s de recharge = 1.5 jeton => 1 PV accordable, pas 1.5.
+	var bucket_half_refill = BombLeech.new_bucket()
+	var _gB = BombLeech.take(bucket_half_refill, 3, 3, t0)  # T1 => 3 PV, vidé
+	_check(BombLeech.remaining(bucket_half_refill, 3, t0 + 500) == 1, "sangsue: 0.5s plus tard sur plafond 3 => 1 PV (1.5 tronqué)")
+
+	# Le seau ne dépasse JAMAIS sa capacité, quelle que soit l'attente.
+	var bucket_no_overflow = BombLeech.new_bucket()
+	var _gC = BombLeech.take(bucket_no_overflow, 4, 4, t0)
+	_check(BombLeech.remaining(bucket_no_overflow, 4, t0 + 999999) == 4, "sangsue: attente énorme => plafonné à 4, jamais plus")
+	_check(BombLeech.remaining(BombLeech.new_bucket(), 4, t0 + 999999) == 4, "sangsue: seau jamais utilisé, longtemps après => toujours plafonné")
+
+	# Les jetons ne deviennent jamais négatifs.
+	var bucket_no_negative = BombLeech.new_bucket()
+	_check(BombLeech.take(bucket_no_negative, 3, 3, t0) == 3, "sangsue: vidage initial (3 PV)")
+	_check(BombLeech.take(bucket_no_negative, 3, 5, t0) == 0, "sangsue: seau vide => prise suivante = 0 (jamais négatif)")
+	_check(BombLeech.remaining(bucket_no_negative, 3, t0) == 0, "sangsue: remaining reste à 0, jamais négatif")
+
+	# Le partage par RÉFÉRENCE est ce qui fait tenir le plafond entre deux bombes du
+	# même joueur : si le seau était copié, chacune aurait le sien.
+	var shared = BombLeech.new_bucket()
 	var alias = shared
-	var _g = BombLeech.take(alias, 3)
-	_check(BombLeech.remaining(shared) == 0, "sangsue: budget partagé par référence (pas copié)")
+	var _g = BombLeech.take(alias, 3, 3, t0)
+	_check(BombLeech.remaining(shared, 3, t0) == 0, "sangsue: seau partagé par référence (pas copié)")
 
-	# Le plafond tient face à une horde : 20 ennemis, tous procs => jamais plus que le cap.
-	var b2 = BombLeech.new_budget(3)  # T4 => 6 PV
+	# Empiler les sangsues ne MULTIPLIE plus le soin : 6 bombes qui explosent à la
+	# MÊME seconde sur un seul seau partagé ne rendent jamais plus que LE plafond
+	# (6 PV en T4), pas 6x le plafond (36 PV) comme sous l'ancien modèle.
+	var stacked = BombLeech.new_bucket()
+	var total_stacked := 0
+	for _i in range(6):
+		total_stacked += BombLeech.take(stacked, 6, 6, t0)
+	_check(total_stacked == 6, "sangsue: 6 bombes à la même seconde => 6 PV max (pas 36) — la régularité remplace la multiplication")
+
+	# Le plafond tient aussi face à une horde au sein d'UNE explosion (20 ennemis,
+	# tous procs, même instant).
+	var b2 = BombLeech.new_bucket()
 	var total := 0
 	for _i in range(20):
-		total += BombLeech.take(b2, 1)
+		total += BombLeech.take(b2, 6, 1, t0)  # T4 => 6 PV
 	_check(total == 6, "sangsue: 20 ennemis, tous procs => exactement le plafond T4 (6 PV)")
 
 	# Le bonus double atteint le plafond avec MOINS d'ennemis, mais ne le perce pas.
-	var b3 = BombLeech.new_budget(3)  # T4 => 6 PV
+	var b3 = BombLeech.new_bucket()
 	var total3 := 0
 	for _i in range(20):
-		total3 += BombLeech.take(b3, 2)
+		total3 += BombLeech.take(b3, 6, 2, t0)  # T4 => 6 PV
 	_check(total3 == 6, "sangsue: bonus double => même plafond (6 PV), atteint plus vite")
 
-	# Garde-fous : un budget malformé ne draine rien et ne plante pas.
-	_check(BombLeech.take([], 1) == 0, "sangsue: budget vide => 0 (pas de crash)")
-	_check(BombLeech.remaining([]) == 0, "sangsue: remaining d'un budget vide => 0")
+	# Garde-fous : un seau malformé ne draine rien et ne plante pas.
+	_check(BombLeech.take([], 3, 1, t0) == 0, "sangsue: seau vide/malformé => 0 (pas de crash)")
+	_check(BombLeech.remaining([], 3, t0) == 0, "sangsue: remaining d'un seau malformé => 0")
 
-	# --- Cas critique : double proc avec petit budget, écrêtage END-TO-END via take() ---
-	# T1 budget = 3 PV. Un proc double draine 2, il en reste 1. Le prochain proc double
-	# ne peut drainer que 1 (clamped), puis le budget est exact à 0. C'est l'invariant
-	# de spec : « un double proc sur 1 PV restant ne doit jamais drainer 2 ».
-	var b_crit = BombLeech.new_budget(0)  # T1 => 3 PV
-	var drain_1 = BombLeech.take(b_crit, 2)  # 1er proc double => 2 PV
-	var drain_2 = BombLeech.take(b_crit, 2)  # 2e proc double => écrêté à 1 PV
-	_check(drain_1 == 2, "sangsue: 1er proc double sur T1 => 2 PV accordés")
-	_check(drain_2 == 1, "sangsue: 2e proc double sur T1 => écrêté à 1 PV (pas 2)")
-	_check(BombLeech.remaining(b_crit) == 0, "sangsue: après 2 procs, budget T1 exact à 0")
-	_check(drain_1 + drain_2 == 3, "sangsue: total draine = plafond T1 (3 PV)")
+	# --- Cas critique : double proc avec petit seau, écrêtage END-TO-END via take() ---
+	# Plafond 3. Un proc double draine 2, il en reste 1. Le prochain proc double (même
+	# instant, pas de recharge) ne peut drainer que 1 (clamped), puis le seau est exact
+	# à 0. C'est l'invariant de spec : « un double proc sur 1 PV restant ne doit jamais
+	# drainer 2 ».
+	var b_crit = BombLeech.new_bucket()
+	var drain_1 = BombLeech.take(b_crit, 3, 2, t0)  # 1er proc double => 2 PV
+	var drain_2 = BombLeech.take(b_crit, 3, 2, t0)  # 2e proc double => écrêté à 1 PV
+	_check(drain_1 == 2, "sangsue: 1er proc double sur plafond 3 => 2 PV accordés")
+	_check(drain_2 == 1, "sangsue: 2e proc double sur plafond 3 => écrêté à 1 PV (pas 2)")
+	_check(BombLeech.remaining(b_crit, 3, t0) == 0, "sangsue: après 2 procs, seau exact à 0")
+	_check(drain_1 + drain_2 == 3, "sangsue: total drainé = plafond (3 PV)")
+
+	# --- Horloge qui recule / instant identique : jamais de PV gratuits, jamais de crash ---
+	var bucket_backwards = BombLeech.new_bucket()
+	var _gD = BombLeech.take(bucket_backwards, 3, 3, t0)  # vidé à t0
+	_check(BombLeech.remaining(bucket_backwards, 3, t0 - 500) == 0, "sangsue: horloge qui recule => pas de PV gratuits, pas de crash")
+	_check(BombLeech.remaining(bucket_backwards, 3, t0) == 0, "sangsue: now == dernier instant => pas de recharge")
+
+	# --- refund : rembourse les jetons non réellement consommés (Finding 2) ---
+	var bucket_refund = BombLeech.new_bucket()
+	var g9 := BombLeech.take(bucket_refund, 3, 2, t0)
+	_check(g9 == 2, "sangsue: refund - prise initiale de 2 PV")
+	BombLeech.refund(bucket_refund, 3, 1)
+	_check(BombLeech.remaining(bucket_refund, 3, t0) == 2, "sangsue: refund - rend le jeton non utilisé")
+	BombLeech.refund(bucket_refund, 3, 100)
+	_check(BombLeech.remaining(bucket_refund, 3, t0) == 3, "sangsue: refund - jamais au-delà de la capacité")
+	BombLeech.refund(bucket_refund, 3, -5)
+	_check(BombLeech.remaining(bucket_refund, 3, t0) == 3, "sangsue: refund - montant négatif => no-op (pas de crash)")
 
 
 func _check(cond, name):

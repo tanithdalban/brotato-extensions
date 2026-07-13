@@ -139,13 +139,17 @@ func _on_fuse_timeout() -> void:
 			_inst.connect("hit_something", _weapon, "on_ice_hit", [slow_pct])
 	# Sangsue : draine les ennemis touchés, via le même signal public hit_something de
 	# l'explosion que la glace (émis même à 0 dégât, unit.gd:608) -> notre BombWeapon
-	# (persistant). Le budget est instancié ICI : chaque explosion a donc le sien, et le
-	# plafond de PV vaut par explosion. La connexion est nettoyée par
-	# PlayerExplosion.end_explosion (disconnect_all hit_something).
+	# (persistant). Le budget n'est PLUS instancié ici (correctif d'équilibrage, revue
+	# finale) : c'est désormais un SEUL seau à jetons par JOUEUR, partagé par toutes ses
+	# bombes sangsue et rechargé dans le temps (cf. bomb_leech.gd) — sinon plusieurs
+	# sangsues cumuleraient chacune leur propre budget par explosion, dépassant le
+	# plafond vanilla de 10 PV/s. On se contente de passer le TIER de CETTE bombe : le
+	# BombWeapon en déduit le plafond (BombLeech.cap_for_tier) et résout le seau partagé
+	# du joueur. La connexion est nettoyée par PlayerExplosion.end_explosion
+	# (disconnect_all hit_something).
 	if _element == BombElement.LEECH and _inst != null and is_instance_valid(_weapon):
-		var budget := BombLeech.new_budget(_tier)
 		if not _inst.is_connected("hit_something", _weapon, "on_leech_hit"):
-			_inst.connect("hit_something", _weapon, "on_leech_hit", [budget])
+			_inst.connect("hit_something", _weapon, "on_leech_hit", [_tier])
 	queue_free()
 
 # Réveil : instancie la troll bombe à la place de l'explosion et se libère sans

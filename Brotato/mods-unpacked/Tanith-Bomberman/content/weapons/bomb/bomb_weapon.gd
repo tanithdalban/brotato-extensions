@@ -151,9 +151,9 @@ func on_ice_hit(thing_hit, _damage_dealt, slow_pct: float) -> void:
 
 
 # Cible du signal hit_something de l'explosion d'une bombe SANGSUE (connecté par
-# bomb_entity, avec un budget FRAIS par explosion). Draine l'ennemi touché : on lui
-# RETIRE N PV et on rend au joueur exactement ce que le budget vient d'accorder (N),
-# vanilla clampant lui-même le retrait à ce qu'il reste de PV sur un coup fatal.
+# bomb_entity, avec le TIER de cette bombe). Draine l'ennemi touché : on lui RETIRE
+# jusqu'à N PV et on rend au joueur le montant RÉELLEMENT retiré (voir plus bas :
+# l'ennemi peut avoir moins de N PV, ou être déjà en train de mourir cette frame).
 # Duck-typé : ne touche que des unités ayant current_stats + take_damage (marche
 # vanilla/DLC/autre mod, sans étendre enemy.gd).
 #
@@ -163,8 +163,13 @@ func on_ice_hit(thing_hit, _damage_dealt, slow_pct: float) -> void:
 # frame : passer par le vanilla rendrait 1 PV par explosion, quel que soit le nombre
 # d'ennemis. On ne contourne ce timer que sur NOTRE chemin ; il reste intact pour toutes
 # les autres armes.
-func on_leech_hit(thing_hit, _damage_dealt, budget: Array) -> void:
-	if BombLeech.remaining(budget) <= 0:
+func on_leech_hit(thing_hit, _damage_dealt, tier: int) -> void:
+	if not is_instance_valid(_parent):
+		return
+	var capacity := BombLeech.cap_for_tier(tier)
+	var now := OS.get_ticks_msec()
+	var bucket := _get_leech_bucket()
+	if BombLeech.remaining(bucket, capacity, now) <= 0:
 		return
 	if not is_instance_valid(thing_hit):
 		return
@@ -188,7 +193,7 @@ func on_leech_hit(thing_hit, _damage_dealt, budget: Array) -> void:
 	if not BombLeech.procs(randf(), current_stats.lifesteal):
 		return
 
-	var amount: int = BombLeech.take(budget, BombLeech.proc_amount(_has_double_lifesteal()))
+	var amount: int = BombLeech.take(bucket, capacity, BombLeech.proc_amount(_has_double_lifesteal()), now)
 	if amount <= 0:
 		return
 
@@ -197,11 +202,46 @@ func on_leech_hit(thing_hit, _damage_dealt, budget: Array) -> void:
 	var args := TakeDamageArgs.new(player_index, null)
 	args.armor_applied = false
 	args.dodgeable = false
-	var _dmg = thing_hit.take_damage(amount, args)
+	var dmg_result = thing_hit.take_damage(amount, args)
 
-	# ... et rendu au joueur, à l'identique. on_healing_effect clampe aux PV max.
-	if is_instance_valid(_parent) and _parent.has_method("on_healing_effect"):
-		var _healed = _parent.on_healing_effect(amount)
+	# Le montant RÉELLEMENT retiré : unit.gd:take_damage rend [full_dmg_value,
+	# dmg_taken, false], où dmg_taken = clamp(full_dmg_value, 0, vie_avant_le_coup)
+	# — calculé AVANT le retrait, donc fiable même en cas d'overkill (ennemi à 1 PV
+	# frappé par un proc double) ou d'ennemi déjà `_pending_die` cette frame (qui
+	# renvoie [0, 0, false] sans rien retirer). On soigne ce montant réel, borné à
+	# `amount` (jamais plus que ce que le seau a accordé, même si des bonus de
+	# dégâts du joueur gonflaient le retrait) et on REMBOURSE au seau la part non
+	# consommée : le budget ne se dégrade jamais pour un PV qui n'a servi à personne.
+	var actually_removed: int = amount
+	if dmg_result is Array and dmg_result.size() > 1:
+		actually_removed = int(dmg_result[1])
+	var healed: int = int(min(actually_removed, amount))
+	if healed < amount:
+		BombLeech.refund(bucket, capacity, amount - healed)
+	if healed <= 0:
+		return
+
+	# ... et rendu au joueur. on_healing_effect clampe aux PV max.
+	if _parent.has_method("on_healing_effect"):
+		var _healed = _parent.on_healing_effect(healed)
+
+
+# Résout le seau à jetons PARTAGÉ de ce joueur (une bombe sangsue peut en avoir
+# jusqu'à plusieurs équipées : elles doivent toutes piocher dans le MÊME seau).
+#
+# STOCKAGE : méta sur le nœud JOUEUR (`_parent`), et non sur `Engine` (comme
+# ModLog._META) ni sur une variable de ce script. Le nœud joueur est PAR JOUEUR
+# (coop : deux joueurs, deux nœuds, deux seaux — aucun risque de mélange) et il est
+# détruit à la fin de la run (contrairement à `Engine`, qui survivrait à la session
+# entière et exigerait une remise à zéro manuelle pour ne pas fuiter une run sur la
+# suivante). L'Array est stocké par RÉFÉRENCE dans la méta : toute bombe sangsue de
+# ce joueur qui rappelle cette fonction récupère et mute le MÊME seau.
+const _LEECH_BUCKET_META := "tanith_bomberman_leech_bucket"
+
+func _get_leech_bucket() -> Array:
+	if not _parent.has_meta(_LEECH_BUCKET_META):
+		_parent.set_meta(_LEECH_BUCKET_META, BombLeech.new_bucket())
+	return _parent.get_meta(_LEECH_BUCKET_META)
 
 
 # L'item « double vol de vie » fait passer les procs à 2 PV (cf. run_data.gd:1378).

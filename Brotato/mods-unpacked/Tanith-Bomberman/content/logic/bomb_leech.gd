@@ -3,15 +3,27 @@ extends Reference
 # Aucune dépendance aux autoloads du jeu -> testable en headless.
 #
 # Le drain : à l'explosion, chaque ennemi touché tire sur le vol de vie de l'arme.
-# En cas de proc, on lui RETIRE N PV et on en REND N au joueur (invariant : les deux
-# montants sont toujours égaux). Un budget de PV par explosion borne le total.
+# En cas de proc, on lui RETIRE jusqu'à N PV et on en REND au joueur le montant
+# RÉELLEMENT retiré (l'ennemi peut avoir moins de N PV, ou être déjà en train de
+# mourir cette frame — cf. bomb_weapon.gd:on_leech_hit). Le reliquat non consommé
+# est remboursé au seau (`refund`) : le budget ne se dégrade jamais pour un montant
+# qui n'a servi à personne.
 #
-# POURQUOI un budget : une explosion touche tous ses ennemis dans la MÊME frame.
-# Sans plafond, une bombe lâchée dans une horde de fin de vague rendrait la barre
-# entière. Le budget est donc la manette d'équilibrage principale de cette arme.
+# --- Correctif d'équilibrage (revue finale) : seau à jetons PAR JOUEUR ---
 #
-# Le budget est compté en PV, pas en procs : l'item « double vol de vie » atteint
-# donc le plafond avec moins d'ennemis, mais ne le perce jamais.
+# Un plafond PAR EXPLOSION ne borne rien PAR SECONDE : rien n'empêche un joueur de
+# garder plusieurs sangsues (6 en T4, cooldown ≈ 1s, auraient fait 6 budgets
+# indépendants -> ~36 PV/s, très au-delà du plafond vanilla de 10 PV/s que le
+# LifestealTimer, qu'on contourne, existe pour imposer). Le budget est donc UN SEUL
+# par joueur, partagé par toutes ses bombes sangsue, et il se RECHARGE dans le temps
+# (seau à jetons) :
+#   - capacité = le plafond du TIER de la bombe qui draine EN CE MOMENT (3/4/5/6) ;
+#   - recharge = la capacité PAR SECONDE (un seau plein se reconstitue en 1 s).
+# Empiler les sangsues ne multiplie donc plus le soin : ça le rend seulement plus
+# RÉGULIER (le seau se vide plus vite, il ne se remplit pas plus).
+#
+# Le temps est INJECTÉ (`now`, en millisecondes) : jamais d'OS.get_ticks_msec() dans
+# ce module, pour rester déterministe et testable en headless.
 
 # Plafond de PV volés par explosion, indexé par tier (0 = I ... 3 = IV).
 const CAP_BY_TIER := [3, 4, 5, 6]
@@ -42,32 +54,81 @@ static func granted(amount: int, remaining: int) -> int:
 	return int(min(amount, remaining))
 
 
-# --- Budget d'UNE explosion ---
+# --- Seau à jetons PARTAGÉ PAR JOUEUR ---
 #
-# C'est un Array à UN élément : [pv_restants]. En GDScript, un Array est passé par
-# RÉFÉRENCE — c'est ce qui permet à tous les ennemis d'un même souffle de partager le
-# même compteur. Instancié à l'explosion et passé en bind à la connexion du signal
-# `hit_something`, il donne à chaque explosion son propre budget.
+# C'est un Array à DEUX éléments : [jetons, dernier_instant_ms]. En GDScript, un
+# Array est passé par RÉFÉRENCE — c'est ce qui permet à toutes les bombes sangsue
+# d'un même joueur de partager le même seau (stocké en méta sur le nœud joueur,
+# cf. bomb_weapon.gd:_get_leech_bucket -> il meurt avec la run, ne fuite jamais
+# entre runs ni entre joueurs de la coop).
+#
+# `jetons` est un FLOAT : les fractions de jeton s'accumulent en continu au fil de
+# la recharge ; seule la RÉSERVE DISPONIBLE (via `remaining`) est tronquée vers
+# l'entier de PV réellement accordable — un jeton ne se dépense jamais en morceau.
+#
+# `dernier_instant_ms == -1` signale un seau JAMAIS UTILISÉ : au premier appel, il
+# se remplit à PLEINE capacité plutôt que de partir de 0 (un joueur qui n'a pas
+# drainé récemment profite du plein régime dès sa première bombe).
 #
 # POURQUOI pas une classe : une classe interne devrait appeler les fonctions statiques
 # de son script hôte, ce qui oblige le script à se preload lui-même -> référence
 # cyclique en Godot 3. L'Array garde le module 100 % statique, donc trivialement testable.
 
-static func new_budget(tier: int) -> Array:
-	return [cap_for_tier(tier)]
+static func new_bucket() -> Array:
+	return [0.0, -1]
 
 
-static func remaining(budget: Array) -> int:
-	if budget == null or budget.empty():
+# Recharge le seau selon le temps écoulé depuis le dernier appel, puis le borne à
+# `capacity` (le plafond du TIER de la bombe qui draine EN CE MOMENT : des bombes de
+# tiers différents partagent le même seau mais pas forcément le même plafond d'un
+# appel à l'autre — c'est voulu, cf. spec).
+#
+# Une horloge qui RECULE (now <= dernier instant) ne doit ni planter ni accorder de
+# jetons gratuits : on ignore alors la recharge (aucun ajout) SANS reculer
+# `dernier_instant_ms`, pour ne pas fausser le calcul d'écart la prochaine fois que
+# le temps redevient croissant.
+static func _refill(bucket: Array, capacity: int, now: int) -> void:
+	if bucket[1] < 0:
+		bucket[0] = float(capacity)
+		bucket[1] = now
+	else:
+		var elapsed: int = now - int(bucket[1])
+		if elapsed > 0:
+			bucket[0] += (float(elapsed) / 1000.0) * float(capacity)
+			bucket[1] = now
+	if bucket[0] > capacity:
+		bucket[0] = float(capacity)
+	if bucket[0] < 0.0:
+		bucket[0] = 0.0
+
+
+# PV entiers actuellement disponibles dans le seau (recharge d'abord, tronque
+# ensuite : les jetons fractionnaires ne sont jamais accordés en partie).
+static func remaining(bucket: Array, capacity: int, now: int) -> int:
+	if bucket == null or bucket.size() < 2:
 		return 0
-	return int(budget[0])
+	_refill(bucket, capacity, now)
+	return int(floor(bucket[0]))
 
 
-# Accorde jusqu'à `amount` PV, décrémente le budget, et rend le montant RÉELLEMENT
-# accordé (0 si le budget est épuisé ou malformé).
-static func take(budget: Array, amount: int) -> int:
-	var left := remaining(budget)
+# Recharge puis accorde jusqu'à `amount` PV, décrémente le seau, et rend le montant
+# RÉELLEMENT accordé (0 si vide ou malformé). Réutilise `granted` pour l'écrêtage.
+static func take(bucket: Array, capacity: int, amount: int, now: int) -> int:
+	if bucket == null or bucket.size() < 2:
+		return 0
+	_refill(bucket, capacity, now)
+	var left := int(floor(bucket[0]))
 	var given := granted(amount, left)
 	if given > 0:
-		budget[0] = left - given
+		bucket[0] -= given
 	return given
+
+
+# Rembourse au seau des jetons NON réellement consommés (ex. le drain effectif s'est
+# avéré plus faible que prévu — écrêté par la vie restante de l'ennemi, ou l'ennemi
+# était déjà en train de mourir cette frame, cf. bomb_weapon.gd:on_leech_hit). Ne
+# recharge pas le temps ; ne dépasse jamais `capacity`.
+static func refund(bucket: Array, capacity: int, amount: int) -> void:
+	if bucket == null or bucket.size() < 2 or amount <= 0:
+		return
+	bucket[0] = min(float(capacity), bucket[0] + amount)
