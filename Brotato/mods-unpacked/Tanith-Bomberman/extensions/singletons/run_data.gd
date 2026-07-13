@@ -32,7 +32,7 @@ func _try_complete_bomb_challenge(weapon) -> void:
 	if chal_id == "":
 		return
 
-	_complete(chal_id)
+	_complete_bomb_challenge_once(chal_id)
 
 
 # Bombe sangsue : débloquée par la COLLECTION (les 4 bombes en inventaire en même
@@ -50,10 +50,15 @@ func _try_complete_leech_challenge(player_index: int) -> void:
 	if not BombChallenges.unlocks_leech(weapon_ids):
 		return
 
-	_complete(BombChallenges.LEECH_CHALLENGE)
+	_complete_bomb_challenge_once(BombChallenges.LEECH_CHALLENGE)
 
 
-func _complete(chal_id: String) -> void:
+# ⚠️ Nom volontairement spécifique (pas juste `_complete`) : les extensions
+# ModLoader qui étendent le MÊME script vanilla partagent un espace de noms — un nom
+# générique peut collisionner avec une méthode d'un AUTRE mod qui étend aussi
+# run_data.gd et casser l'un des deux silencieusement (déjà vécu : un `const ModLog`
+# homonyme avait cassé un autre mod sans qu'aucun test ne le voie).
+func _complete_bomb_challenge_once(chal_id: String) -> void:
 	# Keys.generate_hash alimente aussi hash_to_string (keys.gd:450), dont dépend
 	# SteamPlatform.complete_challenge : sans ça, un hash inconnu y planterait.
 	var chal_hash: int = Keys.generate_hash(chal_id)
