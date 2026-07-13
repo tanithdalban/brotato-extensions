@@ -385,6 +385,46 @@ func _test_bomb_challenges() -> void:
 	_check(BombChallenges.unearned_bombs(["weapon_bomb"], []).empty(),
 		"migration: la bombe normale n'est jamais concernée")
 
+	# --- Bombe sangsue : débloquée par la COLLECTION, pas par un tier IV. ---
+	# Le poison reste la fin de CHAIN : sa montée en tier IV ne débloque toujours rien.
+	_check(BombChallenges.challenge_for("weapon_bomb_poison", 3) == "",
+		"sangsue: Poison IV ne complète toujours rien (la sangsue n'est pas dans CHAIN)")
+
+	# Les 4 bombes en inventaire, tous tiers confondus => défi complété.
+	_check(BombChallenges.unlocks_leech(
+			["weapon_bomb", "weapon_bomb_ice", "weapon_bomb_storm", "weapon_bomb_poison"]),
+		"sangsue: les 4 bombes => déblocage")
+	# L'ordre ne compte pas.
+	_check(BombChallenges.unlocks_leech(
+			["weapon_bomb_poison", "weapon_bomb", "weapon_bomb_storm", "weapon_bomb_ice"]),
+		"sangsue: ordre indifférent")
+	# Une arme étrangère en plus ne gêne pas (inventaire réel : 6 slots).
+	_check(BombChallenges.unlocks_leech(
+			["weapon_bomb", "weapon_bomb_ice", "weapon_bomb_storm", "weapon_bomb_poison", "weapon_pistol"]),
+		"sangsue: armes étrangères en plus => déblocage quand même")
+
+	# 3 bombes seulement => pas de déblocage.
+	_check(not BombChallenges.unlocks_leech(
+			["weapon_bomb", "weapon_bomb_ice", "weapon_bomb_storm"]),
+		"sangsue: 3 bombes sur 4 => pas de déblocage")
+	# ⚠️ Le piège : des DOUBLONS ne remplacent pas une bombe manquante.
+	_check(not BombChallenges.unlocks_leech(
+			["weapon_bomb", "weapon_bomb", "weapon_bomb", "weapon_bomb"]),
+		"sangsue: 4x la même bombe => PAS de déblocage")
+	_check(not BombChallenges.unlocks_leech(
+			["weapon_bomb", "weapon_bomb_ice", "weapon_bomb_ice", "weapon_bomb_storm"]),
+		"sangsue: doublon de glace au lieu du poison => pas de déblocage")
+	_check(not BombChallenges.unlocks_leech([]),
+		"sangsue: inventaire vide => pas de déblocage")
+
+	# La sangsue est une récompense connue (le popup de migration itère sur REWARD).
+	_check(BombChallenges.REWARD.has("chal_bomb_leech"),
+		"sangsue: chal_bomb_leech est dans REWARD (couvert par la migration)")
+	_check(BombChallenges.REWARD["chal_bomb_leech"] == "weapon_bomb_leech",
+		"sangsue: chal_bomb_leech récompense weapon_bomb_leech")
+	_check(BombChallenges.unearned_bombs(["weapon_bomb_leech"], []) == ["weapon_bomb_leech"],
+		"migration: sangsue possédée et non gagnée => à proposer")
+
 
 func _test_bomb_leech() -> void:
 	# ⚠️ Signature du helper existant : _check(cond, name) — la CONDITION d'abord.

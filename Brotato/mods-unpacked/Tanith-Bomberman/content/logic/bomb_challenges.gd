@@ -2,9 +2,18 @@ extends Reference
 # Logique PURE de la chaîne de défis des bombes.
 # Aucune dépendance aux autoloads du jeu -> testable en headless.
 #
-# La chaîne : monter une bombe au niveau IV débloque la bombe suivante.
-#   Bombe IV -> Glace, Glace IV -> Foudre, Foudre IV -> Poison.
-# Le Poison est la fin de la chaîne : il ne débloque rien.
+# Deux mécanismes de déblocage, distincts :
+#
+# 1. La CHAÎNE (CHAIN) : monter une bombe au niveau IV débloque la suivante.
+#      Bombe IV -> Glace, Glace IV -> Foudre, Foudre IV -> Poison.
+#    Le Poison est la fin de la chaîne : il ne débloque rien.
+#
+# 2. La COLLECTION (unlocks_leech) : détenir les 4 bombes EN MÊME TEMPS, quels que
+#    soient leurs tiers, débloque la Bombe sangsue. Ça immobilise 4 des 6 slots
+#    d'arme : c'est un sacrifice de build délibéré, et c'est tout l'intérêt du défi.
+#
+# ⚠️ La sangsue n'est donc PAS dans CHAIN (qui est indexé « arme X au tier IV »), mais
+# elle EST dans REWARD, ce qui suffit à ce que le popup de migration la couvre.
 
 # ItemParentData.Tier : COMMON=0, UNCOMMON=1, RARE=2, LEGENDARY=3.
 # Le niveau IV affiché en jeu est donc le tier 3.
@@ -24,7 +33,31 @@ const REWARD := {
 	"chal_bomb_ice": "weapon_bomb_ice",
 	"chal_bomb_storm": "weapon_bomb_storm",
 	"chal_bomb_poison": "weapon_bomb_poison",
+	"chal_bomb_leech": "weapon_bomb_leech",
 }
+
+# --- Bombe sangsue : déblocage par la COLLECTION (pas par un tier IV). ---
+
+# Les 4 bombes à détenir SIMULTANÉMENT (tier indifférent).
+const LEECH_REQUIRED := [
+	"weapon_bomb",
+	"weapon_bomb_ice",
+	"weapon_bomb_poison",
+	"weapon_bomb_storm",
+]
+
+const LEECH_CHALLENGE := "chal_bomb_leech"
+
+
+# Vrai si l'inventaire (liste de weapon_id, doublons tolérés) contient les 4 bombes.
+# ⚠️ Des doublons ne remplacent JAMAIS une bombe manquante : on vérifie la présence
+# de CHACUNE des 4, pas un simple compte.
+static func unlocks_leech(weapon_ids: Array) -> bool:
+	for required in LEECH_REQUIRED:
+		if not weapon_ids.has(required):
+			return false
+	return true
+
 
 # Le défi complété par l'obtention de cette arme, ou "" si aucun.
 static func challenge_for(weapon_id: String, tier: int) -> String:

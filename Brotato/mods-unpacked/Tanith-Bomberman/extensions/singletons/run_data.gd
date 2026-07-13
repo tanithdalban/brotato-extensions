@@ -1,6 +1,7 @@
 extends "res://singletons/run_data.gd"
-# Complète les défis de la chaîne des bombes quand une bombe de niveau IV entre
-# dans l'inventaire du joueur.
+# Complète les défis des bombes à l'acquisition d'une arme. Deux mécanismes :
+#   - la CHAÎNE : une bombe de niveau IV entre dans l'inventaire -> débloque la suivante ;
+#   - la COLLECTION : les 4 bombes sont détenues EN MÊME TEMPS -> débloque la sangsue.
 #
 # POURQUOI add_weapon : c'est l'entonnoir UNIQUE de toute acquisition d'arme —
 # fusion en boutique (base_shop.gd:693), achat direct d'une arme de tier IV
@@ -19,6 +20,7 @@ const BombChallenges = preload("res://mods-unpacked/Tanith-Bomberman/content/log
 func add_weapon(weapon: WeaponData, player_index: int, is_selection: bool = false) -> WeaponData:
 	var new_weapon = .add_weapon(weapon, player_index, is_selection)
 	_try_complete_bomb_challenge(new_weapon)
+	_try_complete_leech_challenge(player_index)
 	return new_weapon
 
 
@@ -30,6 +32,28 @@ func _try_complete_bomb_challenge(weapon) -> void:
 	if chal_id == "":
 		return
 
+	_complete(chal_id)
+
+
+# Bombe sangsue : débloquée par la COLLECTION (les 4 bombes en inventaire en même
+# temps, tier indifférent), pas par un tier IV. On relit l'inventaire du joueur
+# APRÈS l'ajout de l'arme — add_weapon est l'entonnoir unique de toute acquisition.
+func _try_complete_leech_challenge(player_index: int) -> void:
+	if player_index < 0 or player_index >= players_data.size():
+		return
+
+	var weapon_ids := []
+	for w in players_data[player_index].weapons:
+		if w != null:
+			weapon_ids.append(w.weapon_id)
+
+	if not BombChallenges.unlocks_leech(weapon_ids):
+		return
+
+	_complete(BombChallenges.LEECH_CHALLENGE)
+
+
+func _complete(chal_id: String) -> void:
 	# Keys.generate_hash alimente aussi hash_to_string (keys.gd:450), dont dépend
 	# SteamPlatform.complete_challenge : sans ça, un hash inconnu y planterait.
 	var chal_hash: int = Keys.generate_hash(chal_id)
