@@ -14,6 +14,7 @@ const BombIceSlow = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/
 const PoisonFire = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/poison_fire.gd")
 const BombPlacement = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_placement.gd")
 const BombChallenges = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_challenges.gd")
+const BombLeech = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_leech.gd")
 
 var _failures := 0
 var _count := 0
@@ -60,6 +61,7 @@ func _init():
 	_test_poison_fire()
 	_test_bomb_placement()
 	_test_bomb_challenges()
+	_test_bomb_leech()
 	print("=== %d tests, %d échec(s) ===" % [_count, _failures])
 	quit(_failures)
 
@@ -382,6 +384,80 @@ func _test_bomb_challenges() -> void:
 		"migration: les trois possédées => les trois à proposer")
 	_check(BombChallenges.unearned_bombs(["weapon_bomb"], []).empty(),
 		"migration: la bombe normale n'est jamais concernée")
+
+
+func _test_bomb_leech() -> void:
+	# ⚠️ Signature du helper existant : _check(cond, name) — la CONDITION d'abord.
+
+	# --- cap_for_tier : le plafond de PV par explosion, par tier (spec) ---
+	_check(BombLeech.cap_for_tier(0) == 3, "sangsue: plafond T1 = 3 PV")
+	_check(BombLeech.cap_for_tier(1) == 4, "sangsue: plafond T2 = 4 PV")
+	_check(BombLeech.cap_for_tier(2) == 5, "sangsue: plafond T3 = 5 PV")
+	_check(BombLeech.cap_for_tier(3) == 6, "sangsue: plafond T4 = 6 PV")
+	# Garde-fous : tier hors bornes => clampé (pas de crash, pas d'index négatif).
+	_check(BombLeech.cap_for_tier(-5) == 3, "sangsue: tier négatif => clamp T1")
+	_check(BombLeech.cap_for_tier(99) == 6, "sangsue: tier trop grand => clamp T4")
+
+	# --- procs : tirage, dé INJECTÉ (déterminisme, pas de randf() dans le pur) ---
+	_check(BombLeech.procs(0.0, 0.4) == true, "sangsue: dé 0.0 < 40% => proc")
+	_check(BombLeech.procs(0.39, 0.4) == true, "sangsue: dé 0.39 < 40% => proc")
+	_check(BombLeech.procs(0.4, 0.4) == false, "sangsue: dé 0.4 pas < 40% => pas de proc")
+	_check(BombLeech.procs(0.9, 0.4) == false, "sangsue: dé 0.9 => pas de proc")
+	_check(BombLeech.procs(0.5, 0.0) == false, "sangsue: 0% de vol de vie => jamais")
+	_check(BombLeech.procs(0.99, 1.0) == true, "sangsue: 100% de vol de vie => toujours")
+	# Au-delà de 100 % (stat joueur très haute) : toujours, jamais d'erreur.
+	_check(BombLeech.procs(0.99, 2.5) == true, "sangsue: vol de vie > 100% => toujours")
+
+	# --- proc_amount : 1 PV, 2 avec l'item double vol de vie (aligné vanilla) ---
+	_check(BombLeech.proc_amount(false) == 1, "sangsue: proc normal = 1 PV")
+	_check(BombLeech.proc_amount(true) == 2, "sangsue: proc avec bonus double = 2 PV")
+
+	# --- granted : écrêtage au budget restant ---
+	_check(BombLeech.granted(1, 3) == 1, "sangsue: 1 PV demandé sur 3 restants => 1")
+	_check(BombLeech.granted(2, 3) == 2, "sangsue: 2 PV demandés sur 3 restants => 2")
+	# LE cas de la spec : un proc « double » ne perce pas le plafond.
+	_check(BombLeech.granted(2, 1) == 1, "sangsue: proc double sur 1 PV restant => écrêté à 1")
+	_check(BombLeech.granted(2, 0) == 0, "sangsue: budget épuisé => 0")
+	_check(BombLeech.granted(1, -1) == 0, "sangsue: restant négatif => 0 (pas de soin fantôme)")
+	_check(BombLeech.granted(-3, 5) == 0, "sangsue: montant négatif => 0")
+
+	# --- Budget : l'état mutable partagé par les ennemis d'UNE explosion ---
+	# (Array à un élément : passé par référence, donc partagé sans classe.)
+	var b = BombLeech.new_budget(0)  # T1 => 3 PV
+	_check(BombLeech.remaining(b) == 3, "sangsue: budget T1 démarre à 3")
+	_check(BombLeech.take(b, 1) == 1, "sangsue: 1er proc accordé (1 PV)")
+	_check(BombLeech.remaining(b) == 2, "sangsue: budget décrémenté à 2")
+	_check(BombLeech.take(b, 2) == 2, "sangsue: proc double accordé (2 PV)")
+	_check(BombLeech.remaining(b) == 0, "sangsue: budget épuisé")
+	# Plafond JAMAIS dépassé : les ennemis suivants du même souffle ne drainent plus.
+	_check(BombLeech.take(b, 1) == 0, "sangsue: budget épuisé => plus aucun drain")
+	_check(BombLeech.remaining(b) == 0, "sangsue: budget ne devient jamais négatif")
+
+	# Le partage par RÉFÉRENCE est ce qui fait tenir le plafond entre deux ennemis du
+	# même souffle : si le budget était copié, chacun aurait le sien et le plafond
+	# ne vaudrait plus rien. Test explicite de cette propriété.
+	var shared = BombLeech.new_budget(0)  # T1 => 3 PV
+	var alias = shared
+	var _g = BombLeech.take(alias, 3)
+	_check(BombLeech.remaining(shared) == 0, "sangsue: budget partagé par référence (pas copié)")
+
+	# Le plafond tient face à une horde : 20 ennemis, tous procs => jamais plus que le cap.
+	var b2 = BombLeech.new_budget(3)  # T4 => 6 PV
+	var total := 0
+	for _i in range(20):
+		total += BombLeech.take(b2, 1)
+	_check(total == 6, "sangsue: 20 ennemis, tous procs => exactement le plafond T4 (6 PV)")
+
+	# Le bonus double atteint le plafond avec MOINS d'ennemis, mais ne le perce pas.
+	var b3 = BombLeech.new_budget(3)  # T4 => 6 PV
+	var total3 := 0
+	for _i in range(20):
+		total3 += BombLeech.take(b3, 2)
+	_check(total3 == 6, "sangsue: bonus double => même plafond (6 PV), atteint plus vite")
+
+	# Garde-fous : un budget malformé ne draine rien et ne plante pas.
+	_check(BombLeech.take([], 1) == 0, "sangsue: budget vide => 0 (pas de crash)")
+	_check(BombLeech.remaining([]) == 0, "sangsue: remaining d'un budget vide => 0")
 
 
 func _check(cond, name):
