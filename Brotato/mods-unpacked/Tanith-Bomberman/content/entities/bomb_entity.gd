@@ -9,6 +9,7 @@ const TrollBomb = preload("res://mods-unpacked/Tanith-Bomberman/content/entities
 const TrollBombLogic = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/troll_bomb_logic.gd")
 const BombElement = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_element.gd")
 const BombIceSlow = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_ice_slow.gd")
+const BombLeech = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_leech.gd")
 
 # --- Paramètres réglables de la troll bombe (calibrage final en jeu) ---
 const TROLL_WAKE_CHANCE := 0.05   # ~5 % qu'une bombe posée se réveille (par bombe ; se cumule avec le volume de bombes)
@@ -136,6 +137,15 @@ func _on_fuse_timeout() -> void:
 		var slow_pct = BombIceSlow.slow_pct_for(_stats.speed_percent_modifier)
 		if not _inst.is_connected("hit_something", _weapon, "on_ice_hit"):
 			_inst.connect("hit_something", _weapon, "on_ice_hit", [slow_pct])
+	# Sangsue : draine les ennemis touchés, via le même signal public hit_something de
+	# l'explosion que la glace (émis même à 0 dégât, unit.gd:608) -> notre BombWeapon
+	# (persistant). Le budget est instancié ICI : chaque explosion a donc le sien, et le
+	# plafond de PV vaut par explosion. La connexion est nettoyée par
+	# PlayerExplosion.end_explosion (disconnect_all hit_something).
+	if _element == BombElement.LEECH and _inst != null and is_instance_valid(_weapon):
+		var budget := BombLeech.new_budget(_tier)
+		if not _inst.is_connected("hit_something", _weapon, "on_leech_hit"):
+			_inst.connect("hit_something", _weapon, "on_leech_hit", [budget])
 	queue_free()
 
 # Réveil : instancie la troll bombe à la place de l'explosion et se libère sans

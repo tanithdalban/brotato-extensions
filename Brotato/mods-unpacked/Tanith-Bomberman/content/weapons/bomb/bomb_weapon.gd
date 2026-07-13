@@ -9,6 +9,7 @@ const BombSkin = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bom
 const BombElement = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_element.gd")
 const BombIceSlow = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_ice_slow.gd")
 const BombPlacement = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_placement.gd")
+const BombLeech = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_leech.gd")
 
 # Échelle d'explosion de base (équiv. landmine). Ajustable au réglage.
 const EXPLOSION_SCALE := 1.5
@@ -147,6 +148,59 @@ func on_ice_hit(thing_hit, _damage_dealt, slow_pct: float) -> void:
 	# Se nettoie tout seul à la mort de l'ennemi ; dédoublonné par couleur (non cumulatif).
 	if thing_hit.has_method("add_outline"):
 		thing_hit.add_outline(FROST_OUTLINE_COLOR)
+
+
+# Cible du signal hit_something de l'explosion d'une bombe SANGSUE (connecté par
+# bomb_entity, avec un budget FRAIS par explosion). Draine l'ennemi touché : on lui
+# RETIRE N PV et on en REND N au joueur (invariant : les deux montants sont égaux).
+# Duck-typé : ne touche que des unités ayant current_stats + take_damage (marche
+# vanilla/DLC/autre mod, sans étendre enemy.gd).
+#
+# POURQUOI notre propre soin, et pas RunData.manage_life_steal : le vol de vie vanilla
+# est gardé par le LifestealTimer du joueur (0,1 s, player.gd:734), qui JETTE tout proc
+# arrivant pendant qu'il tourne. Or une explosion touche tous ses ennemis dans la MÊME
+# frame : passer par le vanilla rendrait 1 PV par explosion, quel que soit le nombre
+# d'ennemis. On ne contourne ce timer que sur NOTRE chemin ; il reste intact pour toutes
+# les autres armes.
+func on_leech_hit(thing_hit, _damage_dealt, budget: Array) -> void:
+	if BombLeech.remaining(budget) <= 0:
+		return
+	if not is_instance_valid(thing_hit):
+		return
+	if not ("current_stats" in thing_hit) or thing_hit.current_stats == null:
+		return
+	if not thing_hit.has_method("take_damage"):
+		return
+	if current_stats == null:
+		return
+
+	# current_stats.lifesteal porte DÉJÀ « base de l'arme + stat du joueur / 100 »
+	# (weapon_service.gd:260, branche not is_structure). Ne rien recalculer.
+	if not BombLeech.procs(randf(), current_stats.lifesteal):
+		return
+
+	var amount: int = BombLeech.take(budget, BombLeech.proc_amount(_has_double_lifesteal()))
+	if amount <= 0:
+		return
+
+	# Le drain, retiré à l'ennemi : armor_applied = false -> l'armure ne le mange pas
+	# (unit.gd:502) ; hitbox = null -> ni crit ni recul. Un drain sec.
+	var args := TakeDamageArgs.new(player_index, null)
+	args.armor_applied = false
+	args.dodgeable = false
+	var _dmg = thing_hit.take_damage(amount, args)
+
+	# ... et rendu au joueur, à l'identique. on_healing_effect clampe aux PV max.
+	if is_instance_valid(_parent) and _parent.has_method("on_healing_effect"):
+		var _healed = _parent.on_healing_effect(amount)
+
+
+# L'item « double vol de vie » fait passer les procs à 2 PV (cf. run_data.gd:1378).
+func _has_double_lifesteal() -> bool:
+	var effects = RunData.get_player_effects(player_index)
+	if not effects.has(Keys.stat_double_lifesteal_bonus_hash):
+		return false
+	return RunData.get_player_effect_bool(Keys.stat_double_lifesteal_bonus_hash, player_index)
 
 
 # Surcharge : cooldown DÉTERMINISTE (pas de rand_range).
