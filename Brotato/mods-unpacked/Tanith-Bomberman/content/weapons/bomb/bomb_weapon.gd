@@ -152,7 +152,8 @@ func on_ice_hit(thing_hit, _damage_dealt, slow_pct: float) -> void:
 
 # Cible du signal hit_something de l'explosion d'une bombe SANGSUE (connecté par
 # bomb_entity, avec un budget FRAIS par explosion). Draine l'ennemi touché : on lui
-# RETIRE N PV et on en REND N au joueur (invariant : les deux montants sont égaux).
+# RETIRE N PV et on rend au joueur exactement ce que le budget vient d'accorder (N),
+# vanilla clampant lui-même le retrait à ce qu'il reste de PV sur un coup fatal.
 # Duck-typé : ne touche que des unités ayant current_stats + take_damage (marche
 # vanilla/DLC/autre mod, sans étendre enemy.gd).
 #
@@ -170,6 +171,14 @@ func on_leech_hit(thing_hit, _damage_dealt, budget: Array) -> void:
 	if not ("current_stats" in thing_hit) or thing_hit.current_stats == null:
 		return
 	if not thing_hit.has_method("take_damage"):
+		return
+	# ENNEMIS UNIQUEMENT : Neutral (arbres, caisses, rochers) hérite lui aussi de
+	# Unit et possède donc current_stats + take_damage — il passe les deux gardes
+	# ci-dessus. Or l'explosion touche bien les neutres (Hitbox calque 8, hurtbox
+	# Neutral masque 1032 = 8 + 1024) : sans cette garde, un joueur planté à côté
+	# d'un arbre drainait le budget complet à CHAQUE bombe, à l'infini (sustain
+	# gratuit). `Enemy` couvre aussi `Boss` (Boss extends Enemy).
+	if not (thing_hit is Enemy):
 		return
 	if current_stats == null:
 		return
