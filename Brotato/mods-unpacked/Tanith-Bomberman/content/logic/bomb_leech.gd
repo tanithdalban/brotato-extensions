@@ -78,10 +78,17 @@ static func new_bucket() -> Array:
 	return [0.0, -1]
 
 
-# Recharge le seau selon le temps écoulé depuis le dernier appel, puis le borne à
-# `capacity` (le plafond du TIER de la bombe qui draine EN CE MOMENT : des bombes de
-# tiers différents partagent le même seau mais pas forcément le même plafond d'un
-# appel à l'autre — c'est voulu, cf. spec).
+# Recharge le seau selon le temps écoulé depuis le dernier appel, puis borne
+# l'AJOUT à `capacity` (le plafond du TIER de la bombe qui draine EN CE MOMENT : des
+# bombes de tiers différents partagent le même seau mais pas forcément le même
+# plafond d'un appel à l'autre — c'est voulu, cf. spec).
+#
+# Compromis délibéré : le plafond ne retire JAMAIS des jetons déjà acquis. Si le
+# seau contient déjà PLUS que `capacity` (une bombe de tier supérieur a rechargé
+# avant), une bombe de tier INFÉRIEUR qui draine ensuite ne doit pas AMPUTER ce
+# surplus — sinon une build en cours de montée en tier serait strictement PIRE que
+# le bas tier seul. Seul ce qui vient d'être ajouté par CETTE recharge est écrêté à
+# `capacity`. D'où le plafond effectif = max(capacity, solde d'avant).
 #
 # Une horloge qui RECULE (now <= dernier instant) ne doit ni planter ni accorder de
 # jetons gratuits : on ignore alors la recharge (aucun ajout) SANS reculer
@@ -94,10 +101,12 @@ static func _refill(bucket: Array, capacity: int, now: int) -> void:
 	else:
 		var elapsed: int = now - int(bucket[1])
 		if elapsed > 0:
+			var before: float = bucket[0]
 			bucket[0] += (float(elapsed) / 1000.0) * float(capacity)
 			bucket[1] = now
-	if bucket[0] > capacity:
-		bucket[0] = float(capacity)
+			var ceiling: float = max(float(capacity), before)
+			if bucket[0] > ceiling:
+				bucket[0] = ceiling
 	if bucket[0] < 0.0:
 		bucket[0] = 0.0
 

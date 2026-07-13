@@ -89,6 +89,24 @@ un cas que le vanilla n'a jamais eu : elle ne proc pas *dans le temps* (pistolet
 elle proc **N fois d'un coup**. Sans plafond, une explosion sur une horde de fin de vague avec une
 build vol de vie rendrait la barre entière.
 
+### ⚠️ Correctif d'équilibrage (revue finale) : le plafond doit être PAR JOUEUR ET PAR SECONDE
+
+Un plafond **par explosion** ne borne pas les PV **par seconde** : rien n'oblige le joueur à garder
+les autres bombes une fois la sangsue débloquée, et **six** sangsues en T4 (cooldown 60 ≈ 1 s) font
+**six budgets indépendants**, soit ~36 PV/s dans une vague dense. Le plafond global du jeu est de
+**10 PV/s** — précisément ce que le `LifestealTimer` qu'on contourne existe pour imposer. Même
+**deux** sangsues le dépassent.
+
+Le budget est donc **un seul par joueur**, partagé par toutes ses bombes sangsue, et **il se
+recharge dans le temps** (seau à jetons) :
+
+- **Capacité** = le plafond du tier de la bombe qui draine (3/4/5/6).
+- **Recharge** = la capacité **par seconde** (une capacité pleine se reconstitue en 1 s).
+
+Empiler les sangsues ne **multiplie** donc plus le soin : ça le rend seulement plus **régulier**
+(le seau se vide plus vite, il ne se remplit pas plus). C'est l'esprit du garde-fou vanilla,
+transposé à une arme de zone.
+
 ## Déblocage
 
 La Bombe sangsue est la **récompense de la collection**, pas un maillon de la chaîne des tiers :

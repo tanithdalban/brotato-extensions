@@ -563,6 +563,26 @@ func _test_bomb_leech() -> void:
 	_check(BombLeech.remaining(bucket_backwards, 3, t0 - 500) == 0, "sangsue: horloge qui recule => pas de PV gratuits, pas de crash")
 	_check(BombLeech.remaining(bucket_backwards, 3, t0) == 0, "sangsue: now == dernier instant => pas de recharge")
 
+	# --- Finding 2 : une bombe de tier INFÉRIEUR ne doit jamais DÉTRUIRE des jetons ---
+	#
+	# Bug initial : la recharge BORNAIT (clampait) le seau à la capacité de la bombe
+	# qui drane EN CE MOMENT, y compris VERS LE BAS. Un joueur avec une Sangsue I
+	# (plafond 3) ET une Sangsue IV (plafond 6) sur un seau à 6 jetons voyait donc
+	# 3 jetons DÉTRUITS dès que la Sangsue I explosait en premier -- un build en cours
+	# de montée en tier devenait ainsi PIRE que la bombe T1 seule, ce qui est absurde.
+	# Correctif : la recharge ne fait qu'AJOUTER des jetons (borné par la capacité de
+	# la bombe qui drane), elle n'en RETIRE jamais.
+	var mixed := BombLeech.new_bucket()
+	_check(BombLeech.remaining(mixed, 6, t0) == 6, "sangsue mixte: seau neuf plein au plafond T4 (6 PV)")
+	_check(BombLeech.remaining(mixed, 3, t0) == 6, "sangsue mixte: interrogé ensuite par une bombe T1 (plafond 3) au MÊME instant => garde ses 6 jetons, pas clampé à 3")
+	_check(BombLeech.take(mixed, 6, 6, t0) == 6, "sangsue mixte: une bombe T4 peut alors dépenser les 6 jetons intacts")
+
+	# Même invariant avec un vrai écart de temps : le passage d'une bombe T1 ne doit
+	# pas non plus AMPUTER un surplus déjà accumulé par une bombe T4.
+	var mixed_time := BombLeech.new_bucket()
+	var _gE = BombLeech.take(mixed_time, 6, 0, t0)  # force juste l'initialisation à 6 jetons (T4)
+	_check(BombLeech.remaining(mixed_time, 3, t0 + 10000) == 6, "sangsue mixte: bombe T1 interrogeant 10s plus tard => toujours 6 jetons, jamais amputé à 3")
+
 	# --- refund : rembourse les jetons non réellement consommés (Finding 2) ---
 	var bucket_refund = BombLeech.new_bucket()
 	var g9 := BombLeech.take(bucket_refund, 3, 2, t0)

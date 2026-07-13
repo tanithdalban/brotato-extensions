@@ -24,11 +24,15 @@
 #                             {1} = dégâts par tick DÉJÀ scalés par l'ingénierie,
 #                             {2} = icônes de scaling.
 #   WEAPON_BOMB_LEECH       — nom de la Bombe Sangsue
-#   WEAPON_BOMB_LEECH_DRAIN — ligne d'infobulle « PV drainés par explosion » (via NullEffect,
-#                             {0} = plafond du tier). ⚠️ Doit rester cohérent avec
-#                             BombLeech.CAP_BY_TIER (3/4/5/6).
-#                             La ligne « Vol de vie X % » est, elle, affichée gratuitement
-#                             par le vanilla (weapon_stats.gd:get_lifesteal_text).
+#   WEAPON_BOMB_LEECH_DRAIN — ligne d'infobulle « PV drainés PAR SECONDE, PARTAGÉS
+#                             entre toutes les sangsues du joueur » (via NullEffect,
+#                             {0} = plafond du tier = capacité du seau à jetons).
+#                             ⚠️ Doit rester cohérent avec BombLeech.CAP_BY_TIER
+#                             (3/4/5/6) ET avec le modèle réel (seau PAR JOUEUR, PAR
+#                             SECONDE, partagé — pas un budget par explosion, cf.
+#                             bomb_leech.gd). La ligne « Vol de vie X % » est, elle,
+#                             affichée gratuitement par le vanilla
+#                             (weapon_stats.gd:get_lifesteal_text).
 #
 # Note sur les descriptions : dans Brotato, les descriptions d'objets/personnages
 # sont construites à partir du tableau effects[] (EffectLine), PAS depuis une clé
@@ -56,7 +60,7 @@ static func register() -> void:
 	tr_en.add_message("CHAL_BOMB_POISON", "Poison Handler")
 	tr_en.add_message("CHAL_BOMB_POISON_DESC", "Get a tier IV Storm Bomb.")
 	tr_en.add_message("WEAPON_BOMB_LEECH", "Leech Bomb")
-	tr_en.add_message("WEAPON_BOMB_LEECH_DRAIN", "Drains up to {0} HP per explosion")
+	tr_en.add_message("WEAPON_BOMB_LEECH_DRAIN", "Drains up to {0} HP/s, shared by all your Leech Bombs")
 	tr_en.add_message("CHAL_BOMB_LEECH", "Bomb Collector")
 	tr_en.add_message("CHAL_BOMB_LEECH_DESC", "Hold the Bomb, Ice, Storm and Poison Bombs at the same time.")
 	tr_en.add_message("BOMB_MIGRATION_TITLE", "New — bombs must be earned")
@@ -82,7 +86,7 @@ static func register() -> void:
 	tr_fr.add_message("CHAL_BOMB_POISON", "Artificier de poison")
 	tr_fr.add_message("CHAL_BOMB_POISON_DESC", "Obtenez une Bombe de Foudre de niveau IV.")
 	tr_fr.add_message("WEAPON_BOMB_LEECH", "Bombe Sangsue")
-	tr_fr.add_message("WEAPON_BOMB_LEECH_DRAIN", "Draine jusqu'à {0} PV par explosion")
+	tr_fr.add_message("WEAPON_BOMB_LEECH_DRAIN", "Draine jusqu'à {0} PV/s, partagés entre vos Bombes Sangsue")
 	tr_fr.add_message("CHAL_BOMB_LEECH", "Collectionneur de bombes")
 	tr_fr.add_message("CHAL_BOMB_LEECH_DESC", "Détenez en même temps la Bombe, la Bombe de Glace, la Bombe de Foudre et la Bombe de Poison.")
 	tr_fr.add_message("BOMB_MIGRATION_TITLE", "Nouveauté — les bombes se méritent")
