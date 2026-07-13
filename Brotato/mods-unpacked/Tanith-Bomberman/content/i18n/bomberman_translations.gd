@@ -23,6 +23,12 @@
 #                             BurningEffect.get_args() : {0} = durée (nb de ticks),
 #                             {1} = dégâts par tick DÉJÀ scalés par l'ingénierie,
 #                             {2} = icônes de scaling.
+#   WEAPON_BOMB_LEECH       — nom de la Bombe Sangsue
+#   WEAPON_BOMB_LEECH_DRAIN — ligne d'infobulle « PV drainés par explosion » (via NullEffect,
+#                             {0} = plafond du tier). ⚠️ Doit rester cohérent avec
+#                             BombLeech.CAP_BY_TIER (3/4/5/6).
+#                             La ligne « Vol de vie X % » est, elle, affichée gratuitement
+#                             par le vanilla (weapon_stats.gd:get_lifesteal_text).
 #
 # Note sur les descriptions : dans Brotato, les descriptions d'objets/personnages
 # sont construites à partir du tableau effects[] (EffectLine), PAS depuis une clé
@@ -49,6 +55,10 @@ static func register() -> void:
 	tr_en.add_message("CHAL_BOMB_STORM_DESC", "Get a tier IV Ice Bomb.")
 	tr_en.add_message("CHAL_BOMB_POISON", "Poison Handler")
 	tr_en.add_message("CHAL_BOMB_POISON_DESC", "Get a tier IV Storm Bomb.")
+	tr_en.add_message("WEAPON_BOMB_LEECH", "Leech Bomb")
+	tr_en.add_message("WEAPON_BOMB_LEECH_DRAIN", "Drains up to {0} HP per explosion")
+	tr_en.add_message("CHAL_BOMB_LEECH", "Bomb Collector")
+	tr_en.add_message("CHAL_BOMB_LEECH_DESC", "Hold the Bomb, Ice, Storm and Poison Bombs at the same time.")
 	tr_en.add_message("BOMB_MIGRATION_TITLE", "New — bombs must be earned")
 	tr_en.add_message("BOMB_MIGRATION_TEXT", "The Ice, Storm and Poison Bombs are now unlocked by completing challenges: take a bomb to tier IV to earn the next one.\n\nYou already own them. Lock them again to play through the progression, or keep them?")
 	tr_en.add_message("BOMB_MIGRATION_PROGRESS", "Play the progression")
@@ -71,6 +81,10 @@ static func register() -> void:
 	tr_fr.add_message("CHAL_BOMB_STORM_DESC", "Obtenez une Bombe de Glace de niveau IV.")
 	tr_fr.add_message("CHAL_BOMB_POISON", "Artificier de poison")
 	tr_fr.add_message("CHAL_BOMB_POISON_DESC", "Obtenez une Bombe de Foudre de niveau IV.")
+	tr_fr.add_message("WEAPON_BOMB_LEECH", "Bombe Sangsue")
+	tr_fr.add_message("WEAPON_BOMB_LEECH_DRAIN", "Draine jusqu'à {0} PV par explosion")
+	tr_fr.add_message("CHAL_BOMB_LEECH", "Collectionneur de bombes")
+	tr_fr.add_message("CHAL_BOMB_LEECH_DESC", "Détenez en même temps la Bombe, la Bombe de Glace, la Bombe de Foudre et la Bombe de Poison.")
 	tr_fr.add_message("BOMB_MIGRATION_TITLE", "Nouveauté — les bombes se méritent")
 	tr_fr.add_message("BOMB_MIGRATION_TEXT", "Les bombes de Glace, de Foudre et de Poison se débloquent désormais en relevant des défis : montez une bombe au niveau IV pour gagner la suivante.\n\nVous les possédez déjà. Voulez-vous les reverrouiller pour vivre la progression, ou les conserver ?")
 	tr_fr.add_message("BOMB_MIGRATION_PROGRESS", "Vivre la progression")
