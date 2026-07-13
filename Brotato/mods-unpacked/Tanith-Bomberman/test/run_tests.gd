@@ -149,6 +149,7 @@ func _test_bomb_skin_element():
 	var storm_path = BombSkin.element_sprite_path("storm")
 	_check(storm_path.ends_with("storm.png"), "skin: storm -> storm.png")
 	_check(BombSkin.element_sprite_path("poison").ends_with("poison.png"), "skin: poison -> poison.png")
+	_check(BombSkin.element_sprite_path("leech").ends_with("sangsue.png"), "skin: leech -> sangsue.png")
 
 
 func _test_troll_should_wake():
@@ -239,6 +240,8 @@ func _test_bomb_element():
 	_check(BombElement.from_weapon_id("") == BombElement.NORMAL, "element: vide => normal")
 	_check(BombElement.is_effect(BombElement.ICE), "element: ice est un effet")
 	_check(not BombElement.is_effect(BombElement.NORMAL), "element: normal n'est pas un effet")
+	_check(BombElement.from_weapon_id("weapon_bomb_leech") == BombElement.LEECH, "element: weapon_bomb_leech => leech")
+	_check(BombElement.is_effect(BombElement.LEECH), "element: leech est un effet (0 dégât AoE, pas de troll)")
 
 
 func _test_bomb_ice_slow():

@@ -1,17 +1,19 @@
 extends Reference
 # Élément d'une bombe, déduit du weapon_id partagé par ses 4 tiers.
 # Pilote le sous-comportement à l'explosion (normal = dégâts+brûlure+troll ;
-# glace/poison/foudre = "bombes à effet" : 0 dégât AoE, jamais de trollbombe).
+# glace/poison/foudre/sangsue = "bombes à effet" : 0 dégât AoE, jamais de trollbombe).
 
 const NORMAL := "normal"
 const ICE := "ice"
 const POISON := "poison"
 const STORM := "storm"
+const LEECH := "leech"
 
 const _BY_WEAPON_ID := {
 	"weapon_bomb_ice": ICE,
 	"weapon_bomb_poison": POISON,
 	"weapon_bomb_storm": STORM,
+	"weapon_bomb_leech": LEECH,
 }
 
 # Élément d'une arme d'après son weapon_id. Repli NORMAL (dont "weapon_bomb").
