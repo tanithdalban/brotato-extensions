@@ -19,6 +19,7 @@ extends "res://ui/menus/run/character_selection.gd"
 # D'où le nom local `BombermanModLog`, pour ne jamais collisionner avec un autre mod.
 const BombermanModLog = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/mod_log.gd")
 const BombChallenges = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_challenges.gd")
+const BombMigrationPopup = preload("res://mods-unpacked/Tanith-Bomberman/content/ui/bomb_migration_popup.gd")
 
 # Le dialogue de migration actuellement ouvert (null sinon). Sert à le refermer si la
 # coop démarre, et à ne jamais en empiler deux.
@@ -74,21 +75,14 @@ func _on_bomberman_coop_toggled(active: bool) -> void:
 		_bomberman_try_propose_migration()
 
 
+# Referme le panneau, quelle qu'en soit la raison (réponse, ui_cancel, coop qui
+# démarre) et libère la référence, pour qu'une bascule ultérieure puisse reproposer.
 func _bomberman_close_migration_dialog() -> void:
 	if _bomberman_migration_dialog == null:
 		return
 
 	if is_instance_valid(_bomberman_migration_dialog):
 		_bomberman_migration_dialog.hide()
-		_bomberman_migration_dialog.queue_free()
-
-	_bomberman_migration_dialog = null
-
-
-# Le dialogue s'est fermé, quelle qu'en soit la raison (réponse, Échap, coop qui
-# démarre) : on libère la référence pour qu'une bascule ultérieure puisse reproposer.
-func _on_bomberman_migration_dialog_hidden() -> void:
-	if _bomberman_migration_dialog != null and is_instance_valid(_bomberman_migration_dialog):
 		_bomberman_migration_dialog.queue_free()
 
 	_bomberman_migration_dialog = null
@@ -115,34 +109,26 @@ func _show_migration_popup(pending: Array) -> void:
 	if RunData.is_coop_run or _bomberman_migration_dialog != null:
 		return
 
-	var dialog := ConfirmationDialog.new()
-	dialog.window_title = tr("BOMB_MIGRATION_TITLE")
-	dialog.dialog_text = tr("BOMB_MIGRATION_TEXT")
-	dialog.get_ok().text = tr("BOMB_MIGRATION_PROGRESS")
-	dialog.get_cancel().text = tr("BOMB_MIGRATION_KEEP")
+	# Panneau maison au thème du jeu (cf. bomb_migration_popup.gd) : une WindowDialog
+	# native traînait son chrome Godot — barre de titre claire, croix, titre tronqué —
+	# qui jurait avec Brotato. Le défaut de focus (option SÛRE) et le confinement du
+	# focus manette sont gérés par le popup lui-même.
+	var dialog: Control = BombMigrationPopup.new()
+	dialog.setup(
+		tr("BOMB_MIGRATION_TITLE"),
+		tr("BOMB_MIGRATION_TEXT"),
+		tr("BOMB_MIGRATION_PROGRESS"),
+		tr("BOMB_MIGRATION_KEEP")
+	)
 
-	# Le Label interne n'a pas l'autowrap par défaut en Godot 3 : sans lui,
-	# popup_centered() sans taille dimensionne la fenêtre sur BOMB_MIGRATION_TEXT
-	# comme une seule ligne (~200 caractères) => dialogue démesuré, boutons
-	# potentiellement inatteignables. On force le retour à la ligne et une taille
-	# raisonnable.
-	dialog.get_label().autowrap = true
-	dialog.rect_min_size = Vector2(700, 0)
-
-	# Échapper ferme sans choisir : la question sera reposée au prochain lancement.
-	dialog.connect("confirmed", self, "_on_migration_relock", [pending])
-	dialog.get_cancel().connect("pressed", self, "_on_migration_keep", [pending])
-	dialog.connect("popup_hide", self, "_on_bomberman_migration_dialog_hidden")
+	# Chaque réponse persiste PUIS referme. `dismissed` (ui_cancel) ne persiste rien :
+	# la question sera reposée au prochain lancement.
+	var _r = dialog.connect("relock_chosen", self, "_on_migration_relock", [pending])
+	var _k = dialog.connect("keep_chosen", self, "_on_migration_keep", [pending])
+	var _d = dialog.connect("dismissed", self, "_bomberman_close_migration_dialog")
 
 	_bomberman_migration_dialog = dialog
 	add_child(dialog)
-	dialog.popup_centered(Vector2(700, 260))
-
-	# AcceptDialog focalise son bouton OK à l'ouverture. Ici, OK = « Vivre la
-	# progression » = REVERROUILLER, destructif et irréversible : un joueur qui
-	# enchaîne les menus en martelant A/Entrée effacerait ses bombes sans avoir
-	# rien lu. L'option SÛRE (« Garder mes bombes ») doit être le défaut.
-	dialog.get_cancel().grab_focus()
 
 
 # « Vivre la progression » : on retire les bombes non gagnées de la sauvegarde.
@@ -165,6 +151,10 @@ func _on_migration_relock(pending: Array) -> void:
 	# de suite : c'est ce que fait le jeu lui-même quand il active/désactive un DLC
 	# (global/dlc_data.gd:102).
 	ItemService.init_unlocked_pool()
+
+	# Le panneau maison ne se referme pas tout seul (contrairement à la WindowDialog
+	# qu'il remplace) : c'est à nous de le faire, une fois la réponse persistée.
+	_bomberman_close_migration_dialog()
 
 
 # « Garder mes bombes » : on marque leurs défis comme complétés, pour que la
@@ -189,3 +179,6 @@ func _on_migration_keep(pending: Array) -> void:
 
 	ProgressData.save()
 	BombermanModLog.info("migration: le joueur garde ses bombes")
+
+	# Idem : c'est nous qui refermons le panneau (cf. _on_migration_relock).
+	_bomberman_close_migration_dialog()
