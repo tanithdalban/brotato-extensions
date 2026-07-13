@@ -459,6 +459,18 @@ func _test_bomb_leech() -> void:
 	_check(BombLeech.take([], 1) == 0, "sangsue: budget vide => 0 (pas de crash)")
 	_check(BombLeech.remaining([]) == 0, "sangsue: remaining d'un budget vide => 0")
 
+	# --- Cas critique : double proc avec petit budget, écrêtage END-TO-END via take() ---
+	# T1 budget = 3 PV. Un proc double draine 2, il en reste 1. Le prochain proc double
+	# ne peut drainer que 1 (clamped), puis le budget est exact à 0. C'est l'invariant
+	# de spec : « un double proc sur 1 PV restant ne doit jamais drainer 2 ».
+	var b_crit = BombLeech.new_budget(0)  # T1 => 3 PV
+	var drain_1 = BombLeech.take(b_crit, 2)  # 1er proc double => 2 PV
+	var drain_2 = BombLeech.take(b_crit, 2)  # 2e proc double => écrêté à 1 PV
+	_check(drain_1 == 2, "sangsue: 1er proc double sur T1 => 2 PV accordés")
+	_check(drain_2 == 1, "sangsue: 2e proc double sur T1 => écrêté à 1 PV (pas 2)")
+	_check(BombLeech.remaining(b_crit) == 0, "sangsue: après 2 procs, budget T1 exact à 0")
+	_check(drain_1 + drain_2 == 3, "sangsue: total draine = plafond T1 (3 PV)")
+
 
 func _check(cond, name):
 	_count += 1
