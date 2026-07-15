@@ -6,6 +6,14 @@ never show up in *their own* shop for the run.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.0.1] — 2026-07-15
+
+### Fixed
+- The **"Shop Config"** toggle no longer appears **twice** in the options panel
+  when another mod extends the same character selection screen (seen with the
+  Bomberman mod, which re-runs the vanilla `_ready()`). The checkbox is now
+  added idempotently.
+
 ## [1.0.0] — 2026-06-29
 
 First stable release: all known issues are fixed.

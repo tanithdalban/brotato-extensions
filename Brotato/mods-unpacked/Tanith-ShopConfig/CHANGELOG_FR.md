@@ -6,6 +6,14 @@ objets/armes pour qu'ils n'apparaissent jamais dans *sa propre* boutique de la r
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.0.1] — 2026-07-15
+
+### Corrigé
+- L'option **« Config du magasin »** n'apparaît plus **en double** dans le
+  panneau d'options quand un autre mod étend le même écran de sélection de
+  personnage (constaté avec le mod Bomberman, qui rejoue le `_ready()` vanilla).
+  L'ajout de la case est désormais idempotent.
+
 ## [1.0.0] — 2026-06-29
 
 Première version stable : toutes les anomalies connues sont corrigées.
