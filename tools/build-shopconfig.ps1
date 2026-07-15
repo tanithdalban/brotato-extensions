@@ -61,6 +61,10 @@ Write-Output ("OK -> {0}  ({1} KB)" -f $outZip, [math]::Round((Get-Item $outZip)
 # --- 3) Depot local (Steam) : zip + preview.png dans mods-unpacked\Tanith-ShopConfig\ ---
 if (Test-Path $DeployDir) {
   $dest = Join-Path $DeployDir $modName
+  # Purge le depot avant de recopier : d'anciennes sources decompressees a cote
+  # du zip feraient charger le mod DEUX fois par ModLoader (UI en double). On
+  # repart d'un dossier vide -> uniquement zip + preview, comme le Workshop.
+  if (Test-Path $dest) { Remove-Item $dest -Recurse -Force }
   New-Item -ItemType Directory -Force -Path $dest | Out-Null
   Copy-Item $outZip (Join-Path $dest "$modName.zip") -Force
   $preview = Join-Path $modSrc 'preview.png'
