@@ -467,6 +467,38 @@ func _test_bomb_challenges() -> void:
 	_check(BombChallenges.unearned_bombs(["weapon_bomb_leech"], []) == ["weapon_bomb_leech"],
 		"migration: sangsue possédée et non gagnée => à proposer")
 
+	# --- Bombe Frag : le maillon terminal, débloqué par la Sangsue IV. ---
+	_check(BombChallenges.challenge_for("weapon_bomb_leech", 3) == "chal_bomb_frag",
+		"frag: Sangsue IV -> défi frag")
+	# Seul le tier IV compte, ici comme partout.
+	_check(BombChallenges.challenge_for("weapon_bomb_leech", 2) == "",
+		"frag: Sangsue III ne complète rien")
+	_check(BombChallenges.challenge_for("weapon_bomb_leech", 0) == "",
+		"frag: Sangsue I ne complète rien")
+	# La Frag est la FIN de la chaîne : elle ne débloque rien à son tour.
+	_check(BombChallenges.challenge_for("weapon_bomb_frag", 3) == "",
+		"frag: Frag IV ne complète rien (fin de chaîne)")
+
+	# La Frag est une récompense connue (le popup de migration itère sur REWARD, donc
+	# il la couvre gratuitement).
+	_check(BombChallenges.REWARD.has("chal_bomb_frag"),
+		"frag: chal_bomb_frag est dans REWARD (couvert par la migration)")
+	_check(BombChallenges.REWARD["chal_bomb_frag"] == "weapon_bomb_frag",
+		"frag: chal_bomb_frag récompense weapon_bomb_frag")
+	_check(BombChallenges.unearned_bombs(["weapon_bomb_frag"], []) == ["weapon_bomb_frag"],
+		"migration: frag possédée et non gagnée => à proposer")
+	_check(BombChallenges.unearned_bombs(["weapon_bomb_frag"], ["chal_bomb_frag"]).empty(),
+		"migration: frag possédée ET gagnée => rien à proposer")
+
+	# ⚠️ La Frag n'entre PAS dans le défi de la sangsue : celui-ci exige les 4 bombes
+	# d'ORIGINE. Sinon l'avertissement du carnet (« chaque bombe ajoutée mange un slot
+	# pendant la tentative ») s'appliquerait et le défi deviendrait ingérable.
+	_check(not BombChallenges.LEECH_REQUIRED.has("weapon_bomb_frag"),
+		"frag: la Frag n'est PAS requise pour débloquer la sangsue")
+	_check(BombChallenges.unlocks_leech(
+			["weapon_bomb", "weapon_bomb_ice", "weapon_bomb_storm", "weapon_bomb_poison"]),
+		"frag: les 4 bombes d'origine suffisent toujours pour la sangsue")
+
 
 func _test_bomb_leech() -> void:
 	# ⚠️ Signature du helper existant : _check(cond, name) — la CONDITION d'abord.
