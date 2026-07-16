@@ -240,10 +240,47 @@ func _test_bomb_element():
 	_check(BombElement.from_weapon_id("weapon_bomb_storm") == BombElement.STORM, "element: storm")
 	_check(BombElement.from_weapon_id("weapon_smg") == BombElement.NORMAL, "element: inconnu => normal (repli)")
 	_check(BombElement.from_weapon_id("") == BombElement.NORMAL, "element: vide => normal")
-	_check(BombElement.is_effect(BombElement.ICE), "element: ice est un effet")
-	_check(not BombElement.is_effect(BombElement.NORMAL), "element: normal n'est pas un effet")
 	_check(BombElement.from_weapon_id("weapon_bomb_leech") == BombElement.LEECH, "element: weapon_bomb_leech => leech")
-	_check(BombElement.is_effect(BombElement.LEECH), "element: leech est un effet (0 dégât AoE, pas de troll)")
+	_check(BombElement.from_weapon_id("weapon_bomb_frag") == BombElement.FRAG, "element: weapon_bomb_frag => frag")
+
+	# ⚠️ FRAG_CHILD est un élément INTERNE : aucun weapon_id ne doit le produire.
+	# C'est ce qui garde la garde anti-récursion STRUCTURELLE.
+	_check(BombElement.from_weapon_id("weapon_bomb_frag_child") == BombElement.NORMAL,
+		"element: frag_child n'a PAS de weapon_id (élément interne)")
+
+	# --- deals_explosion_damage : qui inflige des dégâts d'explosion ? ---
+	_check(BombElement.deals_explosion_damage(BombElement.NORMAL), "dégâts: la normale en fait")
+	_check(BombElement.deals_explosion_damage(BombElement.FRAG_CHILD), "dégâts: le FRAGMENT en fait (il porte tout le dégât de la Frag)")
+	_check(not BombElement.deals_explosion_damage(BombElement.FRAG), "dégâts: l'OBUS Frag n'en fait PAS (simple vecteur)")
+	_check(not BombElement.deals_explosion_damage(BombElement.ICE), "dégâts: la glace n'en fait pas")
+	_check(not BombElement.deals_explosion_damage(BombElement.POISON), "dégâts: le poison n'en fait pas")
+	_check(not BombElement.deals_explosion_damage(BombElement.STORM), "dégâts: la foudre n'en fait pas (ses éclairs les portent)")
+	_check(not BombElement.deals_explosion_damage(BombElement.LEECH), "dégâts: la sangsue n'en fait pas")
+
+	# --- can_troll : la troll bombe reste la signature EXCLUSIVE de la normale. ---
+	_check(BombElement.can_troll(BombElement.NORMAL), "troll: la normale peut troller")
+	_check(not BombElement.can_troll(BombElement.FRAG), "troll: la Frag ne troll jamais")
+	_check(not BombElement.can_troll(BombElement.FRAG_CHILD), "troll: un fragment ne troll jamais")
+	_check(not BombElement.can_troll(BombElement.ICE), "troll: la glace ne troll pas")
+	_check(not BombElement.can_troll(BombElement.POISON), "troll: le poison ne troll pas")
+	_check(not BombElement.can_troll(BombElement.STORM), "troll: la foudre ne troll pas")
+	_check(not BombElement.can_troll(BombElement.LEECH), "troll: la sangsue ne troll pas")
+
+	# --- is_cluster : qui se scinde ? ---
+	_check(BombElement.is_cluster(BombElement.FRAG), "cluster: la Frag se scinde")
+	# ⚠️ LE test de la garde anti-récursion : un fragment n'est PAS un cluster, donc il
+	# ne peut pas se scinder à son tour. La garde est structurelle, pas conditionnelle.
+	_check(not BombElement.is_cluster(BombElement.FRAG_CHILD), "cluster: un FRAGMENT ne se scinde PAS (garde anti-récursion structurelle)")
+	_check(not BombElement.is_cluster(BombElement.NORMAL), "cluster: la normale ne se scinde pas")
+	_check(not BombElement.is_cluster(BombElement.ICE), "cluster: la glace ne se scinde pas")
+	_check(not BombElement.is_cluster(BombElement.POISON), "cluster: le poison ne se scinde pas")
+	_check(not BombElement.is_cluster(BombElement.STORM), "cluster: la foudre ne se scinde pas")
+	_check(not BombElement.is_cluster(BombElement.LEECH), "cluster: la sangsue ne se scinde pas")
+
+	# --- Les 3 prédicats sont FAUX pour un élément inconnu : jamais de crash. ---
+	_check(not BombElement.is_cluster("inconnu"), "prédicats: élément inconnu => pas un cluster")
+	_check(not BombElement.can_troll("inconnu"), "prédicats: élément inconnu => ne troll pas")
+	_check(not BombElement.deals_explosion_damage("inconnu"), "prédicats: élément inconnu => pas de dégâts")
 
 
 func _test_bomb_ice_slow():

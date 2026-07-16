@@ -67,12 +67,12 @@ func arm(p_player_index: int, p_stats: WeaponStats, p_tier: int, p_explosion_sca
 	# Tirage unique du réveil. Si elle se réveille, la "mèche" sert de délai
 	# avant la bascule en troll bombe (instant = fraction de la mèche) ; sinon
 	# c'est la mèche normale qui mène à l'explosion.
-	# Seule la Bombe normale peut se transformer en trollbombe ; les bombes à
-	# effet (glace/poison/foudre) ne se réveillent jamais.
-	if BombElement.is_effect(_element):
-		_will_wake = false
-	else:
+	# Seule la Bombe normale peut se transformer en trollbombe : c'est sa signature
+	# exclusive. Ni les bombes à effet, ni la Frag, ni ses fragments ne se réveillent.
+	if BombElement.can_troll(_element):
 		_will_wake = TrollBombLogic.should_wake(randf(), TROLL_WAKE_CHANCE)
+	else:
+		_will_wake = false
 	# La vitesse d'attaque raccourcit la mèche (même formule que le cooldown
 	# vanilla) : vitesse combinée joueur + arme, en fraction (+50% = 0.5).
 	var atk_speed_mod := 0.0
@@ -102,12 +102,14 @@ func _on_fuse_timeout() -> void:
 		queue_free()
 		return
 	_explode_args.pos = global_position
-	# Bombes à effet : AUCUN dégât d'explosion AoE (les effets — slow, givre —
-	# s'appliquent indépendamment ; deals_damage reste true donc les hits sont émis).
-	if BombElement.is_effect(_element):
-		_explode_args.damage = 0
-	else:
+	# Qui blesse, qui ne blesse pas. Les bombes à effet sont à 0 par design (leurs
+	# effets — slow, givre, drain — s'appliquent indépendamment ; deals_damage reste
+	# true, donc les hits sont émis quand même). L'OBUS Frag est à 0 lui aussi : il
+	# n'est qu'un vecteur, ce sont ses fragments qui portent tout le dégât.
+	if BombElement.deals_explosion_damage(_element):
 		_explode_args.damage = _explosion_damage_override if _explosion_damage_override >= 0 else _stats.damage
+	else:
+		_explode_args.damage = 0
 	_explode_args.accuracy = _stats.accuracy
 	_explode_args.crit_chance = _stats.crit_chance
 	_explode_args.crit_damage = _stats.crit_damage
