@@ -356,6 +356,14 @@ le `.import`. Avec le chargeur maison, ça **marcherait dans le projet décompil
 système de **particules de flammes** (`torch_burning_particles`) — nos fragments
 cracheraient du feu alors que la Frag ne brûle pas.
 
+⭐ **REPLI officiel (décision utilisateur)** : si la boule de feu pose problème —
+chargement, lisibilité à 20 px, ou le fait qu'elle lise « feu » alors que la Frag ne
+brûle pas — on bascule le fragment sur **la mère en réduit** (`frag.png`, déjà en
+place). C'est **une ligne** dans le dictionnaire des chemins de `bomb_skin.gd`. La
+décision est donc réversible pour presque rien : on part sur la boule de feu, on
+constate en jeu, on bascule si besoin — plutôt que de produire un 2ᵉ dessin en
+spéculant.
+
 ⭐ **Taille du fragment à l'écran : échelle 0,4 → ~20 px** (constante nommée, à affiner
 en test). C'est un arbitrage entre cohérence et lisibilité :
 
