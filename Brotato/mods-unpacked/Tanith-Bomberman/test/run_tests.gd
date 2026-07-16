@@ -15,6 +15,7 @@ const PoisonFire = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/p
 const BombPlacement = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_placement.gd")
 const BombChallenges = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_challenges.gd")
 const BombLeech = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_leech.gd")
+const BombFrag = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_frag.gd")
 
 var _failures := 0
 var _count := 0
@@ -62,6 +63,7 @@ func _init():
 	_test_bomb_placement()
 	_test_bomb_challenges()
 	_test_bomb_leech()
+	_test_bomb_frag()
 	print("=== %d tests, %d échec(s) ===" % [_count, _failures])
 	quit(_failures)
 
@@ -593,6 +595,70 @@ func _test_bomb_leech() -> void:
 	_check(BombLeech.remaining(bucket_refund, 3, t0) == 3, "sangsue: refund - jamais au-delà de la capacité")
 	BombLeech.refund(bucket_refund, 3, -5)
 	_check(BombLeech.remaining(bucket_refund, 3, t0) == 3, "sangsue: refund - montant négatif => no-op (pas de crash)")
+
+
+func _test_bomb_frag() -> void:
+	# ⚠️ Signature du helper existant : _check(cond, name) — la CONDITION d'abord.
+
+	# --- Le compte : un fragment par demande, ni plus ni moins. ---
+	var r7 := []
+	for _i in range(7 * BombFrag.RANDOMS_PER_FRAGMENT):
+		r7.append(0.5)
+	_check(BombFrag.scatter_offsets(7, 150.0, r7).size() == 7, "frag: 7 demandés => 7 offsets")
+	_check(BombFrag.scatter_offsets(4, 150.0, r7).size() == 4, "frag: 4 demandés => 4 offsets")
+
+	# --- Tous DANS le disque : aucun fragment ne part hors de la gerbe. ---
+	var inside := true
+	var many := []
+	for i in range(7 * BombFrag.RANDOMS_PER_FRAGMENT):
+		many.append(float(i) / float(7 * BombFrag.RANDOMS_PER_FRAGMENT))
+	for off in BombFrag.scatter_offsets(7, 150.0, many):
+		if off.length() > 150.0 + 0.0001:
+			inside = false
+	_check(inside, "frag: tous les offsets sont dans le disque de 150")
+
+	# --- ⚠️ LE TEST DISCRIMINANT : la racine carrée. ---
+	# Tirer l'angle ET la distance uniformément ENTASSE les fragments au centre (la
+	# surface d'une couronne croît avec le rayon). Il faut r = radius * sqrt(u).
+	# Avec u = 0.25 : sqrt => 0.5 * 100 = 50. Sans sqrt (linéaire) => 25.
+	# CE TEST ÉCHOUE si l'implémentation oublie la racine carrée.
+	var quarter = BombFrag.scatter_offsets(1, 100.0, [0.0, 0.25])
+	_check(_approx(quarter[0].length(), 50.0), "frag: distance = rayon * sqrt(u) — u=0.25 => 50, PAS 25 (racine carrée obligatoire)")
+	var half = BombFrag.scatter_offsets(1, 100.0, [0.0, 0.5])
+	_check(_approx(half[0].length(), 100.0 * sqrt(0.5)), "frag: u=0.5 => rayon * sqrt(0.5) ≈ 70.7")
+
+	# --- L'angle : u_angle = 0 => plein est ; u_dist = 1 => bord du disque. ---
+	var east = BombFrag.scatter_offsets(1, 100.0, [0.0, 1.0])
+	_check(_approx(east[0].x, 100.0) and _approx(east[0].y, 0.0), "frag: angle 0 + distance max => (100, 0)")
+	# u_angle = 0.5 => un demi-tour => plein ouest.
+	var west = BombFrag.scatter_offsets(1, 100.0, [0.5, 1.0])
+	_check(_approx(west[0].x, -100.0), "frag: angle 0.5 (demi-tour) => plein ouest")
+	# u_dist = 0 => pile au centre.
+	var center = BombFrag.scatter_offsets(1, 100.0, [0.3, 0.0])
+	_check(_approx(center[0].length(), 0.0), "frag: distance 0 => au centre")
+
+	# --- Déterminisme : mêmes tirages => mêmes positions (hasard INJECTÉ). ---
+	var seed_vals := [0.1, 0.2, 0.3, 0.4]
+	var a = BombFrag.scatter_offsets(2, 80.0, seed_vals)
+	var b = BombFrag.scatter_offsets(2, 80.0, seed_vals)
+	_check(a[0] == b[0] and a[1] == b[1], "frag: déterministe à tirages égaux")
+
+	# --- Chaque fragment consomme SES PROPRES tirages (pas tous au même endroit). ---
+	var distinct = BombFrag.scatter_offsets(2, 100.0, [0.0, 1.0, 0.5, 1.0])
+	_check(distinct[0] != distinct[1], "frag: deux fragments, tirages différents => positions différentes")
+
+	# --- Garde-fous : jamais de crash, jamais d'index hors bornes. ---
+	_check(BombFrag.scatter_offsets(0, 150.0, r7).size() == 0, "frag: 0 demandé => aucun offset")
+	_check(BombFrag.scatter_offsets(-3, 150.0, r7).size() == 0, "frag: nombre négatif => aucun offset")
+	# Tirages MANQUANTS : on complète par 0.0, on ne plante pas et on ne perd AUCUN
+	# fragment (sinon des dégâts disparaîtraient silencieusement).
+	_check(BombFrag.scatter_offsets(7, 150.0, []).size() == 7, "frag: aucun tirage fourni => 7 fragments quand même (dégradation propre)")
+	_check(BombFrag.scatter_offsets(7, 150.0, [0.5]).size() == 7, "frag: tirages incomplets => 7 fragments quand même")
+	# Rayon nul ou négatif : tous au centre, mais TOUS présents (pas de dégât perdu).
+	var zero_r = BombFrag.scatter_offsets(3, 0.0, r7)
+	_check(zero_r.size() == 3 and zero_r[0] == Vector2.ZERO, "frag: rayon 0 => 3 fragments au centre (aucun perdu)")
+	var neg_r = BombFrag.scatter_offsets(3, -50.0, r7)
+	_check(neg_r.size() == 3 and neg_r[0] == Vector2.ZERO, "frag: rayon négatif => 3 fragments au centre, pas de crash")
 
 
 func _check(cond, name):
