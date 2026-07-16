@@ -311,12 +311,29 @@ Il ne contient **qu'une seule fonction** — le partage des dégâts n'existe pa
 
 **Deux sprites, dont un seul à produire.**
 
-- **La Frag mère** : `frag.png`, un dessin à produire, comme les 5 autres bombes. Il lui
-  en faut un — c'est lui qui sert d'**icône de boutique** (composée sur le disque coloré
-  à la rareté par `BombSkin.build_icon`). Respecter la convention apprise à la dure sur
-  la sangsue : le **taux de remplissage du canevas** doit s'aligner sur celui des autres
-  bombes (`_compose_world` réduit tout le canevas à 48 px uniformément), sinon la Frag
-  paraîtra plus grosse ou plus petite en jeu alors que le fichier fait la bonne taille.
+- **La Frag mère** : `frag.png` — ✅ **FAIT et en place**
+  (`content/weapons/bomb/frag.png`). Une grenade à fragmentation **segmentée** : les
+  segments disent visuellement « je vais me scinder en morceaux », donc le sprite raconte
+  la mécanique sans infobulle. C'est lui qui sert aussi d'**icône de boutique** (composée
+  sur le disque coloré à la rareté par `BombSkin.build_icon`).
+
+  ⭐ **Canevas 128×128** (et non 150 comme les autres) — c'est délibéré. Ce qui compte
+  n'est pas la taille du fichier mais le **taux de remplissage**, puisque
+  `_compose_world` écrase tout le canevas à 48 px **uniformément** : à fichier égal, un
+  dessin qui touche les bords paraît plus gros en jeu. Le dessin livré faisait 107×125
+  dans un canevas de 150 → remplissage 0,833 → **40 px**, soit la plus petite bombe de la
+  série (12 % sous la glace et le poison) — un comble pour le capstone de l'arbre. Le
+  canevas a donc été **rogné à 128×128** par recadrage pur (dessin recentré sur sa bbox,
+  **aucun pixel touché, aucun rééchantillonnage** — vérifié pixel à pixel) →
+  remplissage **0,977** → **46,9 px**, ce qui en fait le 2ᵉ obus le plus imposant, juste
+  sous la foudre.
+
+  ⚠️ **Le canevas doit rester CARRÉ** : `_compose_world` force le sprite en 48×48 sans
+  se soucier du rapport — un canevas non carré déformerait le dessin.
+
+  Remplissages de la série, pour référence (le trio glace/poison/sangsue ≈ 0,92 est la
+  référence de fait) : normale 0,867 (41,6 px) · sangsue 0,919 (44,1) · glace 0,933
+  (44,8) · poison 0,940 (45,1) · **frag 0,977 (46,9)** · foudre 1,000 (48,0).
 - **Le fragment** : la **boule de feu vanilla**,
   `res://projectiles/fireball_projectile/fireball_projectile.png` — **aucun art à
   produire, zéro octet ajouté au zip**. Elle fait **49×49** (donc déjà à la taille cible
