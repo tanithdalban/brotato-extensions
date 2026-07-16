@@ -18,11 +18,19 @@
 - **GDScript 3, pas 4** : pas de `static var`, pas de lambdas, pas de typed arrays, `.methode()` pour appeler le parent (pas `super()`), `connect("sig", obj, "method")`.
 - **Logique pure = 100 % statique, hasard/temps INJECTÉS** : jamais de `randf()` ni d'`OS.get_ticks_msec()` dans `content/logic/` — l'appelant tire, le module calcule. C'est ce qui rend les tests déterministes en headless.
 - **Pas de classe interne dans un module pur** : elle devrait appeler les statiques de son script hôte → self-preload → **référence cyclique** en Godot 3. Passer des `Array` par référence à la place.
-- **Commande de test** (⚠️ celle de Bomberman, PAS `./run-tests.sh` qui est ShopConfig) :
+- **Commande de test** (⚠️ celle de Bomberman, PAS `./run-tests.sh` qui est ShopConfig).
+
+  ⚠️⚠️ **NE PAS utiliser le wrapper `Godot_v3.6.2-stable_win64_console.cmd`** (constaté en Task 1) : il se termine par un `pause > nul` qui **bloque indéfiniment** toute capture de sortie synchrone sous Windows natif. Godot s'exécute et se termine normalement, mais le `.cmd` reste suspendu à attendre une touche et rien n'est jamais restitué. Deux tentatives ont dû être tuées à la main.
+
+  **Appeler l'exe directement**, avec redirection vers des fichiers et une attente bornée :
+  ```powershell
+  $p = Start-Process -FilePath "Godot_v3.6.2-stable_win64.exe\Godot_v3.6.2-stable_win64.exe" `
+    -ArgumentList '--path','Brotato','--no-window','-s','res://mods-unpacked/Tanith-Bomberman/test/run_tests.gd' `
+    -RedirectStandardOutput out.txt -RedirectStandardError err.txt -PassThru -NoNewWindow
+  $p.WaitForExit(60000)
+  Get-Content out.txt
   ```
-  "Godot_v3.6.2-stable_win64.exe/Godot_v3.6.2-stable_win64_console.cmd" --path Brotato --no-window -s res://mods-unpacked/Tanith-Bomberman/test/run_tests.gd
-  ```
-  Code de sortie = nombre d'échecs. Les erreurs moteur affichées **après** la ligne « N tests, M échec(s) » sont la fermeture des autoloads du jeu : sans effet sur le résultat.
+  Code de sortie = nombre d'échecs. La ligne qui compte est `=== N tests, M échec(s) ===`. Les erreurs moteur affichées **après** cette ligne sont la fermeture normale des autoloads du jeu : sans effet sur le résultat.
 - **⚠️⚠️ CONTRÔLE OBLIGATOIRE après TOUTE modification de `bomb_entity.gd` ou `bomb_weapon.gd`** : la suite de tests ne charge **jamais** ces fichiers (ils dépendent des autoloads du jeu). Une erreur de parse ou de compilation y est **totalement invisible, tests au vert** — c'est déjà arrivé deux fois, et plus aucune bombe n'existait en jeu. Passer la sortie du runner au grep :
   ```
   <commande de test> 2>&1 | grep -iE "parse error|compile error|bomb_entity|bomb_weapon"
