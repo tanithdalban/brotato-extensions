@@ -153,6 +153,24 @@ func _test_bomb_skin_element():
 	_check(BombSkin.element_sprite_path("poison").ends_with("poison.png"), "skin: poison -> poison.png")
 	_check(BombSkin.element_sprite_path("leech").ends_with("sangsue.png"), "skin: leech -> sangsue.png")
 
+	# La mère a son propre dessin, comme les 5 autres bombes.
+	_check(BombSkin.element_sprite_path("frag").ends_with("frag.png"), "skin: frag -> frag.png")
+
+	# --- Le FRAGMENT réutilise un asset VANILLA (aucun art, zéro octet dans le zip). ---
+	_check(BombSkin.FRAG_CHILD_SPRITE.ends_with("fireball_projectile.png"),
+		"skin: le fragment pointe la boule de feu vanilla")
+	# ⚠️ C'est un chemin du JEU, pas du mod : c'est précisément ce qui impose le
+	# chargeur de ressources standard plutôt que le chargeur maison.
+	_check(not BombSkin.FRAG_CHILD_SPRITE.begins_with("res://mods-unpacked"),
+		"skin: le sprite du fragment est un asset du JEU, pas du mod")
+	_check(BombSkin.FRAG_CHILD_SPRITE.begins_with("res://projectiles/"),
+		"skin: chemin vanilla des projectiles")
+	# On prend le PNG, JAMAIS la .tscn : la scène embarque des particules de flammes
+	# (torch_burning_particles) et nos fragments cracheraient du feu alors que la Frag
+	# ne brûle pas.
+	_check(not BombSkin.FRAG_CHILD_SPRITE.ends_with(".tscn"),
+		"skin: le PNG, jamais la scène (qui embarque des particules de feu)")
+
 
 func _test_troll_should_wake():
 	_check(TrollLogic.should_wake(0.0, 0.1) == true, "troll: roll 0.0 < 0.1 => réveil")

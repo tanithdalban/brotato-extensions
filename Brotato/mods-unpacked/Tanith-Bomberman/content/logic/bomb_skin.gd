@@ -16,14 +16,32 @@ extends Reference
 # créées avec FILTER+MIPMAPS pour un rendu lisse (sprite cartoon non pixel-art).
 
 const _BOMB_DIR := "res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb"
-# Clés = valeurs de BombElement (normal/ice/storm/poison/leech).
+# Clés = valeurs de BombElement (normal/ice/storm/poison/leech/frag).
 const _SPRITE_PATHS := {
 	"normal": _BOMB_DIR + "/bombe_normale.png",
 	"ice": _BOMB_DIR + "/glace.png",
 	"storm": _BOMB_DIR + "/storm.png",
 	"poison": _BOMB_DIR + "/poison.png",
 	"leech": _BOMB_DIR + "/sangsue.png",
+	"frag": _BOMB_DIR + "/frag.png",
 }
+
+# Sprite du FRAGMENT de la Frag : un asset VANILLA réutilisé — aucun art à produire,
+# ZÉRO octet ajouté au zip. La boule de feu fait 49×49 (donc déjà à la taille cible de
+# 48 : le piège de padding qui nous a coûté un aller-retour sur la sangsue n'existe
+# pas ici), elle est RONDE (nos fragments n'ont pas d'orientation) et son gros contour
+# noir la rend lisible en tout petit. Réutiliser un asset du jeu est déjà le motif du
+# mod : on réutilise explosion.tscn, le popup d'objet de la boutique, et le projectile
+# d'éclair vanilla pour la Bombe de Foudre.
+#
+# ⚠️ Le PNG, JAMAIS fireball_projectile.tscn : la scène embarque un système de
+# particules de flammes (torch_burning_particles) et nos fragments cracheraient du feu
+# alors que la Frag ne brûle pas.
+#
+# ⭐ REPLI si ça ne tient pas en jeu (lisibilité à 20 px, ou elle lit « feu ») :
+# basculer sur la mère en réduit, c'est-à-dire supprimer la branche frag_child de
+# build_world_texture et ajouter "frag_child": _BOMB_DIR + "/frag.png" ci-dessus.
+const FRAG_CHILD_SPRITE := "res://projectiles/fireball_projectile/fireball_projectile.png"
 const _WORLD_SIZE := 48  # taille du sprite en jeu (ancienne taille des skins colorés)
 
 # Repli quand la couleur de rareté vaut blanc (tier commun) : gris clair lisible.
@@ -45,7 +63,19 @@ static func build_icon(element: String, tier_color: Color) -> Texture:
 	return _compose_icon(element_sprite_path(element), tier_color)
 
 # Sprite EN JEU : sprite de l'élément, 48×48, SANS fond.
+#
+# ⚠️⚠️ PIÈGE — UN ASSET VANILLA NE SE CHARGE PAS COMME LES NÔTRES.
+# Le chargeur maison (_compose_world -> _load_image -> Image.load) lit un PNG BRUT sur
+# le disque : parfait pour nos images, qui voyagent en clair dans le zip du mod. Mais
+# un jeu Godot EXPORTÉ n'embarque PAS les PNG sources, seulement leur version compilée
+# (.stex) — le PNG de la boule de feu n'existe dans notre projet décompilé que parce
+# que GDRE l'a reconstruit. Il faut donc le chargeur de ressources STANDARD (load()),
+# qui résout via le .import.
+# Avec le chargeur maison, le fragment s'afficherait dans le projet décompilé et
+# serait INVISIBLE sur le vrai jeu — et aucun test ne le verrait.
 static func build_world_texture(element: String) -> Texture:
+	if element == "frag_child":
+		return load(FRAG_CHILD_SPRITE) as Texture
 	return _compose_world(element_sprite_path(element))
 
 # --- Rétro-compat : la Bombe normale (troll bombe, etc.). ---
