@@ -184,6 +184,15 @@ func _on_fuse_timeout() -> void:
 	var _inst = WeaponService.explode(_exploding_effect, _explode_args)
 	# Anti-épilepsie : plafonne l'opacité du sprite d'AOE (ne touche pas les dégâts).
 	ExplosionVisual.cap_aoe_opacity(_inst)
+	# Plafond de TAILLE : borne l'inflation de l'explosion par la stat explosion_size
+	# (élémentaire de Bomberto, Pot de miel…), qui autrement fait couvrir toute la map.
+	# player_explosion.set_area a posé _inst.scale = _explosion_scale * (1 + explosion_size/100) ;
+	# on reclampe au facteur max. Contrairement au plafond d'opacité, ce clamp réduit
+	# AUSSI la zone de dégâts (la hitbox suit l'échelle de la racine) — c'est voulu, c'est
+	# bien la TAILLE de l'explosion qu'on borne. _explosion_scale porte la base de CETTE
+	# bombe (1.5 normale, 0.5 obus Frag, 0.35 fragment), donc le plafond reste proportionnel.
+	if _inst != null:
+		_inst.scale = ExplosionVisual.cap_growth_scale(_inst.scale, _explosion_scale)
 	# Suivi des dégâts "façon arme tenue" : on attribue les dégâts de l'explosion à
 	# notre BombWeapon via son on_weapon_hit_something héritée de Weapon
 	# (-> RunData.add_weapon_dmg_dealt(weapon_pos)), pour que l'infobulle affiche les
