@@ -73,6 +73,7 @@ Le calcul du clamp part en **helper pur** dans `content/logic/explosion_visual.g
 - `MAX_EXPLOSION_GROWTH = 2.32` — la seule valeur d'équilibrage. La monter agrandit le plafond ; la descendre le resserre.
 - Repères : facteur 2,32 → 512 px (normale) / 119 px (fragment). Sans plafond, la normale atteignait plusieurs milliers de px.
 - **Seuil en jeu** : le plateau est atteint à `explosion_size = 132`, soit **~27 points d'élémentaire** (Bomberto gagne +5 `explosion_size`/élém ; tout objet donnant de l'`explosion_size` à plat abaisse ce seuil). C'est assez tôt en fin de partie, mais assumé : l'élémentaire au-delà continue de booster le reste (DOT poison, dégâts foudre…), et on n'a pas toujours l'objet qui fait exploser l'élémentaire.
+- **Sources d'`explosion_size` couvertes** : le plafond agit sur le facteur **total**, quelle que soit l'origine de l'`explosion_size`. Il couvre donc AUSSI les objets qui en donnent à plat — notamment le **Pot de miel** (`items/all/honey` : +5 `explosion_size` par copie, en plus de +10 `explosion_damage`). Chaque copie de Pot de miel = +5 `explosion_size` = l'équivalent d'1 point d'élémentaire pour la taille (5 copies → plateau à ~21 élém au lieu de 27). Son `explosion_damage` touche les dégâts, pas la taille : hors périmètre, et sans effet sur le rayon.
 
 ## Hors périmètre
 
