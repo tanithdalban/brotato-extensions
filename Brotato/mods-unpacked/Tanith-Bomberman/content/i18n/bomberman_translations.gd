@@ -33,6 +33,10 @@
 #                             bomb_leech.gd). La ligne « Vol de vie X % » est, elle,
 #                             affichée gratuitement par le vanilla
 #                             (weapon_stats.gd:get_lifesteal_text).
+#   WEAPON_BOMB_FRAG        — nom de la Bombe Frag
+#   WEAPON_BOMB_FRAG_COUNT  — ligne d'infobulle « nb de fragments » (via NullEffect,
+#                             {0} = nb_projectiles du tier). Calquée sur
+#                             WEAPON_BOMB_STORM_BOLTS.
 #
 # Note sur les descriptions : dans Brotato, les descriptions d'objets/personnages
 # sont construites à partir du tableau effects[] (EffectLine), PAS depuis une clé
@@ -63,6 +67,10 @@ static func register() -> void:
 	tr_en.add_message("WEAPON_BOMB_LEECH_DRAIN", "Drains up to {0} HP/s, shared by all your Leech Bombs")
 	tr_en.add_message("CHAL_BOMB_LEECH", "The Vampiric Pact")
 	tr_en.add_message("CHAL_BOMB_LEECH_DESC", "Hold the Bomb, Ice, Storm and Poison Bombs at the same time.")
+	tr_en.add_message("WEAPON_BOMB_FRAG", "Frag Bomb")
+	tr_en.add_message("WEAPON_BOMB_FRAG_COUNT", "Bursts into {0} fragments")
+	tr_en.add_message("CHAL_BOMB_FRAG", "Shrapnel Storm")
+	tr_en.add_message("CHAL_BOMB_FRAG_DESC", "Own a Leech Bomb of tier IV.")
 	tr_en.add_message("BOMB_MIGRATION_TITLE", "New — bombs must be earned")
 	tr_en.add_message("BOMB_MIGRATION_TEXT", "The Ice, Storm and Poison Bombs are now unlocked by completing challenges: take a bomb to tier IV to earn the next one.\n\nYou already own them. Lock them again to play through the progression, or keep them?")
 	tr_en.add_message("BOMB_MIGRATION_PROGRESS", "Play the progression")
@@ -89,6 +97,10 @@ static func register() -> void:
 	tr_fr.add_message("WEAPON_BOMB_LEECH_DRAIN", "Draine jusqu'à {0} PV/s, partagés entre vos Bombes Sangsue")
 	tr_fr.add_message("CHAL_BOMB_LEECH", "Le Pacte Vampirique")
 	tr_fr.add_message("CHAL_BOMB_LEECH_DESC", "Détenez en même temps la Bombe, la Bombe de Glace, la Bombe de Foudre et la Bombe de Poison.")
+	tr_fr.add_message("WEAPON_BOMB_FRAG", "Bombe Frag")
+	tr_fr.add_message("WEAPON_BOMB_FRAG_COUNT", "Éclate en {0} fragments")
+	tr_fr.add_message("CHAL_BOMB_FRAG", "Tempête de Shrapnel")
+	tr_fr.add_message("CHAL_BOMB_FRAG_DESC", "Détenez une Bombe Sangsue de niveau IV.")
 	tr_fr.add_message("BOMB_MIGRATION_TITLE", "Nouveauté — les bombes se méritent")
 	tr_fr.add_message("BOMB_MIGRATION_TEXT", "Les bombes de Glace, de Foudre et de Poison se débloquent désormais en relevant des défis : montez une bombe au niveau IV pour gagner la suivante.\n\nVous les possédez déjà. Voulez-vous les reverrouiller pour vivre la progression, ou les conserver ?")
 	tr_fr.add_message("BOMB_MIGRATION_PROGRESS", "Vivre la progression")

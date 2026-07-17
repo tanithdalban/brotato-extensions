@@ -16,6 +16,7 @@ const _CHALLENGES := [
 	"res://mods-unpacked/Tanith-Bomberman/content/challenges/chal_bomb_storm_data.tres",
 	"res://mods-unpacked/Tanith-Bomberman/content/challenges/chal_bomb_poison_data.tres",
 	"res://mods-unpacked/Tanith-Bomberman/content/challenges/chal_bomb_leech_data.tres",
+	"res://mods-unpacked/Tanith-Bomberman/content/challenges/chal_bomb_frag_data.tres",
 ]
 
 
