@@ -10,10 +10,33 @@ const TrollBombLogic = preload("res://mods-unpacked/Tanith-Bomberman/content/log
 const BombElement = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_element.gd")
 const BombIceSlow = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_ice_slow.gd")
 const BombLeech = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_leech.gd")
+const BombFrag = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_frag.gd")
 
 # --- Paramètres réglables de la troll bombe (calibrage final en jeu) ---
 const TROLL_WAKE_CHANCE := 0.05   # ~5 % qu'une bombe posée se réveille (par bombe ; se cumule avec le volume de bombes)
 const TROLL_WAKE_FRACTION := 0.5  # réveil à ~50 % de la mèche
+
+# --- Paramètres réglables de la Bombe Frag (calibrage final en jeu) ---
+#
+# ⚠️⚠️ FRAG_SCATTER_RADIUS et FRAG_CHILD_EXPLOSION_SCALE sont LIÉS AUX DÉGÂTS des
+# bomb_frag_*_stats.tres. La puissance d'une bombe vaut `dégâts × rayon²` : changer
+# l'échelle d'explosion sans recalculer les dégâts par (221 / nouveau_rayon_px)² casse
+# l'équilibrage AU CARRÉ. Lire « Le piège du carré » dans la spec avant d'y toucher.
+const FRAG_SCATTER_RADIUS := 150.0        # rayon de la gerbe (px). Ne change PAS la puissance, seulement la forme.
+const FRAG_CHILD_EXPLOSION_SCALE := 0.35  # 147,34 × 0,35 ≈ 52 px de rayon. Au-delà de ~0,5 le tapis sature et la contrepartie disparaît.
+const FRAG_CHILD_SPRITE_SCALE := 0.4      # ~20 px à l'écran. PUREMENT visuel — à ne pas confondre avec l'échelle d'EXPLOSION ci-dessus.
+const FRAG_CHILD_FUSE := 0.4              # mèche du fragment (s), FIXE : ni le tier ni la vitesse d'attaque ne la touchent.
+const FRAG_CHILD_FUSE_JITTER := 0.15      # gigue ajoutée à la mèche du fragment (s). Voir _burst_fragments.
+const FRAG_CHILD_SMOKE := 4               # fumée du fragment (la mère est à 40 : absurde et coûteux sur 52 px, × 42 fragments).
+const FRAG_MOTHER_EXPLOSION_SCALE := 0.5  # l'obus qui éclate : PUREMENT visuel (0 dégât). Un souffle à 1,5 laisserait croire à une grosse explosion inoffensive.
+
+# ⚠️ load() À L'EXÉCUTION, PAS preload() : un fragment EST une BombEntity, donc ce
+# script devrait précharger la scène qui porte CE script — c'est une RÉFÉRENCE
+# CYCLIQUE, et en Godot 3 elle produit une Compile Error qui invalide TOUT le fichier
+# (plus aucune bombe en jeu). Le mod s'est déjà fait avoir deux fois par des cycles de
+# ce genre, et les tests ne les voient PAS. load() résout à l'exécution : pas de cycle
+# au parse. ResourceLoader met en cache, donc le coût est nul après le premier appel.
+const _FRAG_SCENE_PATH := "res://mods-unpacked/Tanith-Bomberman/content/entities/bomb_entity.tscn"
 # Le son d'alerte est joué par la troll bombe elle-même (phase télégraphe).
 
 # Scène d'explosion vanilla réutilisée (dégâts de zone + lecture explosion_damage/size).
@@ -53,8 +76,17 @@ func arm(p_player_index: int, p_stats: WeaponStats, p_tier: int, p_explosion_sca
 	_explosion_damage_override = p_explosion_damage
 	_element = p_element
 	_weapon = p_weapon
+	# L'obus Frag n'explose que pour la forme (0 dégât) : un souffle à 1,5 laisserait
+	# croire à une énorme explosion inoffensive. On le réduit à un éclatement d'obus.
+	if BombElement.is_cluster(_element):
+		_explosion_scale = FRAG_MOTHER_EXPLOSION_SCALE
 	if _exploding_effect != null:
 		_exploding_effect.scale = _explosion_scale
+		# Fumée coupée sur les fragments : 40 est le réglage d'une bombe pleine taille,
+		# absurde et coûteux sur un fragment de 52 px — et il peut y en avoir 42 à
+		# l'écran en même temps.
+		if _element == BombElement.FRAG_CHILD:
+			_exploding_effect.base_smoke_amount = FRAG_CHILD_SMOKE
 	# Skin de bombe CONSTANT (sprite en jeu 48×48, chargé au runtime ; le tier ne colore que l'icône de boutique).
 	var skin = BombSkin.build_world_texture(_element)
 	if skin != null and is_instance_valid(_sprite):
@@ -62,7 +94,15 @@ func arm(p_player_index: int, p_stats: WeaponStats, p_tier: int, p_explosion_sca
 	# Grossissement purement VISUEL de la bombe posée (n'affecte pas le rayon
 	# d'explosion, géré par _explosion_scale / explosion_size).
 	if is_instance_valid(_sprite):
-		_sprite.scale = Vector2(1.25, 1.25)
+		if _element == BombElement.FRAG_CHILD:
+			# ~20 px : compromis entre la grammaire visuelle du mod (la normale est une
+			# bille de 60 px pour un souffle de 442 — un rapport de 1 à 7, c'est lui qui
+			# donne l'impression de puissance) et la lisibilité (la proportion stricte
+			# donnerait 14 px, un grain de poussière invisible dans la mêlée, et on
+			# perdrait le télégraphe qui justifie de vraies petites bombes).
+			_sprite.scale = Vector2(FRAG_CHILD_SPRITE_SCALE, FRAG_CHILD_SPRITE_SCALE)
+		else:
+			_sprite.scale = Vector2(1.25, 1.25)
 	_tier = p_tier
 	# Tirage unique du réveil. Si elle se réveille, la "mèche" sert de délai
 	# avant la bascule en troll bombe (instant = fraction de la mèche) ; sinon
@@ -80,7 +120,30 @@ func arm(p_player_index: int, p_stats: WeaponStats, p_tier: int, p_explosion_sca
 		atk_speed_mod = Utils.get_stat(Keys.stat_attack_speed_hash, _player_index) / 100.0
 	if _stats != null:
 		atk_speed_mod += _stats.attack_speed_mod / 100.0
-	var fuse := BombTiming.fuse_seconds_scaled(p_tier, atk_speed_mod)
+	var fuse: float
+	if _element == BombElement.FRAG_CHILD:
+		# Mèche COURTE et FIXE : ni le tier ni la vitesse d'attaque ne la touchent. Elle
+		# démarre à la détonation de la mère et meurt 0,4 s plus tard.
+		#
+		# ⭐ La GIGUE règle trois problèmes d'un coup, et n'est PAS cosmétique :
+		# 1. ANTI-SCINTILLEMENT — sans elle les 7 fragments détonent dans la MÊME frame.
+		#    Le plafond d'opacité ne protège pas d'une SYNCHRONISATION : 7 sprites à
+		#    20 % qui se superposent se composent (1-0.8^n) et remontent à ~50 %
+		#    d'opacité instantanée. C'est le NOMBRE SIMULTANÉ qui fait le stroboscope,
+		#    pas la brillance de chacun.
+		# 2. PERFORMANCE — étale la quarantaine de spawns d'explosion sur plusieurs
+		#    frames au lieu d'un pic sur une seule.
+		# 3. SENSATION — une munition à fragmentation crépite (pop-pop-pop), elle ne
+		#    fait pas « boum ». C'est le son signature du cluster.
+		#
+		# ⚠️⚠️ LA GIGUE EST STRICTEMENT CONFINÉE ICI. Ne JAMAIS en remettre sur le
+		# cooldown ni sur la mèche de la bombe MÈRE : on a retiré celle du vanilla lors
+		# de la refonte de la pose précisément pour que toutes les armes bombe partagent
+		# la même période, donc pour que le déphasage par slot tienne et que la traînée
+		# reste propre. La réintroduire annulerait toute cette refonte.
+		fuse = FRAG_CHILD_FUSE + rand_range(0.0, FRAG_CHILD_FUSE_JITTER)
+	else:
+		fuse = BombTiming.fuse_seconds_scaled(p_tier, atk_speed_mod)
 	if _will_wake:
 		_fuse_timer.wait_time = TrollBombLogic.wake_delay(fuse, TROLL_WAKE_FRACTION)
 	else:
@@ -152,6 +215,11 @@ func _on_fuse_timeout() -> void:
 	if _element == BombElement.LEECH and _inst != null and is_instance_valid(_weapon):
 		if not _inst.is_connected("hit_something", _weapon, "on_leech_hit"):
 			_inst.connect("hit_something", _weapon, "on_leech_hit", [_tier])
+	# Frag : l'obus vient d'éclater à 0 dégât (deals_explosion_damage(FRAG) est faux :
+	# l'explosion mère n'est qu'un vecteur — repère visuel et son). On projette
+	# maintenant les fragments, qui portent TOUT le dégât.
+	if BombElement.is_cluster(_element):
+		_burst_fragments()
 	queue_free()
 
 # Réveil : instancie la troll bombe à la place de l'explosion et se libère sans
@@ -188,3 +256,52 @@ func _burst_lightning() -> void:
 		if is_instance_valid(proj) and ("hit_something_connected" in proj) and not proj.hit_something_connected:
 			var _c = proj.connect("hit_something", _weapon, "on_weapon_hit_something", [proj._hitbox])
 			proj.hit_something_connected = true
+
+# Frag : projette _stats.nb_projectiles fragments à des positions ALÉATOIRES dans le
+# disque de FRAG_SCATTER_RADIUS autour de l'obus.
+#
+# Chaque fragment est une vraie petite BombEntity d'élément FRAG_CHILD, ce qui lui donne
+# gratuitement tout le cycle de vie existant : sprite, mèche, explosion vanilla POOLÉE,
+# et surtout l'ATTRIBUTION DES DÉGÂTS à l'arme (on transmet `_weapon`, donc le signal
+# hit_something de son explosion remonte à on_weapon_hit_something ->
+# RunData.add_weapon_dmg_dealt(weapon_pos), et l'infobulle « dégâts infligés » compte
+# juste sans une ligne de plus).
+#
+# ⭐ Le dégât est passé TEL QUEL, sans rien partager : le `damage` du .tres est déjà le
+# dégât PAR FRAGMENT (convention vanilla des armes multi-projectiles — la Foudre porte
+# damage 8 + nb_projectiles 6). _explosion_damage_override porte la valeur déjà mise à
+# l'échelle par la pose (avec le -75 % de Bomberto ET le bonus d'ingénierie).
+#
+# ⭐ La garde anti-récursion est STRUCTURELLE : les fragments sont armés en FRAG_CHILD,
+# or is_cluster(FRAG_CHILD) est faux — ils ne peuvent donc pas se scinder à leur tour.
+# Aucune condition à écrire, aucun compteur de profondeur : c'est impossible par
+# construction.
+func _burst_fragments() -> void:
+	if _stats == null:
+		return
+	var n := int(_stats.nb_projectiles)
+	if n <= 0:
+		return
+	# Le hasard est tiré ICI et INJECTÉ dans le module pur, qui reste déterministe et
+	# testable en headless (même principe que le temps injecté dans BombLeech).
+	var randoms := []
+	for _i in range(n * BombFrag.RANDOMS_PER_FRAGMENT):
+		randoms.append(randf())
+	var offsets := BombFrag.scatter_offsets(n, FRAG_SCATTER_RADIUS, randoms)
+	var scene = load(_FRAG_SCENE_PATH)
+	if scene == null:
+		return
+	for off in offsets:
+		var frag = scene.instance()
+		Utils.get_scene_node().add_child(frag)
+		frag.global_position = global_position + off
+		frag.arm(
+			_player_index,
+			_stats,
+			_tier,
+			FRAG_CHILD_EXPLOSION_SCALE,
+			_damage_tracking_key_hash,
+			_explosion_damage_override,
+			BombElement.FRAG_CHILD,
+			_weapon
+		)
