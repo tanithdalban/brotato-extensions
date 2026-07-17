@@ -7,6 +7,20 @@ elemental/engineering scaling.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [3.0.0] — 2026-07-17
+
+Two new bombs, a rework of how the elemental bombs are **unlocked** — they must now
+be **earned** — and a **cap** on explosion size.
+
+### Added
+- **Leech Bomb** — a 5th bomb that deals no explosion damage but **drains enemies** in its blast: it removes HP from them and returns it to you. The healing is capped and shared, per second, across all your Leech Bombs (stacking them makes the healing steady, not bigger). It unlocks by holding the **four original bombs** (Bomb, Ice, Storm, Poison) at the same time.
+- **Frag Bomb** — a 6th, cluster bomb: the shell bursts without damage and scatters **4 to 7 fragments** at random, each detonating for real. Devastating on a dense swarm, more of a gamble on a lone target. It unlocks by taking a **Leech Bomb to tier IV**.
+- **Bomb challenge chain** — the Ice, Storm and Poison bombs are no longer handed out for free. Take a bomb to **tier IV** to unlock the next one: Bomb → Ice → Storm → Poison, then Leech IV → Frag. If you already owned these bombs, you're offered a **choice** on the selection screen (solo only): play through the progression, or keep them.
+
+### Changed
+- **Explosion size is now capped.** Elemental scaling — and items such as the Jar of Honey — could grow explosions until they covered the whole map. They now cap at roughly **a quarter of the map**, no matter the investment; fragments stay proportionally small. The rest of your elemental keeps boosting poison, lightning, and so on.
+- **The troll bomb** now chases for **3 seconds** (down from 5) before exploding, and its explosion is capped like the others.
+
 ## [2.0.0] — 2026-07-11
 
 A complete rework of **how bombs are dropped**. Until now they all landed under the
