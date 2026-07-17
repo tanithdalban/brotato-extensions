@@ -16,6 +16,7 @@ const BombPlacement = preload("res://mods-unpacked/Tanith-Bomberman/content/logi
 const BombChallenges = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_challenges.gd")
 const BombLeech = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_leech.gd")
 const BombFrag = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_frag.gd")
+const ExplosionVisual = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/explosion_visual.gd")
 
 var _failures := 0
 var _count := 0
@@ -64,6 +65,7 @@ func _init():
 	_test_bomb_challenges()
 	_test_bomb_leech()
 	_test_bomb_frag()
+	_test_explosion_visual()
 	print("=== %d tests, %d échec(s) ===" % [_count, _failures])
 	quit(_failures)
 
@@ -746,6 +748,46 @@ func _test_bomb_frag() -> void:
 	_check(zero_r.size() == 3 and zero_r[0] == Vector2.ZERO, "frag: rayon 0 => 3 fragments au centre (aucun perdu)")
 	var neg_r = BombFrag.scatter_offsets(3, -50.0, r7)
 	_check(neg_r.size() == 3 and neg_r[0] == Vector2.ZERO, "frag: rayon négatif => 3 fragments au centre, pas de crash")
+
+
+func _test_explosion_visual() -> void:
+	# ⚠️ Signature du helper existant : _check(cond, name) — la CONDITION d'abord.
+
+	# base 1.5 (bombe normale), facteur 2.32 => échelle plafond = 3.48.
+	var cap_normal = 1.5 * ExplosionVisual.MAX_EXPLOSION_GROWTH
+
+	# --- Sous le plafond : inchangé. ---
+	var below = ExplosionVisual.cap_growth_scale(Vector2(2.0, 2.0), 1.5)
+	_check(_approx(below.x, 2.0) and _approx(below.y, 2.0), "explosion: sous le plafond => échelle inchangée")
+
+	# --- Au-dessus : clampé à base * MAX (les DEUX composantes). ---
+	var above = ExplosionVisual.cap_growth_scale(Vector2(10.0, 10.0), 1.5)
+	_check(_approx(above.x, cap_normal) and _approx(above.y, cap_normal), "explosion: au-dessus => clampé à base*2.32")
+
+	# --- Pile au plafond : inchangé (c'est un min). ---
+	var at = ExplosionVisual.cap_growth_scale(Vector2(cap_normal, cap_normal), 1.5)
+	_check(_approx(at.x, cap_normal) and _approx(at.y, cap_normal), "explosion: pile au plafond => inchangé")
+
+	# --- Fragment (base 0.35) : plafond PROPORTIONNELLEMENT plus petit. ---
+	# C'est tout l'intérêt de plafonner le FACTEUR et pas la taille absolue :
+	# le fragment reste petit (~119 px), jamais un tapis de gros cercles.
+	var cap_frag = 0.35 * ExplosionVisual.MAX_EXPLOSION_GROWTH
+	var frag = ExplosionVisual.cap_growth_scale(Vector2(5.0, 5.0), 0.35)
+	_check(_approx(frag.x, cap_frag) and _approx(frag.y, cap_frag), "explosion: fragment clampé à 0.35*2.32 (reste petit)")
+	_check(cap_frag < cap_normal, "explosion: plafond fragment < plafond normale (proportionnel)")
+
+	# --- Clamp INDÉPENDANT par composante. ---
+	var mixed = ExplosionVisual.cap_growth_scale(Vector2(2.0, 10.0), 1.5)
+	_check(_approx(mixed.x, 2.0) and _approx(mixed.y, cap_normal), "explosion: clamp par composante")
+
+	# --- Garde-fou : base 0 => plafond 0, pas de crash (dégénéré mais sûr). ---
+	var zero = ExplosionVisual.cap_growth_scale(Vector2(3.0, 3.0), 0.0)
+	_check(_approx(zero.x, 0.0) and _approx(zero.y, 0.0), "explosion: base 0 => échelle 0, pas de crash")
+
+	# --- Verrou de la valeur d'équilibrage : 2.32 cale la normale à ~512 px. ---
+	# Rayon normale non buffée = 221 px (échelle 1.5) ; au plafond 221*2.32 ≈ 513
+	# = 25 % de la map classique (2048). Ce test échoue si quelqu'un change 2.32.
+	_check(_approx(ExplosionVisual.MAX_EXPLOSION_GROWTH, 2.32), "explosion: facteur = 2.32 (normale ~512 px = 25% map)")
 
 
 func _check(cond, name):
