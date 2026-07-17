@@ -21,7 +21,7 @@ custom_args = [  ]
 [resource]
 script = ExtResource( 1 )
 my_id = "weapon_bomb_ice_3"
-unlocked_by_default = true
+unlocked_by_default = false
 can_be_looted = true
 icon = ExtResource( 2 )
 name = "WEAPON_BOMB_ICE"

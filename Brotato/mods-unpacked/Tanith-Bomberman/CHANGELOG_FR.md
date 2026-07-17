@@ -7,6 +7,20 @@ et mise sur les dégâts d'explosion et le scaling élémentaire/ingénierie.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/).
 
+## [3.0.0] — 2026-07-17
+
+Deux nouvelles bombes, une refonte du **déblocage** des bombes élémentaires — qui se
+**méritent** désormais — et un **plafond** sur la taille des explosions.
+
+### Ajouté
+- **Bombe Sangsue** — une 5ᵉ bombe qui ne fait aucun dégât d'explosion mais **draine les ennemis** de sa zone : elle leur retire des points de vie et vous les rend. Le soin est plafonné et partagé, par seconde, entre toutes vos Bombes Sangsue (les empiler rend le soin régulier, pas plus gros). Elle se débloque en détenant les **quatre bombes d'origine** (Bombe, Glace, Foudre, Poison) en même temps.
+- **Bombe Frag** — une 6ᵉ bombe à sous-munitions : l'obus éclate sans dégâts et projette **4 à 7 fragments** dispersés au hasard, qui explosent chacun pour de bon. Redoutable sur une nuée dense, plus hasardeuse sur une cible isolée. Elle se débloque en montant une **Bombe Sangsue au niveau IV**.
+- **Chaîne de défis des bombes** — les bombes de Glace, de Foudre et de Poison ne sont plus offertes d'emblée. Montez une bombe au **niveau IV** pour débloquer la suivante : Bombe → Glace → Foudre → Poison, puis Sangsue IV → Frag. Si vous possédiez déjà ces bombes, un **choix** vous est proposé sur l'écran de sélection (en solo) : revivre la progression, ou les conserver.
+
+### Modifié
+- **La taille des explosions est désormais plafonnée.** Le scaling élémentaire — et certains objets comme le Pot de miel — pouvait faire grossir les explosions jusqu'à couvrir toute la carte. Elles plafonnent maintenant à environ **un quart de la carte**, quel que soit l'investissement ; les fragments restent proportionnellement petits. Le reste de votre élémentaire continue de renforcer le poison, la foudre, etc.
+- **La troll bombe** poursuit désormais **3 secondes** (au lieu de 5) avant d'exploser, et son explosion est plafonnée comme les autres.
+
 ## [2.0.0] — 2026-07-11
 
 Refonte complète de **la façon dont les bombes se posent**. Jusqu'ici elles tombaient

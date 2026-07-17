@@ -13,6 +13,10 @@ const BombElement = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/
 const BombIceSlow = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_ice_slow.gd")
 const PoisonFire = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/poison_fire.gd")
 const BombPlacement = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_placement.gd")
+const BombChallenges = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_challenges.gd")
+const BombLeech = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_leech.gd")
+const BombFrag = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_frag.gd")
+const ExplosionVisual = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/explosion_visual.gd")
 
 var _failures := 0
 var _count := 0
@@ -58,6 +62,10 @@ func _init():
 	_test_bomb_ice_slow()
 	_test_poison_fire()
 	_test_bomb_placement()
+	_test_bomb_challenges()
+	_test_bomb_leech()
+	_test_bomb_frag()
+	_test_explosion_visual()
 	print("=== %d tests, %d échec(s) ===" % [_count, _failures])
 	quit(_failures)
 
@@ -145,6 +153,25 @@ func _test_bomb_skin_element():
 	var storm_path = BombSkin.element_sprite_path("storm")
 	_check(storm_path.ends_with("storm.png"), "skin: storm -> storm.png")
 	_check(BombSkin.element_sprite_path("poison").ends_with("poison.png"), "skin: poison -> poison.png")
+	_check(BombSkin.element_sprite_path("leech").ends_with("sangsue.png"), "skin: leech -> sangsue.png")
+
+	# La mère a son propre dessin, comme les 5 autres bombes.
+	_check(BombSkin.element_sprite_path("frag").ends_with("frag.png"), "skin: frag -> frag.png")
+
+	# --- Le FRAGMENT réutilise un asset VANILLA (aucun art, zéro octet dans le zip). ---
+	_check(BombSkin.FRAG_CHILD_SPRITE.ends_with("fireball_projectile.png"),
+		"skin: le fragment pointe la boule de feu vanilla")
+	# ⚠️ C'est un chemin du JEU, pas du mod : c'est précisément ce qui impose le
+	# chargeur de ressources standard plutôt que le chargeur maison.
+	_check(not BombSkin.FRAG_CHILD_SPRITE.begins_with("res://mods-unpacked"),
+		"skin: le sprite du fragment est un asset du JEU, pas du mod")
+	_check(BombSkin.FRAG_CHILD_SPRITE.begins_with("res://projectiles/"),
+		"skin: chemin vanilla des projectiles")
+	# On prend le PNG, JAMAIS la .tscn : la scène embarque des particules de flammes
+	# (torch_burning_particles) et nos fragments cracheraient du feu alors que la Frag
+	# ne brûle pas.
+	_check(not BombSkin.FRAG_CHILD_SPRITE.ends_with(".tscn"),
+		"skin: le PNG, jamais la scène (qui embarque des particules de feu)")
 
 
 func _test_troll_should_wake():
@@ -233,8 +260,47 @@ func _test_bomb_element():
 	_check(BombElement.from_weapon_id("weapon_bomb_storm") == BombElement.STORM, "element: storm")
 	_check(BombElement.from_weapon_id("weapon_smg") == BombElement.NORMAL, "element: inconnu => normal (repli)")
 	_check(BombElement.from_weapon_id("") == BombElement.NORMAL, "element: vide => normal")
-	_check(BombElement.is_effect(BombElement.ICE), "element: ice est un effet")
-	_check(not BombElement.is_effect(BombElement.NORMAL), "element: normal n'est pas un effet")
+	_check(BombElement.from_weapon_id("weapon_bomb_leech") == BombElement.LEECH, "element: weapon_bomb_leech => leech")
+	_check(BombElement.from_weapon_id("weapon_bomb_frag") == BombElement.FRAG, "element: weapon_bomb_frag => frag")
+
+	# ⚠️ FRAG_CHILD est un élément INTERNE : aucun weapon_id ne doit le produire.
+	# C'est ce qui garde la garde anti-récursion STRUCTURELLE.
+	_check(BombElement.from_weapon_id("weapon_bomb_frag_child") == BombElement.NORMAL,
+		"element: frag_child n'a PAS de weapon_id (élément interne)")
+
+	# --- deals_explosion_damage : qui inflige des dégâts d'explosion ? ---
+	_check(BombElement.deals_explosion_damage(BombElement.NORMAL), "dégâts: la normale en fait")
+	_check(BombElement.deals_explosion_damage(BombElement.FRAG_CHILD), "dégâts: le FRAGMENT en fait (il porte tout le dégât de la Frag)")
+	_check(not BombElement.deals_explosion_damage(BombElement.FRAG), "dégâts: l'OBUS Frag n'en fait PAS (simple vecteur)")
+	_check(not BombElement.deals_explosion_damage(BombElement.ICE), "dégâts: la glace n'en fait pas")
+	_check(not BombElement.deals_explosion_damage(BombElement.POISON), "dégâts: le poison n'en fait pas")
+	_check(not BombElement.deals_explosion_damage(BombElement.STORM), "dégâts: la foudre n'en fait pas (ses éclairs les portent)")
+	_check(not BombElement.deals_explosion_damage(BombElement.LEECH), "dégâts: la sangsue n'en fait pas")
+
+	# --- can_troll : la troll bombe reste la signature EXCLUSIVE de la normale. ---
+	_check(BombElement.can_troll(BombElement.NORMAL), "troll: la normale peut troller")
+	_check(not BombElement.can_troll(BombElement.FRAG), "troll: la Frag ne troll jamais")
+	_check(not BombElement.can_troll(BombElement.FRAG_CHILD), "troll: un fragment ne troll jamais")
+	_check(not BombElement.can_troll(BombElement.ICE), "troll: la glace ne troll pas")
+	_check(not BombElement.can_troll(BombElement.POISON), "troll: le poison ne troll pas")
+	_check(not BombElement.can_troll(BombElement.STORM), "troll: la foudre ne troll pas")
+	_check(not BombElement.can_troll(BombElement.LEECH), "troll: la sangsue ne troll pas")
+
+	# --- is_cluster : qui se scinde ? ---
+	_check(BombElement.is_cluster(BombElement.FRAG), "cluster: la Frag se scinde")
+	# ⚠️ LE test de la garde anti-récursion : un fragment n'est PAS un cluster, donc il
+	# ne peut pas se scinder à son tour. La garde est structurelle, pas conditionnelle.
+	_check(not BombElement.is_cluster(BombElement.FRAG_CHILD), "cluster: un FRAGMENT ne se scinde PAS (garde anti-récursion structurelle)")
+	_check(not BombElement.is_cluster(BombElement.NORMAL), "cluster: la normale ne se scinde pas")
+	_check(not BombElement.is_cluster(BombElement.ICE), "cluster: la glace ne se scinde pas")
+	_check(not BombElement.is_cluster(BombElement.POISON), "cluster: le poison ne se scinde pas")
+	_check(not BombElement.is_cluster(BombElement.STORM), "cluster: la foudre ne se scinde pas")
+	_check(not BombElement.is_cluster(BombElement.LEECH), "cluster: la sangsue ne se scinde pas")
+
+	# --- Les 3 prédicats sont FAUX pour un élément inconnu : jamais de crash. ---
+	_check(not BombElement.is_cluster("inconnu"), "prédicats: élément inconnu => pas un cluster")
+	_check(not BombElement.can_troll("inconnu"), "prédicats: élément inconnu => ne troll pas")
+	_check(not BombElement.deals_explosion_damage("inconnu"), "prédicats: élément inconnu => pas de dégâts")
 
 
 func _test_bomb_ice_slow():
@@ -328,6 +394,400 @@ func _test_bomb_placement():
 	# Direction nulle (début de vague, aucun mouvement mémorisé) : pas de crash.
 	var od = BombPlacement.offset(0, 1, 0, Vector2.ZERO, 0.0, rayon)
 	_check(_approx(od.length(), rayon), "placement: direction nulle => pas de crash, norme conservée")
+
+
+func _test_bomb_challenges() -> void:
+	# ⚠️ Signature du helper existant : _check(cond, name) — la CONDITION d'abord.
+
+	# La chaîne : chaque bombe au tier IV débloque la suivante.
+	_check(BombChallenges.challenge_for("weapon_bomb", 3) == "chal_bomb_ice",
+		"défis: Bombe IV -> défi glace")
+	_check(BombChallenges.challenge_for("weapon_bomb_ice", 3) == "chal_bomb_storm",
+		"défis: Glace IV -> défi foudre")
+	_check(BombChallenges.challenge_for("weapon_bomb_storm", 3) == "chal_bomb_poison",
+		"défis: Foudre IV -> défi poison")
+
+	# Fin de chaîne : le poison ne débloque rien.
+	_check(BombChallenges.challenge_for("weapon_bomb_poison", 3) == "",
+		"défis: Poison IV ne complète rien (fin de chaîne)")
+
+	# Seul le tier IV compte.
+	_check(BombChallenges.challenge_for("weapon_bomb", 2) == "",
+		"défis: Bombe III ne complète rien")
+	_check(BombChallenges.challenge_for("weapon_bomb", 0) == "",
+		"défis: Bombe I ne complète rien")
+
+	# Une arme étrangère ne complète rien.
+	_check(BombChallenges.challenge_for("weapon_pistol", 3) == "",
+		"défis: arme non-bombe ne complète rien")
+
+	# ⚠️ "weapon_bomb" est un préfixe des autres : la correspondance doit être EXACTE.
+	# Ce test échoue si l'implémentation utilise begins_with().
+	_check(BombChallenges.challenge_for("weapon_bomb_ice", 3) != "chal_bomb_ice",
+		"défis: correspondance exacte, pas par préfixe")
+
+	# Cohérence interne : toute récompense de la chaîne est une bombe connue.
+	var coherent := true
+	for weapon_id in BombChallenges.CHAIN:
+		var chal_id = BombChallenges.CHAIN[weapon_id]
+		if not BombChallenges.REWARD.has(chal_id):
+			coherent = false
+	_check(coherent, "défis: chaque défi de la chaîne a une récompense")
+
+	# Migration : bombes possédées mais non gagnées.
+	_check(BombChallenges.unearned_bombs([], []).empty(),
+		"migration: rien de possédé => rien à proposer")
+	_check(BombChallenges.unearned_bombs(["weapon_bomb_ice"], []) == ["weapon_bomb_ice"],
+		"migration: glace possédée et non gagnée => à proposer")
+	_check(BombChallenges.unearned_bombs(["weapon_bomb_ice"], ["chal_bomb_ice"]).empty(),
+		"migration: glace possédée ET gagnée => rien à proposer")
+	_check(BombChallenges.unearned_bombs(
+			["weapon_bomb_ice", "weapon_bomb_storm", "weapon_bomb_poison"], []).size() == 3,
+		"migration: les trois possédées => les trois à proposer")
+	_check(BombChallenges.unearned_bombs(["weapon_bomb"], []).empty(),
+		"migration: la bombe normale n'est jamais concernée")
+
+	# --- Bombe sangsue : débloquée par la COLLECTION, pas par un tier IV. ---
+	# Le poison reste la fin de CHAIN : sa montée en tier IV ne débloque toujours rien.
+	_check(BombChallenges.challenge_for("weapon_bomb_poison", 3) == "",
+		"sangsue: Poison IV ne complète toujours rien (la sangsue n'est pas dans CHAIN)")
+
+	# Les 4 bombes en inventaire, tous tiers confondus => défi complété.
+	_check(BombChallenges.unlocks_leech(
+			["weapon_bomb", "weapon_bomb_ice", "weapon_bomb_storm", "weapon_bomb_poison"]),
+		"sangsue: les 4 bombes => déblocage")
+	# L'ordre ne compte pas.
+	_check(BombChallenges.unlocks_leech(
+			["weapon_bomb_poison", "weapon_bomb", "weapon_bomb_storm", "weapon_bomb_ice"]),
+		"sangsue: ordre indifférent")
+	# Une arme étrangère en plus ne gêne pas (inventaire réel : 6 slots).
+	_check(BombChallenges.unlocks_leech(
+			["weapon_bomb", "weapon_bomb_ice", "weapon_bomb_storm", "weapon_bomb_poison", "weapon_pistol"]),
+		"sangsue: armes étrangères en plus => déblocage quand même")
+
+	# 3 bombes seulement => pas de déblocage.
+	_check(not BombChallenges.unlocks_leech(
+			["weapon_bomb", "weapon_bomb_ice", "weapon_bomb_storm"]),
+		"sangsue: 3 bombes sur 4 => pas de déblocage")
+	# ⚠️ Le piège : des DOUBLONS ne remplacent pas une bombe manquante.
+	_check(not BombChallenges.unlocks_leech(
+			["weapon_bomb", "weapon_bomb", "weapon_bomb", "weapon_bomb"]),
+		"sangsue: 4x la même bombe => PAS de déblocage")
+	_check(not BombChallenges.unlocks_leech(
+			["weapon_bomb", "weapon_bomb_ice", "weapon_bomb_ice", "weapon_bomb_storm"]),
+		"sangsue: doublon de glace au lieu du poison => pas de déblocage")
+	_check(not BombChallenges.unlocks_leech([]),
+		"sangsue: inventaire vide => pas de déblocage")
+
+	# La sangsue est une récompense connue (le popup de migration itère sur REWARD).
+	_check(BombChallenges.REWARD.has("chal_bomb_leech"),
+		"sangsue: chal_bomb_leech est dans REWARD (couvert par la migration)")
+	_check(BombChallenges.REWARD["chal_bomb_leech"] == "weapon_bomb_leech",
+		"sangsue: chal_bomb_leech récompense weapon_bomb_leech")
+	_check(BombChallenges.unearned_bombs(["weapon_bomb_leech"], []) == ["weapon_bomb_leech"],
+		"migration: sangsue possédée et non gagnée => à proposer")
+
+	# --- Bombe Frag : le maillon terminal, débloqué par la Sangsue IV. ---
+	_check(BombChallenges.challenge_for("weapon_bomb_leech", 3) == "chal_bomb_frag",
+		"frag: Sangsue IV -> défi frag")
+	# Seul le tier IV compte, ici comme partout.
+	_check(BombChallenges.challenge_for("weapon_bomb_leech", 2) == "",
+		"frag: Sangsue III ne complète rien")
+	_check(BombChallenges.challenge_for("weapon_bomb_leech", 0) == "",
+		"frag: Sangsue I ne complète rien")
+	# La Frag est la FIN de la chaîne : elle ne débloque rien à son tour.
+	_check(BombChallenges.challenge_for("weapon_bomb_frag", 3) == "",
+		"frag: Frag IV ne complète rien (fin de chaîne)")
+
+	# La Frag est une récompense connue (le popup de migration itère sur REWARD, donc
+	# il la couvre gratuitement).
+	_check(BombChallenges.REWARD.has("chal_bomb_frag"),
+		"frag: chal_bomb_frag est dans REWARD (couvert par la migration)")
+	_check(BombChallenges.REWARD["chal_bomb_frag"] == "weapon_bomb_frag",
+		"frag: chal_bomb_frag récompense weapon_bomb_frag")
+	_check(BombChallenges.unearned_bombs(["weapon_bomb_frag"], []) == ["weapon_bomb_frag"],
+		"migration: frag possédée et non gagnée => à proposer")
+	_check(BombChallenges.unearned_bombs(["weapon_bomb_frag"], ["chal_bomb_frag"]).empty(),
+		"migration: frag possédée ET gagnée => rien à proposer")
+
+	# ⚠️ La Frag n'entre PAS dans le défi de la sangsue : celui-ci exige les 4 bombes
+	# d'ORIGINE. Sinon l'avertissement du carnet (« chaque bombe ajoutée mange un slot
+	# pendant la tentative ») s'appliquerait et le défi deviendrait ingérable.
+	_check(not BombChallenges.LEECH_REQUIRED.has("weapon_bomb_frag"),
+		"frag: la Frag n'est PAS requise pour débloquer la sangsue")
+	_check(BombChallenges.unlocks_leech(
+			["weapon_bomb", "weapon_bomb_ice", "weapon_bomb_storm", "weapon_bomb_poison"]),
+		"frag: les 4 bombes d'origine suffisent toujours pour la sangsue")
+
+
+func _test_bomb_leech() -> void:
+	# ⚠️ Signature du helper existant : _check(cond, name) — la CONDITION d'abord.
+
+	# --- cap_for_tier : le plafond de PV par explosion, par tier (spec) ---
+	_check(BombLeech.cap_for_tier(0) == 3, "sangsue: plafond T1 = 3 PV")
+	_check(BombLeech.cap_for_tier(1) == 4, "sangsue: plafond T2 = 4 PV")
+	_check(BombLeech.cap_for_tier(2) == 5, "sangsue: plafond T3 = 5 PV")
+	_check(BombLeech.cap_for_tier(3) == 6, "sangsue: plafond T4 = 6 PV")
+	# Garde-fous : tier hors bornes => clampé (pas de crash, pas d'index négatif).
+	_check(BombLeech.cap_for_tier(-5) == 3, "sangsue: tier négatif => clamp T1")
+	_check(BombLeech.cap_for_tier(99) == 6, "sangsue: tier trop grand => clamp T4")
+
+	# --- procs : tirage, dé INJECTÉ (déterminisme, pas de randf() dans le pur) ---
+	_check(BombLeech.procs(0.0, 0.4) == true, "sangsue: dé 0.0 < 40% => proc")
+	_check(BombLeech.procs(0.39, 0.4) == true, "sangsue: dé 0.39 < 40% => proc")
+	_check(BombLeech.procs(0.4, 0.4) == false, "sangsue: dé 0.4 pas < 40% => pas de proc")
+	_check(BombLeech.procs(0.9, 0.4) == false, "sangsue: dé 0.9 => pas de proc")
+	_check(BombLeech.procs(0.5, 0.0) == false, "sangsue: 0% de vol de vie => jamais")
+	_check(BombLeech.procs(0.99, 1.0) == true, "sangsue: 100% de vol de vie => toujours")
+	# Au-delà de 100 % (stat joueur très haute) : toujours, jamais d'erreur.
+	_check(BombLeech.procs(0.99, 2.5) == true, "sangsue: vol de vie > 100% => toujours")
+
+	# --- proc_amount : 1 PV, 2 avec l'item double vol de vie (aligné vanilla) ---
+	_check(BombLeech.proc_amount(false) == 1, "sangsue: proc normal = 1 PV")
+	_check(BombLeech.proc_amount(true) == 2, "sangsue: proc avec bonus double = 2 PV")
+
+	# --- granted : écrêtage au budget restant ---
+	_check(BombLeech.granted(1, 3) == 1, "sangsue: 1 PV demandé sur 3 restants => 1")
+	_check(BombLeech.granted(2, 3) == 2, "sangsue: 2 PV demandés sur 3 restants => 2")
+	# LE cas de la spec : un proc « double » ne perce pas le plafond.
+	_check(BombLeech.granted(2, 1) == 1, "sangsue: proc double sur 1 PV restant => écrêté à 1")
+	_check(BombLeech.granted(2, 0) == 0, "sangsue: budget épuisé => 0")
+	_check(BombLeech.granted(1, -1) == 0, "sangsue: restant négatif => 0 (pas de soin fantôme)")
+	_check(BombLeech.granted(-3, 5) == 0, "sangsue: montant négatif => 0")
+
+	# --- Seau à jetons PARTAGÉ PAR JOUEUR (correctif d'équilibrage, revue finale) ---
+	#
+	# L'ANCIEN modèle (un budget frais PAR EXPLOSION) ne bornait rien PAR SECONDE :
+	# 6 sangsues en T4 (cooldown ≈ 1s) auraient fait 6 budgets indépendants, soit
+	# ~36 PV/s. Le nouveau modèle : un seul seau par joueur, qui se RECHARGE dans le
+	# temps (capacité = plafond du tier qui draine, recharge = capacité/seconde).
+	# Le temps est INJECTÉ (`now`, en ms) : jamais d'OS.get_ticks_msec() ici.
+	var t0 := 1000
+
+	# Un seau neuf démarre PLEIN (un joueur qui n'a pas drainé récemment profite du
+	# plein régime dès sa première bombe).
+	var fresh = BombLeech.new_bucket()
+	_check(BombLeech.remaining(fresh, 3, t0) == 3, "sangsue: seau neuf démarre plein (T1 = 3 PV)")
+
+	# Le vider, puis une 2e explosion AU MÊME INSTANT ne doit RIEN accorder : c'est
+	# exactement le cas que l'ancien modèle (budget par explosion) ratait — sous
+	# l'ancien modèle, cette 2e explosion aurait eu son propre budget frais.
+	var bucket = BombLeech.new_bucket()
+	_check(BombLeech.take(bucket, 3, 3, t0) == 3, "sangsue: 1re explosion draine tout le plafond (3 PV)")
+	_check(BombLeech.take(bucket, 3, 1, t0) == 0, "sangsue: 2e explosion AU MÊME INSTANT => 0 (le seau ne s'est pas rechargé)")
+	_check(BombLeech.remaining(bucket, 3, t0) == 0, "sangsue: seau toujours vide au même instant")
+
+	# Recharge complète après 1s (recharge = capacité/seconde).
+	var bucket_full_refill = BombLeech.new_bucket()
+	var _gA = BombLeech.take(bucket_full_refill, 4, 4, t0)  # T2 => 4 PV, vidé
+	_check(BombLeech.remaining(bucket_full_refill, 4, t0 + 1000) == 4, "sangsue: 1s plus tard => seau plein reconstitué (T2 = 4 PV)")
+
+	# Recharge à MOITIÉ après 0.5s, avec troncature (pas de PV en deux morceaux) :
+	# plafond 3, 0.5s de recharge = 1.5 jeton => 1 PV accordable, pas 1.5.
+	var bucket_half_refill = BombLeech.new_bucket()
+	var _gB = BombLeech.take(bucket_half_refill, 3, 3, t0)  # T1 => 3 PV, vidé
+	_check(BombLeech.remaining(bucket_half_refill, 3, t0 + 500) == 1, "sangsue: 0.5s plus tard sur plafond 3 => 1 PV (1.5 tronqué)")
+
+	# Le seau ne dépasse JAMAIS sa capacité, quelle que soit l'attente.
+	var bucket_no_overflow = BombLeech.new_bucket()
+	var _gC = BombLeech.take(bucket_no_overflow, 4, 4, t0)
+	_check(BombLeech.remaining(bucket_no_overflow, 4, t0 + 999999) == 4, "sangsue: attente énorme => plafonné à 4, jamais plus")
+	_check(BombLeech.remaining(BombLeech.new_bucket(), 4, t0 + 999999) == 4, "sangsue: seau jamais utilisé, longtemps après => toujours plafonné")
+
+	# Les jetons ne deviennent jamais négatifs.
+	var bucket_no_negative = BombLeech.new_bucket()
+	_check(BombLeech.take(bucket_no_negative, 3, 3, t0) == 3, "sangsue: vidage initial (3 PV)")
+	_check(BombLeech.take(bucket_no_negative, 3, 5, t0) == 0, "sangsue: seau vide => prise suivante = 0 (jamais négatif)")
+	_check(BombLeech.remaining(bucket_no_negative, 3, t0) == 0, "sangsue: remaining reste à 0, jamais négatif")
+
+	# Le partage par RÉFÉRENCE est ce qui fait tenir le plafond entre deux bombes du
+	# même joueur : si le seau était copié, chacune aurait le sien.
+	var shared = BombLeech.new_bucket()
+	var alias = shared
+	var _g = BombLeech.take(alias, 3, 3, t0)
+	_check(BombLeech.remaining(shared, 3, t0) == 0, "sangsue: seau partagé par référence (pas copié)")
+
+	# Empiler les sangsues ne MULTIPLIE plus le soin : 6 bombes qui explosent à la
+	# MÊME seconde sur un seul seau partagé ne rendent jamais plus que LE plafond
+	# (6 PV en T4), pas 6x le plafond (36 PV) comme sous l'ancien modèle.
+	var stacked = BombLeech.new_bucket()
+	var total_stacked := 0
+	for _i in range(6):
+		total_stacked += BombLeech.take(stacked, 6, 6, t0)
+	_check(total_stacked == 6, "sangsue: 6 bombes à la même seconde => 6 PV max (pas 36) — la régularité remplace la multiplication")
+
+	# Le plafond tient aussi face à une horde au sein d'UNE explosion (20 ennemis,
+	# tous procs, même instant).
+	var b2 = BombLeech.new_bucket()
+	var total := 0
+	for _i in range(20):
+		total += BombLeech.take(b2, 6, 1, t0)  # T4 => 6 PV
+	_check(total == 6, "sangsue: 20 ennemis, tous procs => exactement le plafond T4 (6 PV)")
+
+	# Le bonus double atteint le plafond avec MOINS d'ennemis, mais ne le perce pas.
+	var b3 = BombLeech.new_bucket()
+	var total3 := 0
+	for _i in range(20):
+		total3 += BombLeech.take(b3, 6, 2, t0)  # T4 => 6 PV
+	_check(total3 == 6, "sangsue: bonus double => même plafond (6 PV), atteint plus vite")
+
+	# Garde-fous : un seau malformé ne draine rien et ne plante pas.
+	_check(BombLeech.take([], 3, 1, t0) == 0, "sangsue: seau vide/malformé => 0 (pas de crash)")
+	_check(BombLeech.remaining([], 3, t0) == 0, "sangsue: remaining d'un seau malformé => 0")
+
+	# --- Cas critique : double proc avec petit seau, écrêtage END-TO-END via take() ---
+	# Plafond 3. Un proc double draine 2, il en reste 1. Le prochain proc double (même
+	# instant, pas de recharge) ne peut drainer que 1 (clamped), puis le seau est exact
+	# à 0. C'est l'invariant de spec : « un double proc sur 1 PV restant ne doit jamais
+	# drainer 2 ».
+	var b_crit = BombLeech.new_bucket()
+	var drain_1 = BombLeech.take(b_crit, 3, 2, t0)  # 1er proc double => 2 PV
+	var drain_2 = BombLeech.take(b_crit, 3, 2, t0)  # 2e proc double => écrêté à 1 PV
+	_check(drain_1 == 2, "sangsue: 1er proc double sur plafond 3 => 2 PV accordés")
+	_check(drain_2 == 1, "sangsue: 2e proc double sur plafond 3 => écrêté à 1 PV (pas 2)")
+	_check(BombLeech.remaining(b_crit, 3, t0) == 0, "sangsue: après 2 procs, seau exact à 0")
+	_check(drain_1 + drain_2 == 3, "sangsue: total drainé = plafond (3 PV)")
+
+	# --- Horloge qui recule / instant identique : jamais de PV gratuits, jamais de crash ---
+	var bucket_backwards = BombLeech.new_bucket()
+	var _gD = BombLeech.take(bucket_backwards, 3, 3, t0)  # vidé à t0
+	_check(BombLeech.remaining(bucket_backwards, 3, t0 - 500) == 0, "sangsue: horloge qui recule => pas de PV gratuits, pas de crash")
+	_check(BombLeech.remaining(bucket_backwards, 3, t0) == 0, "sangsue: now == dernier instant => pas de recharge")
+
+	# --- Finding 2 : une bombe de tier INFÉRIEUR ne doit jamais DÉTRUIRE des jetons ---
+	#
+	# Bug initial : la recharge BORNAIT (clampait) le seau à la capacité de la bombe
+	# qui drane EN CE MOMENT, y compris VERS LE BAS. Un joueur avec une Sangsue I
+	# (plafond 3) ET une Sangsue IV (plafond 6) sur un seau à 6 jetons voyait donc
+	# 3 jetons DÉTRUITS dès que la Sangsue I explosait en premier -- un build en cours
+	# de montée en tier devenait ainsi PIRE que la bombe T1 seule, ce qui est absurde.
+	# Correctif : la recharge ne fait qu'AJOUTER des jetons (borné par la capacité de
+	# la bombe qui drane), elle n'en RETIRE jamais.
+	var mixed := BombLeech.new_bucket()
+	_check(BombLeech.remaining(mixed, 6, t0) == 6, "sangsue mixte: seau neuf plein au plafond T4 (6 PV)")
+	_check(BombLeech.remaining(mixed, 3, t0) == 6, "sangsue mixte: interrogé ensuite par une bombe T1 (plafond 3) au MÊME instant => garde ses 6 jetons, pas clampé à 3")
+	_check(BombLeech.take(mixed, 6, 6, t0) == 6, "sangsue mixte: une bombe T4 peut alors dépenser les 6 jetons intacts")
+
+	# Même invariant avec un vrai écart de temps : le passage d'une bombe T1 ne doit
+	# pas non plus AMPUTER un surplus déjà accumulé par une bombe T4.
+	var mixed_time := BombLeech.new_bucket()
+	var _gE = BombLeech.take(mixed_time, 6, 0, t0)  # force juste l'initialisation à 6 jetons (T4)
+	_check(BombLeech.remaining(mixed_time, 3, t0 + 10000) == 6, "sangsue mixte: bombe T1 interrogeant 10s plus tard => toujours 6 jetons, jamais amputé à 3")
+
+	# --- refund : rembourse les jetons non réellement consommés (Finding 2) ---
+	var bucket_refund = BombLeech.new_bucket()
+	var g9 := BombLeech.take(bucket_refund, 3, 2, t0)
+	_check(g9 == 2, "sangsue: refund - prise initiale de 2 PV")
+	BombLeech.refund(bucket_refund, 3, 1)
+	_check(BombLeech.remaining(bucket_refund, 3, t0) == 2, "sangsue: refund - rend le jeton non utilisé")
+	BombLeech.refund(bucket_refund, 3, 100)
+	_check(BombLeech.remaining(bucket_refund, 3, t0) == 3, "sangsue: refund - jamais au-delà de la capacité")
+	BombLeech.refund(bucket_refund, 3, -5)
+	_check(BombLeech.remaining(bucket_refund, 3, t0) == 3, "sangsue: refund - montant négatif => no-op (pas de crash)")
+
+
+func _test_bomb_frag() -> void:
+	# ⚠️ Signature du helper existant : _check(cond, name) — la CONDITION d'abord.
+
+	# --- Le compte : un fragment par demande, ni plus ni moins. ---
+	var r7 := []
+	for _i in range(7 * BombFrag.RANDOMS_PER_FRAGMENT):
+		r7.append(0.5)
+	_check(BombFrag.scatter_offsets(7, 150.0, r7).size() == 7, "frag: 7 demandés => 7 offsets")
+	_check(BombFrag.scatter_offsets(4, 150.0, r7).size() == 4, "frag: 4 demandés => 4 offsets")
+
+	# --- Tous DANS le disque : aucun fragment ne part hors de la gerbe. ---
+	var inside := true
+	var many := []
+	for i in range(7 * BombFrag.RANDOMS_PER_FRAGMENT):
+		many.append(float(i) / float(7 * BombFrag.RANDOMS_PER_FRAGMENT))
+	for off in BombFrag.scatter_offsets(7, 150.0, many):
+		if off.length() > 150.0 + 0.0001:
+			inside = false
+	_check(inside, "frag: tous les offsets sont dans le disque de 150")
+
+	# --- ⚠️ LE TEST DISCRIMINANT : la racine carrée. ---
+	# Tirer l'angle ET la distance uniformément ENTASSE les fragments au centre (la
+	# surface d'une couronne croît avec le rayon). Il faut r = radius * sqrt(u).
+	# Avec u = 0.25 : sqrt => 0.5 * 100 = 50. Sans sqrt (linéaire) => 25.
+	# CE TEST ÉCHOUE si l'implémentation oublie la racine carrée.
+	var quarter = BombFrag.scatter_offsets(1, 100.0, [0.0, 0.25])
+	_check(_approx(quarter[0].length(), 50.0), "frag: distance = rayon * sqrt(u) — u=0.25 => 50, PAS 25 (racine carrée obligatoire)")
+	var half = BombFrag.scatter_offsets(1, 100.0, [0.0, 0.5])
+	_check(_approx(half[0].length(), 100.0 * sqrt(0.5)), "frag: u=0.5 => rayon * sqrt(0.5) ≈ 70.7")
+
+	# --- L'angle : u_angle = 0 => plein est ; u_dist = 1 => bord du disque. ---
+	var east = BombFrag.scatter_offsets(1, 100.0, [0.0, 1.0])
+	_check(_approx(east[0].x, 100.0) and _approx(east[0].y, 0.0), "frag: angle 0 + distance max => (100, 0)")
+	# u_angle = 0.5 => un demi-tour => plein ouest.
+	var west = BombFrag.scatter_offsets(1, 100.0, [0.5, 1.0])
+	_check(_approx(west[0].x, -100.0), "frag: angle 0.5 (demi-tour) => plein ouest")
+	# u_dist = 0 => pile au centre.
+	var center = BombFrag.scatter_offsets(1, 100.0, [0.3, 0.0])
+	_check(_approx(center[0].length(), 0.0), "frag: distance 0 => au centre")
+
+	# --- Déterminisme : mêmes tirages => mêmes positions (hasard INJECTÉ). ---
+	var seed_vals := [0.1, 0.2, 0.3, 0.4]
+	var a = BombFrag.scatter_offsets(2, 80.0, seed_vals)
+	var b = BombFrag.scatter_offsets(2, 80.0, seed_vals)
+	_check(a[0] == b[0] and a[1] == b[1], "frag: déterministe à tirages égaux")
+
+	# --- Chaque fragment consomme SES PROPRES tirages (pas tous au même endroit). ---
+	var distinct = BombFrag.scatter_offsets(2, 100.0, [0.0, 1.0, 0.5, 1.0])
+	_check(distinct[0] != distinct[1], "frag: deux fragments, tirages différents => positions différentes")
+
+	# --- Garde-fous : jamais de crash, jamais d'index hors bornes. ---
+	_check(BombFrag.scatter_offsets(0, 150.0, r7).size() == 0, "frag: 0 demandé => aucun offset")
+	_check(BombFrag.scatter_offsets(-3, 150.0, r7).size() == 0, "frag: nombre négatif => aucun offset")
+	# Tirages MANQUANTS : on complète par 0.0, on ne plante pas et on ne perd AUCUN
+	# fragment (sinon des dégâts disparaîtraient silencieusement).
+	_check(BombFrag.scatter_offsets(7, 150.0, []).size() == 7, "frag: aucun tirage fourni => 7 fragments quand même (dégradation propre)")
+	_check(BombFrag.scatter_offsets(7, 150.0, [0.5]).size() == 7, "frag: tirages incomplets => 7 fragments quand même")
+	# Rayon nul ou négatif : tous au centre, mais TOUS présents (pas de dégât perdu).
+	var zero_r = BombFrag.scatter_offsets(3, 0.0, r7)
+	_check(zero_r.size() == 3 and zero_r[0] == Vector2.ZERO, "frag: rayon 0 => 3 fragments au centre (aucun perdu)")
+	var neg_r = BombFrag.scatter_offsets(3, -50.0, r7)
+	_check(neg_r.size() == 3 and neg_r[0] == Vector2.ZERO, "frag: rayon négatif => 3 fragments au centre, pas de crash")
+
+
+func _test_explosion_visual() -> void:
+	# ⚠️ Signature du helper existant : _check(cond, name) — la CONDITION d'abord.
+
+	# base 1.5 (bombe normale), facteur 2.32 => échelle plafond = 3.48.
+	var cap_normal = 1.5 * ExplosionVisual.MAX_EXPLOSION_GROWTH
+
+	# --- Sous le plafond : inchangé. ---
+	var below = ExplosionVisual.cap_growth_scale(Vector2(2.0, 2.0), 1.5)
+	_check(_approx(below.x, 2.0) and _approx(below.y, 2.0), "explosion: sous le plafond => échelle inchangée")
+
+	# --- Au-dessus : clampé à base * MAX (les DEUX composantes). ---
+	var above = ExplosionVisual.cap_growth_scale(Vector2(10.0, 10.0), 1.5)
+	_check(_approx(above.x, cap_normal) and _approx(above.y, cap_normal), "explosion: au-dessus => clampé à base*2.32")
+
+	# --- Pile au plafond : inchangé (c'est un min). ---
+	var at = ExplosionVisual.cap_growth_scale(Vector2(cap_normal, cap_normal), 1.5)
+	_check(_approx(at.x, cap_normal) and _approx(at.y, cap_normal), "explosion: pile au plafond => inchangé")
+
+	# --- Fragment (base 0.35) : plafond PROPORTIONNELLEMENT plus petit. ---
+	# C'est tout l'intérêt de plafonner le FACTEUR et pas la taille absolue :
+	# le fragment reste petit (~119 px), jamais un tapis de gros cercles.
+	var cap_frag = 0.35 * ExplosionVisual.MAX_EXPLOSION_GROWTH
+	var frag = ExplosionVisual.cap_growth_scale(Vector2(5.0, 5.0), 0.35)
+	_check(_approx(frag.x, cap_frag) and _approx(frag.y, cap_frag), "explosion: fragment clampé à 0.35*2.32 (reste petit)")
+	_check(cap_frag < cap_normal, "explosion: plafond fragment < plafond normale (proportionnel)")
+
+	# --- Clamp INDÉPENDANT par composante. ---
+	var mixed = ExplosionVisual.cap_growth_scale(Vector2(2.0, 10.0), 1.5)
+	_check(_approx(mixed.x, 2.0) and _approx(mixed.y, cap_normal), "explosion: clamp par composante")
+
+	# --- Garde-fou : base 0 => plafond 0, pas de crash (dégénéré mais sûr). ---
+	var zero = ExplosionVisual.cap_growth_scale(Vector2(3.0, 3.0), 0.0)
+	_check(_approx(zero.x, 0.0) and _approx(zero.y, 0.0), "explosion: base 0 => échelle 0, pas de crash")
+
+	# --- Verrou de la valeur d'équilibrage : 2.32 cale la normale à ~512 px. ---
+	# Rayon normale non buffée = 221 px (échelle 1.5) ; au plafond 221*2.32 ≈ 513
+	# = 25 % de la map classique (2048). Ce test échoue si quelqu'un change 2.32.
+	_check(_approx(ExplosionVisual.MAX_EXPLOSION_GROWTH, 2.32), "explosion: facteur = 2.32 (normale ~512 px = 25% map)")
 
 
 func _check(cond, name):

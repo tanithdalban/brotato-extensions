@@ -9,6 +9,7 @@ const BombSkin = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bom
 const BombElement = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_element.gd")
 const BombIceSlow = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_ice_slow.gd")
 const BombPlacement = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_placement.gd")
+const BombLeech = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_leech.gd")
 
 # Échelle d'explosion de base (équiv. landmine). Ajustable au réglage.
 const EXPLOSION_SCALE := 1.5
@@ -147,6 +148,108 @@ func on_ice_hit(thing_hit, _damage_dealt, slow_pct: float) -> void:
 	# Se nettoie tout seul à la mort de l'ennemi ; dédoublonné par couleur (non cumulatif).
 	if thing_hit.has_method("add_outline"):
 		thing_hit.add_outline(FROST_OUTLINE_COLOR)
+
+
+# Cible du signal hit_something de l'explosion d'une bombe SANGSUE (connecté par
+# bomb_entity, avec le TIER de cette bombe). Draine l'ennemi touché : on lui RETIRE
+# jusqu'à N PV et on rend au joueur le montant RÉELLEMENT retiré (voir plus bas :
+# l'ennemi peut avoir moins de N PV, ou être déjà en train de mourir cette frame).
+# Duck-typé : ne touche que des unités ayant current_stats + take_damage (marche
+# vanilla/DLC/autre mod, sans étendre enemy.gd).
+#
+# POURQUOI notre propre soin, et pas RunData.manage_life_steal : le vol de vie vanilla
+# est gardé par le LifestealTimer du joueur (0,1 s, player.gd:734), qui JETTE tout proc
+# arrivant pendant qu'il tourne. Or une explosion touche tous ses ennemis dans la MÊME
+# frame : passer par le vanilla rendrait 1 PV par explosion, quel que soit le nombre
+# d'ennemis. On ne contourne ce timer que sur NOTRE chemin ; il reste intact pour toutes
+# les autres armes.
+func on_leech_hit(thing_hit, _damage_dealt, tier: int) -> void:
+	if not is_instance_valid(_parent):
+		return
+	var capacity := BombLeech.cap_for_tier(tier)
+	var now := OS.get_ticks_msec()
+	var bucket := _get_leech_bucket()
+	if BombLeech.remaining(bucket, capacity, now) <= 0:
+		return
+	if not is_instance_valid(thing_hit):
+		return
+	if not ("current_stats" in thing_hit) or thing_hit.current_stats == null:
+		return
+	if not thing_hit.has_method("take_damage"):
+		return
+	# ENNEMIS UNIQUEMENT : Neutral (arbres, caisses, rochers) hérite lui aussi de
+	# Unit et possède donc current_stats + take_damage — il passe les deux gardes
+	# ci-dessus. Or l'explosion touche bien les neutres (Hitbox calque 8, hurtbox
+	# Neutral masque 1032 = 8 + 1024) : sans cette garde, un joueur planté à côté
+	# d'un arbre drainait le budget complet à CHAQUE bombe, à l'infini (sustain
+	# gratuit). `Enemy` couvre aussi `Boss` (Boss extends Enemy).
+	if not (thing_hit is Enemy):
+		return
+	if current_stats == null:
+		return
+
+	# current_stats.lifesteal porte DÉJÀ « base de l'arme + stat du joueur / 100 »
+	# (weapon_service.gd:260, branche not is_structure). Ne rien recalculer.
+	if not BombLeech.procs(randf(), current_stats.lifesteal):
+		return
+
+	var amount: int = BombLeech.take(bucket, capacity, BombLeech.proc_amount(_has_double_lifesteal()), now)
+	if amount <= 0:
+		return
+
+	# Le drain, retiré à l'ennemi : armor_applied = false -> l'armure ne le mange pas
+	# (unit.gd:502) ; hitbox = null -> ni crit ni recul. Un drain sec.
+	var args := TakeDamageArgs.new(player_index, null)
+	args.armor_applied = false
+	args.dodgeable = false
+	var dmg_result = thing_hit.take_damage(amount, args)
+
+	# Le montant RÉELLEMENT retiré : unit.gd:take_damage rend [full_dmg_value,
+	# dmg_taken, false], où dmg_taken = clamp(full_dmg_value, 0, vie_avant_le_coup)
+	# — calculé AVANT le retrait, donc fiable même en cas d'overkill (ennemi à 1 PV
+	# frappé par un proc double) ou d'ennemi déjà `_pending_die` cette frame (qui
+	# renvoie [0, 0, false] sans rien retirer). On soigne ce montant réel, borné à
+	# `amount` (jamais plus que ce que le seau a accordé, même si des bonus de
+	# dégâts du joueur gonflaient le retrait) et on REMBOURSE au seau la part non
+	# consommée : le budget ne se dégrade jamais pour un PV qui n'a servi à personne.
+	var actually_removed: int = amount
+	if dmg_result is Array and dmg_result.size() > 1:
+		actually_removed = int(dmg_result[1])
+	var healed: int = int(min(actually_removed, amount))
+	if healed < amount:
+		BombLeech.refund(bucket, capacity, amount - healed)
+	if healed <= 0:
+		return
+
+	# ... et rendu au joueur. on_healing_effect clampe aux PV max.
+	if _parent.has_method("on_healing_effect"):
+		var _healed = _parent.on_healing_effect(healed)
+
+
+# Résout le seau à jetons PARTAGÉ de ce joueur (une bombe sangsue peut en avoir
+# jusqu'à plusieurs équipées : elles doivent toutes piocher dans le MÊME seau).
+#
+# STOCKAGE : méta sur le nœud JOUEUR (`_parent`), et non sur `Engine` (comme
+# ModLog._META) ni sur une variable de ce script. Le nœud joueur est PAR JOUEUR
+# (coop : deux joueurs, deux nœuds, deux seaux — aucun risque de mélange) et il est
+# détruit à la fin de la run (contrairement à `Engine`, qui survivrait à la session
+# entière et exigerait une remise à zéro manuelle pour ne pas fuiter une run sur la
+# suivante). L'Array est stocké par RÉFÉRENCE dans la méta : toute bombe sangsue de
+# ce joueur qui rappelle cette fonction récupère et mute le MÊME seau.
+const _LEECH_BUCKET_META := "tanith_bomberman_leech_bucket"
+
+func _get_leech_bucket() -> Array:
+	if not _parent.has_meta(_LEECH_BUCKET_META):
+		_parent.set_meta(_LEECH_BUCKET_META, BombLeech.new_bucket())
+	return _parent.get_meta(_LEECH_BUCKET_META)
+
+
+# L'item « double vol de vie » fait passer les procs à 2 PV (cf. run_data.gd:1378).
+func _has_double_lifesteal() -> bool:
+	var effects = RunData.get_player_effects(player_index)
+	if not effects.has(Keys.stat_double_lifesteal_bonus_hash):
+		return false
+	return RunData.get_player_effect_bool(Keys.stat_double_lifesteal_bonus_hash, player_index)
 
 
 # Surcharge : cooldown DÉTERMINISTE (pas de rand_range).
