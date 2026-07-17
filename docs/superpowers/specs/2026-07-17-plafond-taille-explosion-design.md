@@ -65,6 +65,7 @@ Le calcul du clamp part en **helper pur** dans `content/logic/explosion_visual.g
 ## Portée
 
 - **Concernées** : toutes nos bombes qui explosent — normale, glace, poison, sangsue, obus Frag, fragments. Les bombes à effet font 0 dégât mais appliquent leurs effets (slow, DOT, drain) **dans la zone d'explosion** : un champ grand comme la map serait tout aussi cassé, donc les borner est voulu.
+- **La troll bombe aussi** (ajout post-revue, décision utilisateur) : elle explose par le même chemin vanilla (`WeaponService.explode`) dans `troll_bomb.gd:_spawn_visual_explosion`. Son explosion est PUREMENT visuelle (`damage 0`, les dégâts viennent d'une Hitbox couche 4 dimensionnée à part), mais un cercle grand comme la map casse la lisibilité. Même clamp que `bomb_entity`, juste après `cap_aoe_opacity`. (Au passage, sa durée de poursuite `PURSUIT_SECONDS` a été ramenée 5 s → 3 s — tweak d'équilibrage distinct du plafond.)
 - **Non concernées** : la **foudre** (pas d'explosion, tire des éclairs). L'**étalement des fragments** (150 px, constant).
 - **Intouché** : les explosions vanilla (autres persos, DLC) et la **stat globale `explosion_size` du joueur** (elle continue de servir partout ailleurs). On ne clampe que l'échelle de NOS instances d'explosion.
 
