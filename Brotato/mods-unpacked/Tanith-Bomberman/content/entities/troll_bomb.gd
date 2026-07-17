@@ -23,7 +23,7 @@ const WAKE_SOUND := preload("res://entities/units/enemies/boss/zombie_voice_gene
 
 # --- Paramètres réglables (calibrage final en jeu) ---
 const SPEED := 120.0            # ≈ vitesse de base d'un joueur, CONSTANTE
-const PURSUIT_SECONDS := 5.0    # minuteur de poursuite (plage à tester 4-6)
+const PURSUIT_SECONDS := 3.0    # durée de vie (poursuite) avant explosion, hors télégraphe
 const BLAST_RADIUS := 120.0     # rayon de l'AoE infligée en fin de minuteur (> rayon de contact ~50)
 const TELEGRAPH_SECONDS := 0.8  # éveil : son + immobile (le joueur a le temps de réagir) avant la chasse
 const MIN_SPAWN_DISTANCE := 130.0  # ne pas apparaître collé au joueur
@@ -260,3 +260,10 @@ func _spawn_visual_explosion() -> void:
 	var _inst = WeaponService.explode(_exploding_effect, _explode_args)
 	# Anti-épilepsie : plafonne l'opacité du sprite d'AOE (visuel seul).
 	ExplosionVisual.cap_aoe_opacity(_inst)
+	# Plafond de TAILLE : même borne que les autres bombes. La troll bombe explose par
+	# le même chemin vanilla (WeaponService.explode -> set_area), donc son souffle grossit
+	# aussi avec explosion_size et pouvait couvrir la map. Ici c'est PUREMENT visuel
+	# (damage 0 ; les dégâts viennent de la Hitbox couche 4), mais un cercle grand comme
+	# la map casse la lisibilité. _explosion_scale = base 1.5 => plafond ~512 px.
+	if _inst != null:
+		_inst.scale = ExplosionVisual.cap_growth_scale(_inst.scale, _explosion_scale)
