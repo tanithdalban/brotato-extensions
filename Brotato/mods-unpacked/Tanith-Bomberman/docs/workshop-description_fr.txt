@@ -1,0 +1,46 @@
+[b]Bomberto ne vise pas : il pose des bombes à mèche tout en se battant et laisse le souffle parler pour lui.[/b] Un personnage de placement et de zone, pour qui préfère recouvrir le terrain de feu plutôt que d'aligner des tirs — avec désormais un arsenal complet de six bombes que l'on débloque en jouant.
+
+[h2]Le marché des fous[/h2]
+Lesté d'un brutal −75 % de dégâts, Bomberto compense par les explosions. Sa boutique est retravaillée : Bombes, le set d'armes Explosif, et les armes de mêlée à fort recul (Marteau, Main, Bouclier à pointes, Torche, Clé à molette…). Aucune arme de précision ici — on cogne et on fait tout sauter.
+
+[h2]Ses atouts uniques[/h2]
+[list]
+[*]+5 % de [b]taille[/b] d'explosion par point d'[b]Élémentaire[/b]
+[*]+5 % de [b]dégâts[/b] d'explosion par point d'[b]Ingénierie[/b]
+[*]Ces bonus sont globaux — ils renforcent aussi les armes explosives que vous achetez.
+[/list]
+
+[h2]L'arme Bombe[/h2]
+[list]
+[*]Se pose dès que le temps de recharge est prêt (sans visée).
+[*]Les bombes dessinent une [b]traînée lisible[/b] : la couronne de pose se referme derrière vous en course, et s'ouvre en cercle complet à l'arrêt.
+[*]Explose après une courte mèche, puis enflamme les ennemis (brûlure qui grandit avec le niveau).
+[*]Scaling : 100 % Ingénierie + 150 % Élémentaire.
+[*]La vitesse d'attaque [b]raccourcit la mèche[/b] — plus vous frappez vite, plus vite les bombes sautent ; équipez-en davantage pour un tapis de feu plus dense.
+[*]Vous commencez toujours avec une Bombe, plus une arme de départ de votre choix (reprendre une deuxième Bombe est un très bon plan).
+[/list]
+
+[h2]Six bombes — à mériter, pas à acheter[/h2]
+Les bombes élémentaires ne sont plus offertes d'emblée. Montez une bombe au [b]niveau IV[/b] pour débloquer la suivante dans la chaîne :
+[list]
+[*]💣 [b]Normale[/b] — la bête de somme : frappe fort et embrase le sol.
+[*]❄️ [b]Glace[/b] — aucun dégât de souffle ; [b]ralentit durablement[/b] ce qu'elle touche (jusqu'à 75 %) et le marque de givre.
+[*]⚡ [b]Foudre[/b] — aucun souffle ; projette un [b]cercle d'éclairs[/b] qui repoussent les ennemis. Du contrôle de foule pur.
+[*]☣️ [b]Poison[/b] — aucun souffle ; [b]poison qui ignore l'armure[/b] et ronge les ennemis coriaces (flammes vertes).
+[*]🩸 [b]Sangsue[/b] — aucun souffle ; [b]draine les PV[/b] de tout ce qui se trouve dans la zone et vous les rend (le soin est plafonné et partagé par seconde : les empiler le rend régulier, pas plus gros). Se débloque en détenant les quatre bombes d'origine à la fois.
+[*]🧨 [b]Frag[/b] — une bombe à sous-munitions : l'obus éclate et disperse [b]4 à 7 fragments[/b] au hasard, qui explosent pour de bon. Redoutable sur une nuée dense, un pari sur une cible isolée. Se débloque en montant une Bombe Sangsue au niveau IV.
+[/list]
+Chaîne : [b]Normale → Glace → Foudre → Poison[/b], puis [b]les quatre → Sangsue[/b], puis [b]Sangsue IV → Frag[/b].
+
+[h2]Comment jouer[/h2]
+[list]
+[*]Empilez [b]Élémentaire[/b] et [b]Ingénierie[/b] : l'un élargit le souffle, l'autre frappe plus fort — et la brûlure profite de l'Élémentaire.
+[*]Poussez la vitesse d'attaque et cumulez les bombes pour un tapis plus dense et plus rapide.
+[*]Placez-vous pour que les bombes tombent au milieu des paquets d'ennemis ; laissez la mèche et la brûlure finir le travail.
+[*]Panachez les types de bombes selon le besoin : ralentir les fuyards, repousser les fonceurs, empoisonner les tanks, drainer pour tenir, fragmenter les nuées.
+[/list]
+
+[hr][/hr]
+⚠️ [b]Nouveau :[/b] les explosions sont maintenant [b]plafonnées à environ un quart de la carte[/b] — fini les souffles au Pot de miel qui avalent toute l'arène. Votre Élémentaire continue de nourrir la brûlure, le poison, la foudre et le reste.
+
+⚠️ Un dernier conseil : gardez un œil sur vos propres bombes. Elles n'ont pas toutes tout à fait le même caractère… 😈

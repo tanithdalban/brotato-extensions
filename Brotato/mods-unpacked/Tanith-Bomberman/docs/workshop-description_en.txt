@@ -1,0 +1,46 @@
+[b]Bomberto doesn't aim: he drops fuse bombs as he fights and lets the blast do the talking.[/b] A positioning-and-area character for players who'd rather blanket the field in fire than line up shots — now with a full arsenal of six bombs you unlock by playing.
+
+[h2]The mad market[/h2]
+Saddled with a brutal −75 % damage, Bomberto makes up for it with explosions. His shop is retuned: Bombs, the Explosive weapon set, and high-knockback melee weapons (Hammer, Hand, Spiky Shield, Torch, Wrench…). No precision guns here — you bonk and you blow things up.
+
+[h2]His unique edges[/h2]
+[list]
+[*]+5 % explosion [b]size[/b] per point of [b]Elemental[/b]
+[*]+5 % explosion [b]damage[/b] per point of [b]Engineering[/b]
+[*]These bonuses are global — they also boost the explosive weapons you buy.
+[/list]
+
+[h2]The Bomb weapon[/h2]
+[list]
+[*]Plants itself whenever the cooldown is ready (no targeting).
+[*]Bombs lay down a [b]readable trail[/b]: the drop ring closes behind you while running, and opens into a full circle when you stand still.
+[*]Blows up after a short fuse, then sets enemies on fire (burning that scales by tier).
+[*]Scaling: 100 % Engineering + 150 % Elemental.
+[*]Attack speed [b]shortens the fuse[/b] — the faster you swing, the sooner bombs go off; equip more bombs for a denser rolling carpet of fire.
+[*]You always start with a Bomb, plus one starting weapon of your choice (picking a second Bomb is a perfectly good plan).
+[/list]
+
+[h2]Six bombs — earn them, don't buy them[/h2]
+The elemental bombs are no longer handed out for free. Take a bomb to [b]tier IV[/b] to unlock the next in the chain:
+[list]
+[*]💣 [b]Bomb[/b] — the workhorse: hits hard and sets the ground on fire.
+[*]❄️ [b]Ice[/b] — no blast damage; [b]permanently slows[/b] what it hits (up to 75 %) and marks it with frost.
+[*]⚡ [b]Storm[/b] — no blast; fires a [b]ring of lightning bolts[/b] that knock enemies back. Pure crowd control.
+[*]☣️ [b]Poison[/b] — no blast; [b]armor-ignoring poison[/b] that eats through tanky enemies (green flames).
+[*]🩸 [b]Leech[/b] — no blast; [b]drains HP[/b] from everything in the blast and gives it back to you (healing is capped and shared per second, so stacking keeps it steady, not bigger). Unlocks by holding the four original bombs at once.
+[*]🧨 [b]Frag[/b] — a cluster bomb: the shell bursts and scatters [b]4–7 live fragments[/b] at random. Devastating on a dense swarm, a gamble on a lone target. Unlocks by taking a Leech Bomb to tier IV.
+[/list]
+Chain: [b]Bomb → Ice → Storm → Poison[/b], then [b]all four → Leech[/b], then [b]Leech IV → Frag[/b].
+
+[h2]How to play[/h2]
+[list]
+[*]Stack [b]Elemental[/b] and [b]Engineering[/b]: one widens the blast, the other hits harder — and burning rides on Elemental.
+[*]Crank attack speed and stack bombs to make the carpet denser and faster.
+[*]Position so bombs land inside enemy packs; let the fuse and the burn finish the job.
+[*]Mix bomb types for the job: slow the runners, knock back the chargers, poison the tanks, leech to stay alive, frag the swarms.
+[/list]
+
+[hr][/hr]
+⚠️ [b]New:[/b] explosions are now [b]capped at about a quarter of the map[/b] — no more Jar-of-Honey blasts that swallow the whole arena. Your Elemental still pours into burning, poison, lightning and the rest.
+
+⚠️ One last tip: keep an eye on your own bombs. Not all of them share quite the same temperament… 😈

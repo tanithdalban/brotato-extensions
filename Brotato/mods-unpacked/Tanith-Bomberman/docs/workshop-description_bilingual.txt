@@ -1,0 +1,97 @@
+[h1]🇬🇧 English[/h1]
+[b]Bomberto doesn't aim: he drops fuse bombs as he fights and lets the blast do the talking.[/b] A positioning-and-area character for players who'd rather blanket the field in fire than line up shots — now with a full arsenal of six bombs you unlock by playing.
+
+[h2]The mad market[/h2]
+Saddled with a brutal −75 % damage, Bomberto makes up for it with explosions. His shop is retuned: Bombs, the Explosive weapon set, and high-knockback melee weapons (Hammer, Hand, Spiky Shield, Torch, Wrench…). No precision guns here — you bonk and you blow things up.
+
+[h2]His unique edges[/h2]
+[list]
+[*]+5 % explosion [b]size[/b] per point of [b]Elemental[/b]
+[*]+5 % explosion [b]damage[/b] per point of [b]Engineering[/b]
+[*]These bonuses are global — they also boost the explosive weapons you buy.
+[/list]
+
+[h2]The Bomb weapon[/h2]
+[list]
+[*]Plants itself whenever the cooldown is ready (no targeting).
+[*]Bombs lay down a [b]readable trail[/b]: the drop ring closes behind you while running, and opens into a full circle when you stand still.
+[*]Blows up after a short fuse, then sets enemies on fire (burning that scales by tier).
+[*]Scaling: 100 % Engineering + 150 % Elemental.
+[*]Attack speed [b]shortens the fuse[/b] — the faster you swing, the sooner bombs go off; equip more bombs for a denser rolling carpet of fire.
+[*]You always start with a Bomb, plus one starting weapon of your choice (picking a second Bomb is a perfectly good plan).
+[/list]
+
+[h2]Six bombs — earn them, don't buy them[/h2]
+The elemental bombs are no longer handed out for free. Take a bomb to [b]tier IV[/b] to unlock the next in the chain:
+[list]
+[*]💣 [b]Bomb[/b] — the workhorse: hits hard and sets the ground on fire.
+[*]❄️ [b]Ice[/b] — no blast damage; [b]permanently slows[/b] what it hits (up to 75 %) and marks it with frost.
+[*]⚡ [b]Storm[/b] — no blast; fires a [b]ring of lightning bolts[/b] that knock enemies back. Pure crowd control.
+[*]☣️ [b]Poison[/b] — no blast; [b]armor-ignoring poison[/b] that eats through tanky enemies (green flames).
+[*]🩸 [b]Leech[/b] — no blast; [b]drains HP[/b] from everything in the blast and gives it back to you (healing is capped and shared per second, so stacking keeps it steady, not bigger). Unlocks by holding the four original bombs at once.
+[*]🧨 [b]Frag[/b] — a cluster bomb: the shell bursts and scatters [b]4–7 live fragments[/b] at random. Devastating on a dense swarm, a gamble on a lone target. Unlocks by taking a Leech Bomb to tier IV.
+[/list]
+Chain: [b]Bomb → Ice → Storm → Poison[/b], then [b]all four → Leech[/b], then [b]Leech IV → Frag[/b].
+
+[h2]How to play[/h2]
+[list]
+[*]Stack [b]Elemental[/b] and [b]Engineering[/b]: one widens the blast, the other hits harder — and burning rides on Elemental.
+[*]Crank attack speed and stack bombs to make the carpet denser and faster.
+[*]Position so bombs land inside enemy packs; let the fuse and the burn finish the job.
+[*]Mix bomb types for the job: slow the runners, knock back the chargers, poison the tanks, leech to stay alive, frag the swarms.
+[/list]
+
+⚠️ [b]New:[/b] explosions are now [b]capped at about a quarter of the map[/b] — no more Jar-of-Honey blasts that swallow the whole arena. Your Elemental still pours into burning, poison, lightning and the rest.
+
+⚠️ One last tip: keep an eye on your own bombs. Not all of them share quite the same temperament… 😈
+
+
+[hr][/hr]
+
+
+[h1]🇫🇷 Français[/h1]
+[b]Bomberto ne vise pas : il pose des bombes à mèche tout en se battant et laisse le souffle parler pour lui.[/b] Un personnage de placement et de zone, pour qui préfère recouvrir le terrain de feu plutôt que d'aligner des tirs — avec désormais un arsenal complet de six bombes que l'on débloque en jouant.
+
+[h2]Le marché des fous[/h2]
+Lesté d'un brutal −75 % de dégâts, Bomberto compense par les explosions. Sa boutique est retravaillée : Bombes, le set d'armes Explosif, et les armes de mêlée à fort recul (Marteau, Main, Bouclier à pointes, Torche, Clé à molette…). Aucune arme de précision ici — on cogne et on fait tout sauter.
+
+[h2]Ses atouts uniques[/h2]
+[list]
+[*]+5 % de [b]taille[/b] d'explosion par point d'[b]Élémentaire[/b]
+[*]+5 % de [b]dégâts[/b] d'explosion par point d'[b]Ingénierie[/b]
+[*]Ces bonus sont globaux — ils renforcent aussi les armes explosives que vous achetez.
+[/list]
+
+[h2]L'arme Bombe[/h2]
+[list]
+[*]Se pose dès que le temps de recharge est prêt (sans visée).
+[*]Les bombes dessinent une [b]traînée lisible[/b] : la couronne de pose se referme derrière vous en course, et s'ouvre en cercle complet à l'arrêt.
+[*]Explose après une courte mèche, puis enflamme les ennemis (brûlure qui grandit avec le niveau).
+[*]Scaling : 100 % Ingénierie + 150 % Élémentaire.
+[*]La vitesse d'attaque [b]raccourcit la mèche[/b] — plus vous frappez vite, plus vite les bombes sautent ; équipez-en davantage pour un tapis de feu plus dense.
+[*]Vous commencez toujours avec une Bombe, plus une arme de départ de votre choix (reprendre une deuxième Bombe est un très bon plan).
+[/list]
+
+[h2]Six bombes — à mériter, pas à acheter[/h2]
+Les bombes élémentaires ne sont plus offertes d'emblée. Montez une bombe au [b]niveau IV[/b] pour débloquer la suivante dans la chaîne :
+[list]
+[*]💣 [b]Normale[/b] — la bête de somme : frappe fort et embrase le sol.
+[*]❄️ [b]Glace[/b] — aucun dégât de souffle ; [b]ralentit durablement[/b] ce qu'elle touche (jusqu'à 75 %) et le marque de givre.
+[*]⚡ [b]Foudre[/b] — aucun souffle ; projette un [b]cercle d'éclairs[/b] qui repoussent les ennemis. Du contrôle de foule pur.
+[*]☣️ [b]Poison[/b] — aucun souffle ; [b]poison qui ignore l'armure[/b] et ronge les ennemis coriaces (flammes vertes).
+[*]🩸 [b]Sangsue[/b] — aucun souffle ; [b]draine les PV[/b] de tout ce qui se trouve dans la zone et vous les rend (le soin est plafonné et partagé par seconde : les empiler le rend régulier, pas plus gros). Se débloque en détenant les quatre bombes d'origine à la fois.
+[*]🧨 [b]Frag[/b] — une bombe à sous-munitions : l'obus éclate et disperse [b]4 à 7 fragments[/b] au hasard, qui explosent pour de bon. Redoutable sur une nuée dense, un pari sur une cible isolée. Se débloque en montant une Bombe Sangsue au niveau IV.
+[/list]
+Chaîne : [b]Normale → Glace → Foudre → Poison[/b], puis [b]les quatre → Sangsue[/b], puis [b]Sangsue IV → Frag[/b].
+
+[h2]Comment jouer[/h2]
+[list]
+[*]Empilez [b]Élémentaire[/b] et [b]Ingénierie[/b] : l'un élargit le souffle, l'autre frappe plus fort — et la brûlure profite de l'Élémentaire.
+[*]Poussez la vitesse d'attaque et cumulez les bombes pour un tapis plus dense et plus rapide.
+[*]Placez-vous pour que les bombes tombent au milieu des paquets d'ennemis ; laissez la mèche et la brûlure finir le travail.
+[*]Panachez les types de bombes selon le besoin : ralentir les fuyards, repousser les fonceurs, empoisonner les tanks, drainer pour tenir, fragmenter les nuées.
+[/list]
+
+⚠️ [b]Nouveau :[/b] les explosions sont maintenant [b]plafonnées à environ un quart de la carte[/b] — fini les souffles au Pot de miel qui avalent toute l'arène. Votre Élémentaire continue de nourrir la brûlure, le poison, la foudre et le reste.
+
+⚠️ Un dernier conseil : gardez un œil sur vos propres bombes. Elles n'ont pas toutes tout à fait le même caractère… 😈
