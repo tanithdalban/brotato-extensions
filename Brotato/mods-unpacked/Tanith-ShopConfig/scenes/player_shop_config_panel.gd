@@ -30,7 +30,7 @@ signal ready_changed(is_ready)
 const GRID_COLUMNS := 6
 const CELL_SIZE := Vector2(64, 64)
 # Taille des icônes de rappel de touches (ui_info / onglets). Compact : ~hauteur du texte.
-const KEY_HINT_ICON_SIZE := Vector2(32, 32)
+const KEY_HINT_ICON_SIZE := Vector2(24, 24)
 const MAX_CLASS_OPTIONS := 10   # nb de classes proposées ; le reste -> « Autre »
 # On réutilise le vrai panneau de description du magasin pour l'infobulle riche.
 const ItemPopupScene := preload("res://ui/menus/shop/item_popup.tscn")
@@ -41,6 +41,12 @@ const PoolFilter := preload("res://mods-unpacked/Tanith-ShopConfig/content/logic
 const CheckmarkTexture := preload("res://ui/menus/global/big_checkmark.png")
 # Police plus grande pour le bouton Prêt (CTA mis en avant).
 const ReadyFont := preload("res://resources/fonts/actual/base/font_35_outline.tres")
+# Police réduite pour les rappels de touches (texte d'aide « = affiche/masque
+# l'infobulle », hints d'onglets) : texte auxiliaire, gardé discret face au thème.
+const HintFont := preload("res://resources/fonts/actual/base/font_very_smallest_text.tres")
+# Police compacte des champs de filtre (tier/classe) et de leurs options : le
+# thème par défaut tronquait « Tous tiers » / « Toutes classes » côte à côte.
+const FilterFont := preload("res://resources/fonts/actual/base/font_22.tres")
 
 var _player_index := 0
 var _excluded := {}        # { my_id: true } (clé = my_id du représentant)
@@ -352,22 +358,32 @@ func _build_ui() -> void:
 	# Rappel de la touche pour basculer la popup d'info : on affiche l'ICONE reelle
 	# de la touche (ui_info = F clavier / Y manette), suivant le joueur et son
 	# peripherique (helper natif). Fallback texte si pas d'icone.
+	# Suffixe court (l'icône de touche porte déjà le sens) : un libellé long
+	# forcerait la largeur du panneau et ferait déborder le 4e en split coop 4J.
 	filter_bar.add_child(_make_key_hint("ui_info",
-		_t("= show/hide tooltip", "= affiche/masque l'infobulle"), "[F/Y]"))
+		_t("= tooltip", "= infobulle"), "[F/Y]"))
 
 	# Actions rapides — juste sous les filtres, au-dessus des onglets.
 	var actions = HBoxContainer.new()
 	root.add_child(actions)
+	# Boutons d'action extensibles + clip : se partagent la largeur et se
+	# resserrent en split étroit sans forcer le panneau à déborder (cf. filtres).
 	var reset_button = Button.new()
 	reset_button.text = _t("Reset all", "Tout réinitialiser")
 	reset_button.hint_tooltip = _t(
 		"Clear everything and forget the saved config for this slot.",
 		"Tout effacer et oublier la config mémorisée pour ce slot.")
+	reset_button.clip_text = true
+	reset_button.rect_min_size = Vector2(90, 0)
+	reset_button.size_flags_horizontal = SIZE_EXPAND_FILL
 	reset_button.connect("pressed", self, "_on_reset_pressed")
 	actions.add_child(reset_button)
 	# Bouton a deux etats Exclure <-> Inclure « tout l'affiché » (libelle pilote
 	# par l'etat via _update_exclude_shown_button).
 	_exclude_shown_button = Button.new()
+	_exclude_shown_button.clip_text = true
+	_exclude_shown_button.rect_min_size = Vector2(90, 0)
+	_exclude_shown_button.size_flags_horizontal = SIZE_EXPAND_FILL
 	_exclude_shown_button.connect("pressed", self, "_on_exclude_shown_pressed")
 	actions.add_child(_exclude_shown_button)
 
@@ -458,10 +474,12 @@ func _make_key_hint(action, suffix, text_fallback) -> Control:
 	else:
 		var lbl = Label.new()
 		lbl.text = text_fallback
+		lbl.add_font_override("font", HintFont)
 		box.add_child(lbl)
 	if suffix != "":
 		var sfx = Label.new()
 		sfx.text = " " + suffix
+		sfx.add_font_override("font", HintFont)
 		box.add_child(sfx)
 	return box
 
@@ -477,8 +495,14 @@ func _make_key_hint(action, suffix, text_fallback) -> Control:
 # = "tier" / "class". Mémorise les refs dans _<which>_field / _list / _items.
 func _build_dropdown(which, labels) -> Button:
 	var field = Button.new()
+	# Champ extensible + clip : il grandit pour montrer « Tous tiers » / « Toutes
+	# classes » en entier quand il y a la place (1-2 joueurs), et se resserre
+	# proprement quand le panneau est étroit (4 joueurs) SANS forcer le panneau à
+	# déborder hors écran. Police compacte, min réduit pour laisser le split respirer.
 	field.clip_text = true
-	field.rect_min_size = Vector2(150, 0)
+	field.add_font_override("font", FilterFont)
+	field.rect_min_size = Vector2(90, 0)
+	field.size_flags_horizontal = SIZE_EXPAND_FILL
 	field.connect("pressed", self, "_on_field_pressed", [which])
 
 	var list = PanelContainer.new()
@@ -489,6 +513,7 @@ func _build_dropdown(which, labels) -> Button:
 	for i in labels.size():
 		var it = Button.new()
 		it.text = labels[i]
+		it.add_font_override("font", FilterFont)
 		it.connect("pressed", self, "_on_value_pressed", [which, i])
 		vbox.add_child(it)
 		items.append(it)
@@ -519,12 +544,13 @@ func _build_dropdown(which, labels) -> Button:
 	return field
 
 
-# Libellé du bouton-champ : valeur courante + « ... » (convention : ouvre une liste).
+# Libellé du bouton-champ = valeur courante (sans suffixe : gagne en largeur pour
+# afficher le libellé complet ; cliquer/valider ouvre la liste d'options).
 func _update_field_text(which) -> void:
 	if which == "tier" and _tier_field != null:
-		_tier_field.text = _tier_labels[_tier_index] + "  ..."
+		_tier_field.text = _tier_labels[_tier_index]
 	elif which == "class" and _class_field != null:
-		_class_field.text = _class_labels[_class_index] + "  ..."
+		_class_field.text = _class_labels[_class_index]
 
 
 func _on_field_pressed(which) -> void:
@@ -601,12 +627,30 @@ func _make_grid_tab(tabs, title) -> GridContainer:
 	scroll.name = title
 	scroll.size_flags_horizontal = SIZE_EXPAND_FILL
 	scroll.size_flags_vertical = SIZE_EXPAND_FILL
+	# Grille responsive : on wrappe sur la largeur, jamais de défilement horizontal.
+	scroll.scroll_horizontal_enabled = false
 	tabs.add_child(scroll)
 	var grid = GridContainer.new()
-	grid.columns = GRID_COLUMNS
+	grid.columns = GRID_COLUMNS   # valeur initiale ; ajustée par _on_grid_resized
 	grid.size_flags_horizontal = SIZE_EXPAND_FILL
 	scroll.add_child(grid)
+	# Recalcule le nombre de colonnes dès que le ScrollContainer change de taille
+	# (résolution, nombre de joueurs → largeur du panneau) : la grille remplit la
+	# largeur au lieu de laisser un vide à droite.
+	scroll.connect("resized", self, "_on_grid_resized", [scroll, grid])
 	return grid
+
+
+# Ajuste le nombre de colonnes à la largeur dispo du ScrollContainer : autant de
+# cases de CELL_SIZE que la largeur (moins la barre de défilement) le permet.
+func _on_grid_resized(scroll, grid) -> void:
+	var avail = scroll.rect_size.x - 18.0   # marge pour la barre de défilement verticale
+	if avail <= 0.0:
+		return
+	var step = CELL_SIZE.x + 6.0            # case + petite séparation
+	var cols = int(max(1.0, floor(avail / step)))
+	if grid.columns != cols:
+		grid.columns = cols
 
 
 # Transmis par l'ecran en coop (cf. shop_config_screen._setup_coop_focus) pour
@@ -690,9 +734,33 @@ func _make_cell(entry) -> Button:
 	btn.connect("pressed", self, "_on_cell_pressed", [entry.my_id, btn])
 	btn.connect("mouse_entered", self, "_on_cell_focused", [entry, btn])
 	btn.connect("focus_entered", self, "_on_cell_focused", [entry, btn])
+	# Suivi du scroll au focus CLAVIER (pas au survol souris) : en coop, le
+	# FocusEmulator le fait déjà ; en solo il n'y a pas d'émulateur, donc on
+	# assure nous-mêmes que la case focalisée reste visible dans le ScrollContainer
+	# (sinon la nav clavier « sort » de la zone visible sans faire défiler).
+	btn.connect("focus_entered", self, "_on_cell_focus_scroll", [btn])
 	btn.connect("mouse_exited", self, "_on_cell_unfocused")
 	btn.connect("focus_exited", self, "_on_cell_unfocused")
 	return btn
+
+
+# Fait défiler le ScrollContainer parent pour garder la case focalisée visible.
+# Idempotent avec le FocusEmulator coop (double appel sans effet).
+func _on_cell_focus_scroll(btn) -> void:
+	var scroll = _parent_scroll_container(btn)
+	if scroll != null:
+		scroll.ensure_control_visible(btn)
+
+
+# Remonte l'arbre jusqu'au premier ScrollContainer ancêtre (comme le fait le
+# FocusEmulator natif), ou null s'il n'y en a pas.
+func _parent_scroll_container(control):
+	var parent = control.get_parent()
+	while parent != null:
+		if parent is ScrollContainer:
+			return parent
+		parent = parent.get_parent()
+	return null
 
 
 func _make_exclusion_overlay() -> Control:

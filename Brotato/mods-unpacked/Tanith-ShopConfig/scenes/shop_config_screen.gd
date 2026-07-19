@@ -9,6 +9,25 @@ extends Control
 const PanelScript = preload("res://mods-unpacked/Tanith-ShopConfig/scenes/player_shop_config_panel.gd")
 const InterceptorScript = preload("res://mods-unpacked/Tanith-ShopConfig/scenes/tab_switch_interceptor.gd")
 const ModLog = preload("res://mods-unpacked/Tanith-ShopConfig/content/logic/mod_log.gd")
+# Thème du jeu de base : posé sur le Control racine de l'écran, Godot 3 le
+# propage à TOUTE la descendance (panneaux, dropdowns, boutons, labels). Pose
+# 100 % runtime — aucun éditeur, aucun .tres modifié -> aucun risque de corruption.
+const BaseTheme := preload("res://resources/themes/base_theme.tres")
+# Fond texturé du magasin (même image que l'écran de sélection d'arme, juste
+# après le nôtre) : sans lui, les panneaux/boutons du thème (sombres,
+# semi-transparents) s'effondrent dans le noir et ne se distinguent plus.
+const ShopBackground := preload("res://ui/menus/shop/shop_background.png")
+# Polices compactes : la police par défaut du thème fait 40 px, bien trop grosse
+# pour la grille dense. On la réduit selon la largeur disponible (nb de joueurs).
+const CompactFont2P := preload("res://resources/fonts/actual/base/font_26.tres")
+const CompactFont4P := preload("res://resources/fonts/actual/base/font_22.tres")
+
+# DEBUG (test de mise en page uniquement) : force N panneaux à l'écran même avec
+# moins de joueurs réels, en réutilisant les données des vrais joueurs (indices
+# valides pour RunData). Sert à juger la densité à 3-4 joueurs quand on n'a pas
+# assez de manettes. À tester en SOLO (pas de FocusEmulator coop parasite).
+# ⚠️ REMETTRE À 0 avant tout commit / packaging.
+const DEBUG_FORCE_PANELS := 0
 
 var _players := []          # défini par set_players() avant entrée dans l'arbre
 var _panels := []
@@ -37,10 +56,26 @@ func _ready() -> void:
 
 
 func _build_ui() -> void:
-	# Fond opaque plein écran : la scène n'a rien derrière elle, mais le split
-	# laisse des espaces transparents — ce fond garantit un écran net.
-	var background = ColorRect.new()
-	background.color = Color(0.06, 0.06, 0.08, 1.0)
+	# Look du jeu de base : le thème se propage à tous les enfants ajoutés
+	# ci-dessous (et dans les panneaux). Les overrides explicites (police du
+	# bouton Prêt, modulate des onglets) l'emportent et restent intacts.
+	# On DUPLIQUE le thème (jamais muter la ressource partagée du jeu) pour lui
+	# imposer une police compacte : celle du thème fait 40 px, trop grosse pour la
+	# grille dense — d'autant plus que le split se resserre à 3-4 joueurs.
+	var players = _effective_players()
+	var compact = CompactFont4P if players.size() >= 3 else CompactFont2P
+	var t = BaseTheme.duplicate()
+	t.set_default_font(compact)          # Labels (pas de font explicite au thème)
+	t.set_font("font", "Button", compact)  # Boutons (font explicite au thème)
+	theme = t
+
+	# Fond texturé du magasin, plein écran : donne aux panneaux/boutons
+	# semi-transparents du thème un support sur lequel se détacher (sinon tout
+	# vire au noir). Même image que l'écran de sélection d'arme qui suit le nôtre.
+	var background = TextureRect.new()
+	background.texture = ShopBackground
+	background.expand = true
+	background.stretch_mode = TextureRect.STRETCH_SCALE
 	background.anchor_right = 1.0
 	background.anchor_bottom = 1.0
 	add_child(background)
@@ -58,17 +93,30 @@ func _build_ui() -> void:
 	_back_button.connect("pressed", self, "_on_back_pressed")
 	topbar.add_child(_back_button)
 
+	# Marge autour des panneaux : les décolle des bords et les fait lire comme des
+	# cartes posées sur le fond (façon MarginContainer de weapon_selection).
+	var margin = MarginContainer.new()
+	margin.size_flags_horizontal = SIZE_EXPAND_FILL
+	margin.size_flags_vertical = SIZE_EXPAND_FILL
+	margin.add_constant_override("margin_left", 20)
+	margin.add_constant_override("margin_right", 20)
+	margin.add_constant_override("margin_top", 10)
+	margin.add_constant_override("margin_bottom", 20)
+	root.add_child(margin)
+
 	# Split HORIZONTAL : un panneau par joueur, côte à côte (comme les
 	# Inventory1..4 de weapon_selection). Chaque panneau s'étire à parts égales.
+	# Séparation pour distinguer les cartes joueur les unes des autres.
 	var panels_box = HBoxContainer.new()
+	panels_box.add_constant_override("separation", 16)
 	panels_box.size_flags_horizontal = SIZE_EXPAND_FILL
 	panels_box.size_flags_vertical = SIZE_EXPAND_FILL
-	root.add_child(panels_box)
+	margin.add_child(panels_box)
 
 	# Mémoire de session : on pré-charge chaque panneau avec les exclusions déjà
 	# mémorisées pour SON slot (player_index), pour qu'elles soient pré-cochées.
 	var store = ItemService.get_shopconfig_store()
-	for p in _players:
+	for p in players:
 		var panel = PanelScript.new()
 		panel.size_flags_horizontal = SIZE_EXPAND_FILL
 		panel.size_flags_vertical = SIZE_EXPAND_FILL
@@ -76,6 +124,19 @@ func _build_ui() -> void:
 		panel.setup(p.index, p.character_data, store.get_excluded(p.index))
 		panel.connect("ready_changed", self, "_on_ready_changed")
 		_panels.append(panel)
+
+
+# Liste des joueurs à afficher. En temps normal = les vrais joueurs. En debug
+# (DEBUG_FORCE_PANELS > 0), on complète jusqu'à N en RÉUTILISANT les entrées
+# réelles (round-robin) : les indices restent valides pour RunData, seul le
+# nombre de panneaux à l'écran change — pour tester la densité 3-4 joueurs.
+func _effective_players() -> Array:
+	if DEBUG_FORCE_PANELS <= _players.size() or _players.empty():
+		return _players
+	var out := []
+	for i in DEBUG_FORCE_PANELS:
+		out.append(_players[i % _players.size()])
+	return out
 
 
 # Focus solo : focus Godot réel. Focus coop : un FocusEmulator par panneau.
