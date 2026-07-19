@@ -6,6 +6,23 @@ objets/armes pour qu'ils n'apparaissent jamais dans *sa propre* boutique de la r
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.1.0] — 2026-07-19
+
+### Modifié
+- **L'écran adopte le style visuel du jeu de base** : thème vanilla (panneaux
+  arrondis, polices Brotato, boutons stylés) au lieu du skin gris par défaut, et
+  fond texturé du magasin à la place de l'aplat noir — les panneaux et boutons se
+  détachent enfin. Les filtres tier/classe passent aussi au skin natif.
+- **Grille d'objets/armes responsive** : le nombre de colonnes s'ajuste à la
+  largeur disponible et remplit le panneau au lieu de laisser un vide à droite.
+- Barre de filtres et actions plus lisibles et compactes : libellés complets
+  quand il y a la place, resserrés dans les configurations à 3-4 joueurs sans
+  déborder de l'écran.
+
+### Corrigé
+- La navigation clavier dans la grille **fait désormais défiler** pour suivre le
+  focus (cas solo sans manette).
+
 ## [1.0.1] — 2026-07-15
 
 ### Corrigé

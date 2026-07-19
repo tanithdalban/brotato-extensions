@@ -6,6 +6,22 @@ never show up in *their own* shop for the run.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.1.0] — 2026-07-19
+
+### Changed
+- **The screen now matches the base game's visual style**: the vanilla theme
+  (rounded panels, Brotato fonts, styled buttons) instead of the default grey
+  skin, and the shop's textured background instead of the flat black one — panels
+  and buttons finally stand out. The tier/class filters get the native skin too.
+- **Responsive item/weapon grid**: the number of columns adapts to the available
+  width and fills the panel instead of leaving empty space on the right.
+- More readable, compact filter and action bar: full labels when there's room,
+  tightened in 3-4 player setups so nothing overflows the screen.
+
+### Fixed
+- Keyboard navigation in the grid now **scrolls** to follow focus (solo case with
+  no gamepad).
+
 ## [1.0.1] — 2026-07-15
 
 ### Fixed
