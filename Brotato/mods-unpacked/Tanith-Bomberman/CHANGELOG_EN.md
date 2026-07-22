@@ -12,6 +12,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ### Fixed
 - **Resuming a run after closing the game no longer loses Bomberto and his bombs.** Leaving a run in progress and restarting the game brought the run back with a character holding **no weapon** — and the save was immediately rewritten in that stripped state, making the loss permanent. The mod's content is now registered **before** the game reads the run in progress back. Mod items and weapons sitting in the pending shop are preserved too.
 
+  > **Technical note — this flaw isn't ours alone.** It comes from Brotato's
+  > autoload order: the in-progress run is read back by `ProgressData` **before**
+  > `ItemService` has received any mod content, and every id the game doesn't
+  > recognise is dropped **silently**.
+  > The authors of [Brotato-ContentLoader](https://github.com/BrotatoMods/Brotato-ContentLoader)
+  > — the framework most content mods are built on — had identified the very same
+  > cause and fixed it in **6.2.2** (“*so ItemService is populated with all modded
+  > data before ProgressData deserializes the save data*”), only to **revert** that
+  > fix in **6.2.3** because hooking in that early broke Danger progress for modded
+  > characters. Their registration therefore moved back into `ItemService._ready()`,
+  > i.e. *after* the run is read back: **Brotato content mods are, to this day,
+  > still exposed to it.** Our fix hooks later than theirs — inside
+  > `ProgressData.load_game_file()` itself, right before deserialization — which
+  > avoids their regression.
+
 ## [3.0.0] — 2026-07-17
 
 Two new bombs, a rework of how the elemental bombs are **unlocked** — they must now
