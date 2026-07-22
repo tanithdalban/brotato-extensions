@@ -9,9 +9,18 @@
 # Usage : powershell -File tools/build-bomberman.ps1
 #         powershell -File tools/build-bomberman.ps1 -DeployDir 'X:\...\Brotato\mods-unpacked'
 #
-# Apres le zip, depose le livrable en local pour test : copie le .zip + la
-# preview (bombertoe_preview.png -> preview.png) dans <DeployDir>\Tanith-Bomberman\.
+# Apres le zip, met en place le PLAN DE TRAVAIL DE L'UPLOAD Workshop : copie le
+# .zip + la preview (bomberto_preview.png -> preview.png) dans
+# <DeployDir>\Tanith-Bomberman\. C'est le dossier que pointe l'utilitaire d'upload,
+# ce qui evite d'aller rechercher les deux fichiers a la main.
 # Ignore silencieusement si le dossier Steam n'existe pas (autre machine / CI).
+#
+# ⚠️ Ce dossier N'EST PAS un deploiement de test : sur un build Steam, le jeu ne le
+# lit jamais. mod_loader.gd _load_mod_zips() est un if/else et le profil Steam a
+# steam_workshop_enabled = true (addons/mod_loader/options/profiles/steam.tres),
+# donc SEULS les zips de steamapps/workshop/content/<appid>/<item>/ sont montes, et
+# uniquement pour les items souscrits. Corollaire : tester une nouvelle version
+# impose de l'UPLOADER d'abord, puis de tester la copie souscrite.
 param(
   [string]$DeployDir = 'D:\SteamLibrary\steamapps\common\Brotato\mods-unpacked'
 )
@@ -76,12 +85,12 @@ Get-ChildItem $stage -Recurse -File | ForEach-Object {
 $arch.Dispose(); $fs.Close()
 Write-Output ("OK -> {0}  ({1} KB)" -f $outZip, [math]::Round((Get-Item $outZip).Length/1KB, 1))
 
-# --- 4) Depot local (Steam) : zip + preview.png dans mods-unpacked\Tanith-Bomberman\ ---
+# --- 4) Plan de travail de l'upload : zip + preview.png dans <DeployDir>\Tanith-Bomberman\ ---
 if (Test-Path $DeployDir) {
   $dest = Join-Path $DeployDir $modName
-  # Purge le depot avant de recopier : d'anciennes sources decompressees a cote
-  # du zip feraient charger le mod DEUX fois par ModLoader (UI en double). On
-  # repart d'un dossier vide -> uniquement zip + preview, comme le Workshop.
+  # Purge avant de recopier : on ne veut QUE le zip courant et la preview dans le
+  # dossier pointe par l'utilitaire d'upload. Un reliquat d'un build precedent
+  # (ancien zip, sources decompressees) risquerait de partir au Workshop.
   if (Test-Path $dest) { Remove-Item $dest -Recurse -Force }
   New-Item -ItemType Directory -Force -Path $dest | Out-Null
   Copy-Item $outZip (Join-Path $dest "$modName.zip") -Force
