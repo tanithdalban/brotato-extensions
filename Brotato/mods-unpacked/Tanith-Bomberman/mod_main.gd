@@ -23,6 +23,9 @@ func _setup_logging() -> void:
 	ModLog.set_enabled(enabled)
 
 func _install_extensions() -> void:
+	# progress_data en premier : c'est le point d'accroche le PLUS TÔT du mod
+	# (il injecte notre contenu avant que la sauvegarde de run soit désérialisée).
+	ModLoaderMod.install_script_extension("res://mods-unpacked/Tanith-Bomberman/extensions/singletons/progress_data.gd")
 	ModLoaderMod.install_script_extension("res://mods-unpacked/Tanith-Bomberman/extensions/singletons/item_service.gd")
 	ModLoaderMod.install_script_extension("res://mods-unpacked/Tanith-Bomberman/extensions/particles/burning/burning_particles.gd")
 	ModLoaderMod.install_script_extension("res://mods-unpacked/Tanith-Bomberman/extensions/singletons/challenge_service.gd")

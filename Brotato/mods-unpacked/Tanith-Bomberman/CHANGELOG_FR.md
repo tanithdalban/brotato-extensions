@@ -7,6 +7,27 @@ et mise sur les dégâts d'explosion et le scaling élémentaire/ingénierie.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/).
 
+## [3.0.1] — 2026-07-22
+
+### Corrigé
+- **Reprendre une partie après avoir fermé le jeu ne fait plus perdre Bomberto ni ses bombes.** En quittant une run en cours puis en relançant le jeu, la partie reprise rendait un personnage **sans arme en main** — et la sauvegarde était aussitôt réécrite ainsi amputée, rendant la perte définitive. Le contenu du mod est désormais enregistré **avant** que le jeu ne relise la partie en cours. Les objets et armes du mod présents dans la boutique en attente sont eux aussi préservés.
+
+  > **Note technique — ce défaut ne nous est pas propre.** Il vient de l'ordre
+  > d'initialisation de Brotato : la sauvegarde de la partie en cours est relue
+  > par `ProgressData` **avant** que `ItemService` n'ait reçu le contenu des mods,
+  > et tout identifiant que le jeu ne reconnaît pas est jeté **silencieusement**.
+  > Les auteurs de [Brotato-ContentLoader](https://github.com/BrotatoMods/Brotato-ContentLoader)
+  > — le framework sur lequel repose la plupart des mods de contenu — avaient
+  > identifié exactement la même cause et l'avaient corrigée en **6.2.2**
+  > (« *so ItemService is populated with all modded data before ProgressData
+  > deserializes the save data* »), avant de devoir **annuler** ce correctif en
+  > **6.2.3** parce que se brancher aussi tôt cassait la progression de danger des
+  > personnages moddés. Leur enregistrement est donc revenu dans
+  > `ItemService._ready()`, c'est-à-dire *après* la relecture : **les mods de
+  > contenu Brotato y restent, aujourd'hui encore, exposés.** Notre correctif
+  > s'accroche plus tard qu'eux — dans `ProgressData.load_game_file()` lui-même,
+  > juste avant la désérialisation — ce qui évite leur régression.
+
 ## [3.0.0] — 2026-07-17
 
 Deux nouvelles bombes, une refonte du **déblocage** des bombes élémentaires — qui se
