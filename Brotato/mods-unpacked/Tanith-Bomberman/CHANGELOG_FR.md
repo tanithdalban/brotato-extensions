@@ -7,6 +7,11 @@ et mise sur les dégâts d'explosion et le scaling élémentaire/ingénierie.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/).
 
+## [3.0.1] — 2026-07-22
+
+### Corrigé
+- **Reprendre une partie après avoir fermé le jeu ne fait plus perdre Bomberto ni ses bombes.** En quittant une run en cours puis en relançant le jeu, la partie reprise rendait un personnage **sans arme en main** — et la sauvegarde était aussitôt réécrite ainsi amputée, rendant la perte définitive. Le contenu du mod est désormais enregistré **avant** que le jeu ne relise la partie en cours. Les objets et armes du mod présents dans la boutique en attente sont eux aussi préservés.
+
 ## [3.0.0] — 2026-07-17
 
 Deux nouvelles bombes, une refonte du **déblocage** des bombes élémentaires — qui se

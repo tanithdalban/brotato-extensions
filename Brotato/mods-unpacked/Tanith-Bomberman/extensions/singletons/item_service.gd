@@ -22,6 +22,11 @@ const _ICON_ANIM_FPS := 12.0
 # pour le bon joueur (coop : un seul des joueurs peut être Bomberman).
 var _shop_draw_player := -1
 
+# Garde-fou d'idempotence de register_bomberman_content() : l'injection est appelée
+# deux fois volontairement (cf. la doc de la méthode), et rejouer les chargements
+# d'images ne coûterait que du temps de démarrage.
+var _bomberman_content_registered := false
+
 const _BOMB_WEAPONS := [
 	"res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb/bomb_1_data.tres",
 	"res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb/bomb_2_data.tres",
@@ -67,6 +72,48 @@ const _BOMB_FRAG_WEAPONS := [
 const _BOMBERMAN_CHAR := "res://mods-unpacked/Tanith-Bomberman/content/characters/bomberman/bomberman_data.tres"
 
 func _ready() -> void:
+	register_bomberman_content()
+
+	# Rejouer le passage de déblocage natif APRÈS notre injection.
+	# ProgressData est un autoload déclaré AVANT ItemService (project.godot),
+	# donc ProgressData._ready() -> add_unlocked_by_default() s'exécute AVANT ce
+	# _ready() : nos armes/perso injectés ici échappent au passage natif. On le
+	# rejoue nous-mêmes (il est idempotent : toutes ses écritures sont gardées
+	# anti-doublon). Il répare DEUX symptômes :
+	#   1. weapons_unlocked/characters_unlocked -> sans ça, l'écran de sélection
+	#      d'arme (qui filtre les armes de départ par ProgressData.weapons_unlocked)
+	#      affiche une liste VIDE -> run bloquée. (Le perso n'apparaissait que grâce
+	#      au mod de test DevUnlockAll, qui ne débloque que les personnages,
+	#      masquant le même bug côté arme.)
+	#   2. difficulties_unlocked -> crée l'entrée de suivi de difficulté de notre
+	#      perso. Sans elle, get_character_difficulty_info() renvoie un objet jetable
+	#      à la victoire (run_data.gd apply_run_won) : le danger battu n'est jamais
+	#      persisté et la vignette de sélection garde le fond par défaut (pas de
+	#      couleur par danger max, pas de cadre au danger 6).
+	ProgressData.add_unlocked_by_default()
+
+	# Le _ready() parent fixe upgrades_into.previous_upgrade pour toutes les armes.
+	._ready()
+
+
+# Injecte armes + perso du mod dans les pools de ItemService. IDEMPOTENT, et appelé
+# DEUX fois volontairement :
+#   1. depuis l'extension ProgressData (load_game_file), AVANT que la sauvegarde de
+#      la run en cours soit désérialisée — c'est le point qui compte ;
+#   2. depuis notre _ready() ci-dessus, en filet de sécurité si (1) ne passait pas.
+#
+# ⚠️ POURQUOI (1) : ProgressData est l'autoload #9 et ItemService le #11
+# (project.godot). ProgressData._ready() charge la run sauvegardée, et
+# PlayerRunData.deserialize() résout perso/armes/objets par my_id contre les
+# tableaux de ItemService en jetant SILENCIEUSEMENT tout id introuvable. Sans
+# injection préalable, reprendre une partie après avoir quitté le jeu rendait un
+# Bomberto sans perso ni bombes — et réécrivait la sauvegarde ainsi amputée, donc
+# la perte était définitive. Détail complet dans extensions/singletons/progress_data.gd.
+func register_bomberman_content() -> void:
+	if _bomberman_content_registered:
+		return
+	_bomberman_content_registered = true
+
 	# Injecter nos armes dans le pool vanilla avant le recâblage des upgrades.
 	for path in _BOMB_WEAPONS:
 		_register_bomb_weapon(path)
@@ -100,27 +147,6 @@ func _ready() -> void:
 		if anim != null:
 			character.icon = anim
 			ModLog.info("icône animée posée sur Bomberto (%d frames)" % _ICON_ANIM_FRAMES)
-
-	# Rejouer le passage de déblocage natif APRÈS notre injection.
-	# ProgressData est un autoload déclaré AVANT ItemService (project.godot),
-	# donc ProgressData._ready() -> add_unlocked_by_default() s'exécute AVANT ce
-	# _ready() : nos armes/perso injectés ici échappent au passage natif. On le
-	# rejoue nous-mêmes (il est idempotent : toutes ses écritures sont gardées
-	# anti-doublon). Il répare DEUX symptômes :
-	#   1. weapons_unlocked/characters_unlocked -> sans ça, l'écran de sélection
-	#      d'arme (qui filtre les armes de départ par ProgressData.weapons_unlocked)
-	#      affiche une liste VIDE -> run bloquée. (Le perso n'apparaissait que grâce
-	#      au mod de test DevUnlockAll, qui ne débloque que les personnages,
-	#      masquant le même bug côté arme.)
-	#   2. difficulties_unlocked -> crée l'entrée de suivi de difficulté de notre
-	#      perso. Sans elle, get_character_difficulty_info() renvoie un objet jetable
-	#      à la victoire (run_data.gd apply_run_won) : le danger battu n'est jamais
-	#      persisté et la vignette de sélection garde le fond par défaut (pas de
-	#      couleur par danger max, pas de cadre au danger 6).
-	ProgressData.add_unlocked_by_default()
-
-	# Le _ready() parent fixe upgrades_into.previous_upgrade pour toutes les armes.
-	._ready()
 
 
 # Charge une arme-bombe, pose son icône (bombe de l'élément sur disque de rareté)

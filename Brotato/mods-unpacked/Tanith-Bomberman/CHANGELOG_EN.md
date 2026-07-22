@@ -7,6 +7,11 @@ elemental/engineering scaling.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [3.0.1] — 2026-07-22
+
+### Fixed
+- **Resuming a run after closing the game no longer loses Bomberto and his bombs.** Leaving a run in progress and restarting the game brought the run back with a character holding **no weapon** — and the save was immediately rewritten in that stripped state, making the loss permanent. The mod's content is now registered **before** the game reads the run in progress back. Mod items and weapons sitting in the pending shop are preserved too.
+
 ## [3.0.0] — 2026-07-17
 
 Two new bombs, a rework of how the elemental bombs are **unlocked** — they must now
