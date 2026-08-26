@@ -13,17 +13,23 @@ Tout est écrit en **français** : commentaires, docs, libellés de commits. Les
 ## Commandes
 
 **Tests unitaires** (runner GDScript autonome, pas de GUI ; code de sortie = nb d'échecs) :
+Chaque mod a son **propre** runner ; il n'y a pas de suite commune.
 ```
-# WSL / Linux (recommandé) — wrapper qui pose le bit +x et propage le code de sortie :
-./run-tests.sh
+# WSL / Linux (recommandé) — wrappers qui posent le bit +x, propagent le code
+# de sortie ET purgent les logs (voir l'avertissement ci-dessous) :
+./run-tests.sh            # Tanith-ShopConfig
+./run-tests-bomberman.sh  # Tanith-Bomberman
 
-# Windows (cmd/PowerShell) :
+# Windows (cmd/PowerShell) — penser à purger les logs après :
 "Godot_v3.6.2-stable_win64.exe/Godot_v3.6.2-stable_win64_console.cmd" --path Brotato --no-window -s res://mods-unpacked/Tanith-ShopConfig/test/run_tests.gd
 ```
+⚠️ **Toujours purger les logs après un lancement de runner** (`tools/clean-godot-logs.sh`, appelé automatiquement par les deux wrappers). Le runner écrit dans le **même dossier que le jeu** (`%APPDATA%\Brotato\logs\`) ; au démarrage suivant, `singletons/crash_reporter.gd:53-61` lit le dernier log horodaté et conclut qu'un mod a fait planter la session dès qu'il y voit une ligne « ERROR: » dont elle-même ou la suivante mentionne « mods-unpacked ». Or « SCRIPT ERROR: » contient « ERROR: », et le bruit headless (`get_tree().current_scene` nul dans `progress_data.gd`) porte le chemin de nos extensions. Le jeu affiche alors « le mod X a planté, mods désactivés » (`main_menu.gd:308-321`) et coupe réellement les mods sur les profils Steam/Epic (`crash_reporter.gd:94-98`) — faux positif intégral. Supprimer `godot.log` est indispensable : ce n'est pas lui que le jeu lit, mais il est **recopié** en log horodaté au lancement suivant.
 Sous WSL, l'exe Godot Windows livré dans le repo tourne via l'interop (il n'existe pas de build Godot 3.6.2 natif Linux) ; `run-tests.sh` s'en charge. Les erreurs moteur affichées **après** la ligne « N tests, M échec(s) » sont la fermeture des autoloads du jeu (DLC, cursor…) et n'affectent pas le résultat.
 Les tests ne couvrent que la **logique 100 % pure** (`pool_filter.gd`, `shop_config_store.gd`) : tout ce qui touche aux autoloads ModLoader ne peut pas se charger en headless et se vérifie **en jeu**.
 
-**Test en jeu** : copier/symlinker le dossier du mod dans `mods-unpacked/` à côté du `.pck` du jeu, lancer Brotato, vérifier le flux. Le mod `Tanith-DevUnlockAll` déverrouille tous les persos en mémoire pour tester toutes les classes (le supprimer pour revenir à la normale).
+**Test en jeu** : copier/symlinker le dossier du mod dans `mods-unpacked/` à côté du `.pck` du jeu, lancer Brotato, vérifier le flux. Deux mods-outils, à supprimer pour revenir à la normale :
+- `Tanith-DevUnlockAll` — déverrouille tous les persos et les armes bombe en mémoire.
+- `Tanith-DevCurse` — force la malédiction du DLC Abyssal Terrors, autrement intestable (3 % de chance en boutique, facteur aléatoire). Pilote `DebugService` (jamais remis à zéro, `reset()` n'a aucun appelant) : 4 bombes maudites au spawn (`debug_weapons` + `curse_debug_items_and_weapons`), boutique 100 % maudite (`always_curse` → `Utils.get_curse_factor` renvoie `LARGE_NUMBER`) et biaisée vers `weapon_bomb_ice_4` (`force_item_in_shop`, pour tester la fusion), départ vague 21 (modificateur de malédiction saturé) et invulnérabilité (`always_curse` maudit AUSSI tous les ennemis). Exige le DLC actif. Rappel : `F2` ouvre le menu de debug natif du jeu en build debug (`debug_service.gd:68`).
 
 **Déploiement** : Steam Workshop, item `3748276960` (cf. `docs/superpowers/WorkshopID.md`). Le `.zip` est mis en scène dans `dist/` (non versionné).
 

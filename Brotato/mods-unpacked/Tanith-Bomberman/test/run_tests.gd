@@ -17,6 +17,7 @@ const BombChallenges = preload("res://mods-unpacked/Tanith-Bomberman/content/log
 const BombLeech = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_leech.gd")
 const BombFrag = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_frag.gd")
 const ExplosionVisual = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/explosion_visual.gd")
+const BombCurse = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_curse.gd")
 
 var _failures := 0
 var _count := 0
@@ -43,6 +44,34 @@ class _StubWeapon:
 		stats = _StubStats.new(p_knockback)
 		type = p_type
 
+# Faux objets minimaux pour les tests purs de la malédiction. BombCurse.normalize
+# lit/écrit par duck-typing : ni WeaponData ni WeaponStats ne sont chargeables en
+# headless.
+class _StubCurseStats:
+	var nb_projectiles
+	var speed_percent_modifier
+	var lifesteal
+	func _init(p_nb = 1, p_slow = 0, p_lifesteal = 0.0):
+		nb_projectiles = p_nb
+		speed_percent_modifier = p_slow
+		lifesteal = p_lifesteal
+
+class _StubCurseEffect:
+	var value
+	func _init(p_value = 0):
+		value = p_value
+
+class _StubCurseWeapon:
+	var weapon_id
+	var curse_factor
+	var stats
+	var effects
+	func _init(p_weapon_id, p_curse_factor, p_stats, p_effect_value):
+		weapon_id = p_weapon_id
+		curse_factor = p_curse_factor
+		stats = p_stats
+		effects = [_StubCurseEffect.new(p_effect_value)]
+
 func _init():
 	print("=== Bomberman tests ===")
 	_test_fuse_seconds()
@@ -66,6 +95,7 @@ func _init():
 	_test_bomb_leech()
 	_test_bomb_frag()
 	_test_explosion_visual()
+	_test_bomb_curse()
 	print("=== %d tests, %d échec(s) ===" % [_count, _failures])
 	quit(_failures)
 
@@ -789,6 +819,139 @@ func _test_explosion_visual() -> void:
 	# = 25 % de la map classique (2048). Ce test échoue si quelqu'un change 2.32.
 	_check(_approx(ExplosionVisual.MAX_EXPLOSION_GROWTH, 2.32), "explosion: facteur = 2.32 (normale ~512 px = 25% map)")
 
+
+# --- Malédiction (DLC Abyssal Terrors) sur les bombes élémentaires ---
+#
+# curse_item() du DLC boost `damage`/`scaling_stats`/`lifesteal` et la `value` de
+# chaque effet, mais IGNORE les champs où vivent nos paramètres d'élément
+# (nb_projectiles, speed_percent_modifier). Résultat brut : une infobulle qui ment,
+# et une Bombe de Glace maudite en MALUS PUR (damage 0 => rien à booster).
+# BombCurse recalcule TOUJOURS depuis le .tres pristine + curse_factor, jamais
+# depuis la valeur déjà maudite : c'est ce qui le rend idempotent.
+func _test_bomb_curse():
+	# --- boosted_count : idiome vanilla piercing/bounce, +1 au MAXIMUM. ---
+	# Sans ce plafond, le boost serait quadratique : chaque fragment/éclair porte le
+	# `damage` ENTIER (convention multi-projectiles), donc booster le NOMBRE multiplie
+	# les dégâts une deuxième fois par-dessus le boost de `damage`.
+	_check(BombCurse.boosted_count(4, 0.0) == 4, "curse: count m=0 => inchangé")
+	_check(BombCurse.boosted_count(4, 0.4) == 5, "curse: count 4 @m=0.4 => 5")
+	_check(BombCurse.boosted_count(4, 1.1) == 5, "curse: count 4 @m=1.1 => 5 (plafond +1)")
+	_check(BombCurse.boosted_count(6, 0.4) == 7, "curse: count 6 @m=0.4 => 7")
+	_check(BombCurse.boosted_count(6, 1.1) == 7, "curse: count 6 @m=1.1 => 7 (plafond +1)")
+	_check(BombCurse.boosted_count(0, 0.4) == 0, "curse: count 0 reste 0 (jamais de projectile fantôme)")
+
+	# --- boosted_slow : magnitude x(1+m), plafonnée sous l'immobilisation. ---
+	_check(BombCurse.boosted_slow(30, 0.0) == 30, "curse: slow m=0 => inchangé")
+	_check(BombCurse.boosted_slow(30, 0.4) == 42, "curse: slow 30 @m=0.4 => 42")
+	_check(BombCurse.boosted_slow(30, 1.1) == 63, "curse: slow 30 @m=1.1 => 63")
+	_check(BombCurse.boosted_slow(0, 0.4) == 0, "curse: slow 0 reste 0")
+
+	# --- Plafond d'immobilisation (constaté en jeu sur la glace tier 4 maudite). ---
+	# BombIceSlow vise une vitesse cible = max_speed x (1 - slow/100) puis prend le
+	# min avec la vitesse courante. À 100 la cible vaut 0 (ennemi figé) et AU-DELÀ
+	# elle passe sous zéro. La glace tier 4 part de 75 : x(1+m) sort de l'échelle
+	# dès m > 0.34, or m vaut au moins 0.40 en vague tardive. Un boost qui gèle la
+	# vague entière n'est plus une malédiction, c'est un cheat.
+	_check(BombCurse.boosted_slow(75, 0.4) == 95, "curse: slow 75 @m=0.4 plafonné à 95 (pas d'immobilisation)")
+	_check(BombCurse.boosted_slow(75, 1.1) == 95, "curse: slow 75 @m=1.1 plafonné à 95")
+	_check(BombCurse.boosted_slow(60, 10.0) <= 95, "curse: slow jamais >= 100 (cible de vitesse négative)")
+	_check(BombCurse.boosted_slow(90, 0.0) == 90, "curse: slow non maudit jamais rehaussé par le plafond")
+
+	# --- tooltip_value : ce que l'infobulle DOIT afficher, par élément. ---
+	_check(BombCurse.tooltip_value(BombElement.ICE, 30, 0.4) == 42, "curse: infobulle glace = slow réel")
+	_check(BombCurse.tooltip_value(BombElement.FRAG, 4, 0.4) == 5, "curse: infobulle frag = nb fragments réel")
+	_check(BombCurse.tooltip_value(BombElement.STORM, 6, 0.4) == 7, "curse: infobulle foudre = nb éclairs réel")
+	# Le drain affiche son PLAFOND de PV, codé par TIER (BombLeech.CAP_BY_TIER) donc
+	# insensible à la malédiction : la valeur de base est la seule vérité.
+	_check(BombCurse.tooltip_value(BombElement.LEECH, 3, 0.4) == 3, "curse: infobulle drain = plafond de base (par tier)")
+	_check(BombCurse.tooltip_value(BombElement.NORMAL, 7, 0.4) == 7, "curse: infobulle normale intouchée")
+
+	# --- normalize : glace maudite (le cas du malus pur). ---
+	var ice = _StubCurseWeapon.new("weapon_bomb_ice", 0.4, _StubCurseStats.new(1, -30, 0.0), 42)
+	var ice_base = _StubCurseWeapon.new("weapon_bomb_ice", 0.0, _StubCurseStats.new(1, -30, 0.0), 30)
+	BombCurse.normalize(ice, ice_base)
+	_check(ice.stats.speed_percent_modifier == -42, "curse: normalize glace => slow RÉEL -42")
+	_check(ice.effects[0].value == 42, "curse: normalize glace => infobulle 42")
+
+	# La glace TIER 4 maudite : le cas qui figeait les ennemis en jeu. Le slow réel
+	# et l'infobulle doivent tous DEUX tomber sur le plafond — sinon on relance
+	# l'infobulle menteuse qu'on vient de corriger.
+	var ice4 = _StubCurseWeapon.new("weapon_bomb_ice", 1.1, _StubCurseStats.new(1, -75, 0.0), 158)
+	var ice4_base = _StubCurseWeapon.new("weapon_bomb_ice", 0.0, _StubCurseStats.new(1, -75, 0.0), 75)
+	BombCurse.normalize(ice4, ice4_base)
+	_check(ice4.stats.speed_percent_modifier == -95, "curse: normalize glace tier 4 maudite => slow plafonné -95")
+	_check(ice4.effects[0].value == 95, "curse: normalize glace tier 4 => infobulle 95, alignée sur le réel")
+
+	# --- normalize : frag et foudre (nb_projectiles, ignoré par le DLC). ---
+	var frag = _StubCurseWeapon.new("weapon_bomb_frag", 0.4, _StubCurseStats.new(4, 0, 0.0), 6)
+	var frag_base = _StubCurseWeapon.new("weapon_bomb_frag", 0.0, _StubCurseStats.new(4, 0, 0.0), 4)
+	BombCurse.normalize(frag, frag_base)
+	_check(frag.stats.nb_projectiles == 5, "curse: normalize frag => 5 fragments réels")
+	_check(frag.effects[0].value == 5, "curse: normalize frag => infobulle 5")
+
+	var storm = _StubCurseWeapon.new("weapon_bomb_storm", 0.4, _StubCurseStats.new(6, 0, 0.0), 8)
+	var storm_base = _StubCurseWeapon.new("weapon_bomb_storm", 0.0, _StubCurseStats.new(6, 0, 0.0), 6)
+	BombCurse.normalize(storm, storm_base)
+	_check(storm.stats.nb_projectiles == 7, "curse: normalize foudre => 7 éclairs réels")
+	_check(storm.effects[0].value == 7, "curse: normalize foudre => infobulle 7")
+
+	# --- normalize : drain. Le DLC boost DÉJÀ `lifesteal` correctement (vrai bonus) ;
+	# on n'y touche pas. Seule l'infobulle, qui annonçait un plafond imaginaire, est
+	# remise sur le plafond réel du tier.
+	var leech = _StubCurseWeapon.new("weapon_bomb_leech", 0.4, _StubCurseStats.new(1, 0, 0.56), 4)
+	var leech_base = _StubCurseWeapon.new("weapon_bomb_leech", 0.0, _StubCurseStats.new(1, 0, 0.4), 3)
+	BombCurse.normalize(leech, leech_base)
+	_check(_approx(leech.stats.lifesteal, 0.56), "curse: normalize drain => lifesteal boosté conservé")
+	_check(leech.effects[0].value == 3, "curse: normalize drain => infobulle remise sur le plafond réel")
+
+	# --- normalize : les bombes déjà cohérentes ne bougent pas. ---
+	var normal = _StubCurseWeapon.new("weapon_bomb", 0.4, _StubCurseStats.new(1, 0, 0.0), 0)
+	var normal_base = _StubCurseWeapon.new("weapon_bomb", 0.0, _StubCurseStats.new(1, 0, 0.0), 0)
+	BombCurse.normalize(normal, normal_base)
+	_check(normal.stats.nb_projectiles == 1 and normal.effects[0].value == 0, "curse: normalize normale = no-op")
+
+	var poison = _StubCurseWeapon.new("weapon_bomb_poison", 0.4, _StubCurseStats.new(1, 0, 0.0), 0)
+	var poison_base = _StubCurseWeapon.new("weapon_bomb_poison", 0.0, _StubCurseStats.new(1, 0, 0.0), 0)
+	BombCurse.normalize(poison, poison_base)
+	_check(poison.stats.nb_projectiles == 1 and poison.effects[0].value == 0, "curse: normalize poison = no-op (BurningEffect déjà géré par le DLC)")
+
+	# --- normalize : une arme qui n'est PAS une bombe n'est jamais touchée.
+	# from_weapon_id replie sur NORMAL pour tout id inconnu : la garde doit donc
+	# porter sur le préfixe weapon_bomb, PAS sur l'élément.
+	var pistol = _StubCurseWeapon.new("weapon_pistol", 0.4, _StubCurseStats.new(3, -10, 0.2), 9)
+	var pistol_base = _StubCurseWeapon.new("weapon_pistol", 0.0, _StubCurseStats.new(2, -5, 0.1), 4)
+	BombCurse.normalize(pistol, pistol_base)
+	_check(pistol.stats.nb_projectiles == 3 and pistol.stats.speed_percent_modifier == -10 and pistol.effects[0].value == 9, "curse: normalize ignore les armes non-bombe")
+
+	# --- Reprise de run : speed_percent_modifier n'est PAS dans WeaponStats.serialize(),
+	# et deserialize_and_merge repart d'un RangedWeaponStats.new() (défaut 0) => TOUTE
+	# Bombe de Glace perdait son slow au rechargement, maudite ou non. normalize le
+	# restaure depuis le pristine (curse_factor 0 => valeur de base exacte).
+	var reloaded = _StubCurseWeapon.new("weapon_bomb_ice", 0.0, _StubCurseStats.new(1, 0, 0.0), 30)
+	BombCurse.normalize(reloaded, ice_base)
+	_check(reloaded.stats.speed_percent_modifier == -30, "curse: reprise de run => slow de base restauré")
+
+	var reloaded_cursed = _StubCurseWeapon.new("weapon_bomb_ice", 0.4, _StubCurseStats.new(1, 0, 0.0), 30)
+	BombCurse.normalize(reloaded_cursed, ice_base)
+	_check(reloaded_cursed.stats.speed_percent_modifier == -42, "curse: reprise de run maudite => slow de base + malédiction")
+
+	# --- Idempotence : deux points d'accroche voient la même arme (tirage boutique
+	# puis add_weapon). Repasser doit être un no-op.
+	BombCurse.normalize(ice, ice_base)
+	BombCurse.normalize(ice, ice_base)
+	_check(ice.stats.speed_percent_modifier == -42 and ice.effects[0].value == 42, "curse: normalize idempotent (glace)")
+	BombCurse.normalize(frag, frag_base)
+	BombCurse.normalize(frag, frag_base)
+	_check(frag.stats.nb_projectiles == 5 and frag.effects[0].value == 5, "curse: normalize idempotent (frag)")
+
+	# --- Robustesse : pristine introuvable / effets vides => pas de crash.
+	var orphan = _StubCurseWeapon.new("weapon_bomb_ice", 0.4, _StubCurseStats.new(1, -30, 0.0), 30)
+	BombCurse.normalize(orphan, null)
+	_check(orphan.stats.speed_percent_modifier == -30, "curse: pristine null => no-op")
+	var no_effects = _StubCurseWeapon.new("weapon_bomb_frag", 0.4, _StubCurseStats.new(4, 0, 0.0), 4)
+	no_effects.effects = []
+	BombCurse.normalize(no_effects, frag_base)
+	_check(no_effects.stats.nb_projectiles == 5, "curse: effets vides => stats corrigées quand même, pas de crash")
 
 func _check(cond, name):
 	_count += 1

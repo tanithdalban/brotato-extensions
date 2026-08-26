@@ -31,3 +31,6 @@ func _install_extensions() -> void:
 	ModLoaderMod.install_script_extension("res://mods-unpacked/Tanith-Bomberman/extensions/singletons/challenge_service.gd")
 	ModLoaderMod.install_script_extension("res://mods-unpacked/Tanith-Bomberman/extensions/singletons/run_data.gd")
 	ModLoaderMod.install_script_extension("res://mods-unpacked/Tanith-Bomberman/extensions/ui/menus/run/character_selection.gd")
+	# Reprise de run : restaure le slow de la Bombe de Glace, que WeaponStats.serialize()
+	# ne persiste pas (et réapplique la malédiction du DLC par-dessus).
+	ModLoaderMod.install_script_extension("res://mods-unpacked/Tanith-Bomberman/extensions/items/global/weapon_data.gd")

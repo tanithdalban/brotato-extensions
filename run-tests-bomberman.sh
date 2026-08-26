@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
-# Lance les tests unitaires (logique pure) du mod Tanith-ShopConfig.
+# Lance les tests unitaires (logique pure) du mod Tanith-Bomberman.
 #
-# Utilise le Godot 3.6.2 livré dans le repo. Sous WSL/Linux, le binaire
-# Windows tourne via l'interop ; il faut juste le bit exécutable (posé ici
-# au besoin). Aucun Godot natif Linux 3.6.2 n'existe en téléchargement.
+# Jumeau de run-tests.sh, qui lance ceux de Tanith-ShopConfig : les deux mods
+# ont leur PROPRE runner, il n'y a pas de suite commune.
 #
 # Code de sortie = nombre d'échecs (0 = tout vert). Les erreurs moteur
 # affichées APRÈS « N tests, M échec(s) » sont la fermeture des autoloads
@@ -20,15 +19,14 @@ if [ ! -e "$GODOT" ]; then
 fi
 [ -x "$GODOT" ] || chmod +x "$GODOT"
 
-# --path relatif : on se place à la racine pour que Godot trouve Brotato/.
 cd "$ROOT"
 status=0
 "$GODOT" --path Brotato --no-window \
-  -s res://mods-unpacked/Tanith-ShopConfig/test/run_tests.gd "$@" || status=$?
+  -s res://mods-unpacked/Tanith-Bomberman/test/run_tests.gd "$@" || status=$?
 
-# Le runner vient d'écrire dans le dossier de logs du JEU. Sans cette purge,
-# Brotato lit ce log au lancement suivant et croit qu'un mod l'a fait planter
-# (« mods désactivés »). Voir tools/clean-godot-logs.sh pour le détail.
+# Purge obligatoire : sans elle, Brotato lit le log de ce runner au lancement
+# suivant et affiche « le mod Tanith-Bomberman a planté, mods désactivés ».
+# Voir tools/clean-godot-logs.sh.
 [ -x "$ROOT/tools/clean-godot-logs.sh" ] || chmod +x "$ROOT/tools/clean-godot-logs.sh" 2>/dev/null || true
 "$ROOT/tools/clean-godot-logs.sh" || true
 

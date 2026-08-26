@@ -8,6 +8,7 @@ const ShopPool = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/sho
 const BombSkin = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_skin.gd")
 const AnimatedIcon = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/animated_icon.gd")
 const BombElement = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_element.gd")
+const BombCurse = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_curse.gd")
 
 const _BOMBERMAN_ID := "character_bomberman"
 
@@ -191,6 +192,24 @@ func get_pool(item_tier: int, type: int) -> Array:
 	if type == TierData.WEAPONS and _shop_draw_player >= 0 and _is_bomberman(_shop_draw_player):
 		pool = ShopPool.keep_allowed_weapons(pool)
 	return pool
+
+
+# Réaligne une bombe que le DLC Abyssal Terrors vient de maudire.
+#
+# apply_item_effect_modifications (item_service.gd:511-518) est l'endroit précis où
+# `curse_item()` s'applique à un élément tiré du pool. En corrigeant juste derrière,
+# l'infobulle de la boutique dit déjà la vérité AVANT l'achat, et l'instance achetée
+# est la même que celle affichée.
+#
+# Ce n'est PAS le seul chemin : base_shop.gd:691 (fusion/upgrade) et :879 (objets
+# verrouillés) appellent `curse_item()` en direct et court-circuitent cette méthode.
+# C'est l'extension de RunData.add_weapon qui les rattrape — normalize étant
+# idempotent, une arme qui passe par les deux n'est corrigée qu'une fois.
+func apply_item_effect_modifications(item: ItemParentData, player_index: int) -> ItemParentData:
+	var result = .apply_item_effect_modifications(item, player_index)
+	if result != null:
+		BombCurse.normalize(result, get_element_safe(weapons, result.my_id))
+	return result
 
 
 func _is_bomberman(player_index: int) -> bool:

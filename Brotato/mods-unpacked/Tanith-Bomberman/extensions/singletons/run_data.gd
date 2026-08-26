@@ -15,10 +15,19 @@ extends "res://singletons/run_data.gd"
 
 const ModLog = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/mod_log.gd")
 const BombChallenges = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_challenges.gd")
+const BombCurse = preload("res://mods-unpacked/Tanith-Bomberman/content/logic/bomb_curse.gd")
 
 
 func add_weapon(weapon: WeaponData, player_index: int, is_selection: bool = false) -> WeaponData:
 	var new_weapon = .add_weapon(weapon, player_index, is_selection)
+	# Malédiction du DLC : le MÊME entonnoir rattrape les deux chemins qui appellent
+	# `curse_item()` en direct sans passer par ItemService — la fusion/upgrade en
+	# boutique (base_shop.gd:691) et les objets verrouillés (base_shop.gd:879).
+	# La correction est idempotente, donc repasser sur une arme déjà réalignée au
+	# tirage ne change rien. Après le parent : `.add_weapon` duplique l'arme, et
+	# c'est CETTE copie qui part en inventaire.
+	if new_weapon != null:
+		BombCurse.normalize(new_weapon, ItemService.get_element_safe(ItemService.weapons, new_weapon.my_id))
 	_try_complete_bomb_challenge(new_weapon)
 	_try_complete_leech_challenge(player_index)
 	return new_weapon
