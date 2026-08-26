@@ -7,6 +7,37 @@ elemental/engineering scaling.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [3.1.0] — 2026-08-26
+
+Elemental bombs finally behave correctly when the **Abyssal Terrors** DLC makes them
+**cursed**, and the Ice Bomb no longer loses its slow when a run is resumed.
+
+### Fixed
+- **A cursed elemental bomb now delivers what it promises.** The tooltip advertised a
+  bonus the bomb never applied: a stronger slow for Ice, extra fragments or bolts for
+  Frag and Storm. Those bonuses are now **real**, and the tooltip shows the exact
+  value.
+- **The cursed Ice Bomb is no longer a pure penalty.** Dealing no explosion damage, it
+  had nothing for the curse to boost, so it paid the cost with nothing in return. Its
+  slow is now strengthened in proportion to the curse, **capped at 95%** — past that
+  point, enemies hit were simply frozen in place.
+- **The cursed Leech Bomb no longer advertises an imaginary lifesteal cap.** The cap on
+  HP drained depends on the bomb's **tier** and cannot be raised; the curse's real
+  bonus is on how **often** the drain procs, which was already boosted correctly.
+- **Resuming a run no longer wipes the Ice Bomb's slow.** The field holding the slow
+  was missing from the save, so the bomb came back with none — cursed or not. It is
+  now restored (curse included).
+
+  > **Technical note.** The DLC's `curse_item()` boosts damage, scalings, lifesteal,
+  > piercing and bounce, then the value of every displayed effect. Our element
+  > parameters live elsewhere (`nb_projectiles`, `speed_percent_modifier`), and the
+  > leech cap is coded per tier: the DLC could not see them, yet it did boost our
+  > tooltip lines. The mod now recomputes those fields from the weapon's original
+  > definition and the curse factor. Fragment and bolt counts gain **+1 at most**, the
+  > same restraint the DLC already applies to piercing and bounce: since every
+  > fragment carries the weapon's full damage, a proportional boost would have
+  > multiplied damage a second time.
+
 ## [3.0.1] — 2026-07-22
 
 ### Fixed

@@ -7,6 +7,42 @@ et mise sur les dégâts d'explosion et le scaling élémentaire/ingénierie.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/).
 
+## [3.1.0] — 2026-08-26
+
+Les bombes élémentaires se comportent enfin correctement quand le DLC **Abyssal
+Terrors** les rend **maudites**, et la Bombe de Glace ne perd plus son
+ralentissement quand on reprend une partie.
+
+### Corrigé
+- **Une bombe élémentaire maudite tient désormais ses promesses.** L'infobulle
+  annonçait un bonus que la bombe n'appliquait pas : un ralentissement renforcé pour
+  la Glace, des fragments ou des éclairs supplémentaires pour la Frag et la Foudre.
+  Ces bonus sont maintenant **réels**, et l'infobulle affiche la valeur exacte.
+- **La Bombe de Glace maudite n'est plus une punition sèche.** Ne faisant aucun
+  dégât d'explosion, elle n'avait rien à recevoir de la malédiction : elle en
+  encaissait le coût sans la moindre contrepartie. Son ralentissement est désormais
+  renforcé à la hauteur de la malédiction, **sans jamais dépasser 95 %** : au-delà,
+  les ennemis touchés étaient purement et simplement immobilisés.
+- **La Bombe Sangsue maudite n'affiche plus un plafond de vol de vie imaginaire.**
+  Le plafond de PV volés dépend du **niveau** de la bombe et ne peut pas être
+  augmenté ; le vrai bonus de la malédiction porte, lui, sur la **fréquence** du
+  drain, qui était déjà correctement renforcée.
+- **Reprendre une partie ne fait plus perdre le ralentissement de la Bombe de
+  Glace.** Le champ portant le ralentissement n'était pas enregistré dans la
+  sauvegarde : au rechargement, la bombe repartait à zéro, maudite ou non. Il est
+  désormais restauré (malédiction comprise).
+
+  > **Note technique.** `curse_item()` du DLC boost les dégâts, les scalings, le vol
+  > de vie, le perçage et les rebonds, puis la valeur de chaque effet affiché. Nos
+  > paramètres d'élément vivent ailleurs (`nb_projectiles`,
+  > `speed_percent_modifier`), et le plafond du drain est codé par niveau : le DLC ne
+  > pouvait donc pas les voir, alors qu'il boostait bel et bien nos lignes
+  > d'infobulle. Le mod recalcule maintenant ces champs depuis la définition
+  > d'origine de l'arme et le facteur de malédiction. Le nombre de fragments et
+  > d'éclairs gagne **+1 au maximum**, comme le DLC le fait déjà pour le perçage et
+  > les rebonds : chaque fragment portant le dégât entier de l'arme, un boost
+  > proportionnel aurait multiplié les dégâts une seconde fois.
+
 ## [3.0.1] — 2026-07-22
 
 ### Corrigé
