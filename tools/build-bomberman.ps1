@@ -53,6 +53,21 @@ Get-ChildItem $modStage -Recurse -Include '_contact_sheet.png','_contact_sheet.p
 $testDir = Join-Path $modStage 'test'; if (Test-Path $testDir) { Remove-Item $testDir -Recurse -Force }
 $docsDir = Join-Path $modStage 'docs'; if (Test-Path $docsDir) { Remove-Item $docsDir -Recurse -Force }
 
+# Skins de bombe : chargés au RUNTIME par bomb_skin.gd (Image.load lit le PNG brut,
+# hors cache d'import). Leur .png.import ne sert donc à rien dans le livrable, et
+# l'étape 2 embarquerait un .stex inutile — voire échouerait si le cache d'import
+# n'a pas été régénéré pour eux.
+#
+# Le retrait se fait ICI, dans le stage, et surtout PAS dans l'arbre source : ces
+# fichiers sont regénérés par l'éditeur Godot et par tout lancement de
+# `godot --path Brotato` (dont les runners de tests), donc un retrait manuel avant
+# build ne tient pas. C'est au build d'être autoritaire.
+$runtimeSkins = @('bombe_normale','frag','glace','poison','sangsue','storm')
+foreach ($skin in $runtimeSkins) {
+  $imp = Join-Path $modStage "content\weapons\bomb\$skin.png.import"
+  if (Test-Path $imp) { Remove-Item $imp -Force }
+}
+
 # --- 2) Embarque le cache d'import (.stex + .md5) de chaque texture, hash lu dans le .png.import ---
 $importStage = Join-Path $stage '.import'
 $missing = @()
