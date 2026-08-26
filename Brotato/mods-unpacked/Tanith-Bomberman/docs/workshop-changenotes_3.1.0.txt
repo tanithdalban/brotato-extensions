@@ -1,0 +1,41 @@
+[h1]🇬🇧 English[/h1]
+[b]v3.1.0 — Cursed bombs now keep their word, and the Ice Bomb keeps its chill.[/b]
+
+This update is all about the [b]Abyssal Terrors[/b] curse. When the DLC curses one of Bomberto's elemental bombs, the bonus it advertises is now the bonus you actually get.
+
+[h2]Fixed[/h2]
+[list]
+[*][b]A cursed elemental bomb now delivers what it promises.[/b] The tooltip advertised a bonus the bomb never applied: a stronger slow for Ice, extra fragments or bolts for Frag and Storm. Those bonuses are now real, and the tooltip shows the exact value.
+[*][b]The cursed Ice Bomb is no longer a pure penalty.[/b] Dealing no blast damage, it had nothing for the curse to boost, so it paid the cost with nothing in return. Its slow now grows with the curse — [b]capped at 95 %[/b], because past that point enemies simply froze in place.
+[*][b]The cursed Leech Bomb no longer advertises an imaginary lifesteal cap.[/b] The cap on HP drained depends on the bomb's tier and cannot be raised; the curse's real bonus is on how [i]often[/i] the drain procs, and that already worked.
+[*][b]Resuming a run no longer wipes the Ice Bomb's slow.[/b] The slow was missing from the save file, so the bomb came back with none at all — cursed or not.
+[/list]
+
+[h2]Good to know[/h2]
+[list]
+[*]Uncursed bombs are unchanged: no balance shift, no new unlock, no save migration.
+[*]Don't own Abyssal Terrors? Only the resume fix concerns you — and it works in your favour.
+[/list]
+
+
+[hr][/hr]
+
+
+[h1]🇫🇷 Français[/h1]
+[b]v3.1.0 — Les bombes maudites tiennent enfin parole, et la Bombe de Glace garde son froid.[/b]
+
+Cette mise à jour porte entièrement sur la malédiction du DLC [b]Abyssal Terrors[/b]. Quand il maudit une des bombes élémentaires de Bomberto, le bonus annoncé est désormais le bonus réellement appliqué.
+
+[h2]Corrigé[/h2]
+[list]
+[*][b]Une bombe élémentaire maudite tient désormais ses promesses.[/b] L'infobulle annonçait un bonus que la bombe n'appliquait pas : un ralentissement renforcé pour la Glace, des fragments ou des éclairs supplémentaires pour la Frag et la Foudre. Ces bonus sont maintenant réels, et l'infobulle affiche la valeur exacte.
+[*][b]La Bombe de Glace maudite n'est plus une punition sèche.[/b] Ne faisant aucun dégât de souffle, elle n'avait rien à recevoir de la malédiction : elle en encaissait le coût sans la moindre contrepartie. Son ralentissement grandit désormais avec la malédiction — [b]plafonné à 95 %[/b], car au-delà les ennemis étaient purement et simplement immobilisés.
+[*][b]La Bombe Sangsue maudite n'affiche plus un plafond de vol de vie imaginaire.[/b] Le plafond de PV volés dépend du niveau de la bombe et ne peut pas être augmenté ; le vrai bonus de la malédiction porte sur la [i]fréquence[/i] du drain, qui fonctionnait déjà.
+[*][b]Reprendre une partie ne fait plus perdre le ralentissement de la Bombe de Glace.[/b] Il n'était pas enregistré dans la sauvegarde : au rechargement, la bombe repartait sans rien — maudite ou non.
+[/list]
+
+[h2]Bon à savoir[/h2]
+[list]
+[*]Les bombes non maudites ne changent pas : aucun rééquilibrage, aucun nouveau déblocage, aucune migration de sauvegarde.
+[*]Vous n'avez pas Abyssal Terrors ? Seul le correctif de reprise de partie vous concerne — et il joue en votre faveur.
+[/list]
