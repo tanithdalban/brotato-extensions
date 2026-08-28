@@ -109,7 +109,8 @@ var _checkmark        # TextureRect coche verte affichée quand le joueur est pr
 # Filtre de classe unifié : pour une arme = ses stats de scaling
 # (WeaponData.stats.scaling_stats) ; pour un objet = les `key` de ses effets
 # (ItemData *.tres). Les deux sont normalisés en chaînes (ex. "stat_ranged_damage")
-# pour qu'une même classe couvre armes ET objets liés à cette stat.
+# pour qu'une même classe couvre armes ET objets liés à cette stat. Seuls les
+# attributs BÉNÉFIQUES sont retenus (cf. _compute_class_keys).
 var _class_keys_by_id := {}   # my_id -> Array[String]
 var _filter_keys := []        # (index option - 1) -> clé de classe (String) ; top N
 var _class_counts := {}       # clé -> nb d'éléments (pour le tri par effectif)
@@ -984,7 +985,8 @@ func _has_any_top_key(my_id) -> bool:
 # ---------- classes (scaling armes / key effets objets) ----------
 # Une « classe » est une stat (ex. "stat_ranged_damage"). Le filtre de classe
 # regroupe armes (par leurs scaling_stats) et objets (par la `key` de leurs effets)
-# sous ces stats. Calculé une fois (cache) au setup, car _all_entries est figé.
+# sous ces stats, en ne gardant que les attributs bénéfiques. Calculé une fois
+# (cache) au setup, car _all_entries est figé : coût runtime nul.
 
 # Pré-calcule, pour chaque élément, ses clés de classe (my_id -> [stats]).
 func _build_class_keys_cache() -> void:
@@ -994,12 +996,18 @@ func _build_class_keys_cache() -> void:
 
 
 # Clés de classe d'un élément, normalisées en chaînes (ex. "stat_ranged_damage").
+# On ne retient une clé que si l'attribut est BÉNÉFIQUE à l'élément (cf.
+# PoolFilter.is_positive_sign) : chercher « Dégâts à distance » doit remonter ce
+# qui en DONNE, pas ce qui en retire. Le tri se fait effet par effet, donc un
+# objet mixte (+Élémentaire / −PV) reste listé sous Élémentaire seulement.
 func _compute_class_keys(entry) -> Array:
 	var keys := []
 	if _is_weapon(entry):
 		if entry.stats != null and entry.stats.scaling_stats is Array:
 			for pair in entry.stats.scaling_stats:
-				if pair is Array and pair.size() > 0:
+				# pair = [hash de stat, scaling] ; quatre armes lourdes du jeu
+				# scalent négativement sur stat_attack_speed.
+				if pair is Array and pair.size() > 1 and PoolFilter.is_positive_scaling(pair[1]):
 					var h = pair[0]
 					var s = Keys.hash_to_string[h] if (h is int and Keys.hash_to_string.has(h)) else str(h)
 					if s != "" and not keys.has(s):
@@ -1008,7 +1016,15 @@ func _compute_class_keys(entry) -> Array:
 		if entry.effects is Array:
 			for effect in entry.effects:
 				var k = effect.get("key")
-				if k != null and k is String and k != "" and not keys.has(k):
+				if k == null or not (k is String) or k == "" or keys.has(k):
+					continue
+				# Lecture défensive : un effet moddé peut ne pas porter ces
+				# champs ; sans signe exploitable, on ne classe pas l'élément.
+				var effect_sign = effect.get("effect_sign")
+				var value = effect.get("value")
+				if not (effect_sign is int) or not (value is int or value is float):
+					continue
+				if PoolFilter.is_positive_sign(effect_sign, int(value)):
 					keys.append(k)
 	return keys
 

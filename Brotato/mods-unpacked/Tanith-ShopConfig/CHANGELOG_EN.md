@@ -6,6 +6,25 @@ never show up in *their own* shop for the run.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.1.1] — 2026-08-28
+
+### Fixed
+- **The class filter now only lists what *grants* the selected stat.** An item
+  that *removes* it (e.g. −10% ranged damage) no longer shows up under that
+  class: filtering by "Ranged damage" is meant to find what gives it, not what
+  takes it away. Same fix for weapons with negative scaling.
+- The sign used is the one **the game itself displays** (green or red in the
+  tooltip), not merely the sign of the number: negative-valued bonuses such as
+  the **Coupon** (−5 item price) or the **Snail** (−8 enemy speed) therefore
+  stay listed under their class.
+- Items with mixed effects are sorted effect by effect: an "+Elemental /
+  −Max HP" item stays under Elemental and drops out of Max HP.
+
+### Changed
+- Visible consequences of the fix: each class holds fewer entries, the list of
+  offered classes shifts slightly ("Speed" gives way to "Lifesteal"), and an item
+  whose remaining bonuses fall outside the offered classes moves under "Other".
+
 ## [1.1.0] — 2026-07-19
 
 ### Changed

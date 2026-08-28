@@ -6,6 +6,26 @@ objets/armes pour qu'ils n'apparaissent jamais dans *sa propre* boutique de la r
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.1.1] — 2026-08-28
+
+### Corrigé
+- **Le filtre de classe ne liste plus que ce qui *donne* la stat choisie.** Un
+  objet qui la *retire* (par ex. −10 % de dégâts à distance) n'apparaît plus sous
+  cette classe : filtrer « Dégâts à distance » sert à trouver ce qui en apporte,
+  pas ce qui en enlève. Même correction pour les armes au scaling négatif.
+- Le signe retenu est celui que **le jeu lui-même affiche** (vert ou rouge dans
+  l'infobulle), pas le simple signe du nombre : les bonus à valeur négative comme
+  le **Coupon** (−5 sur le prix des objets) ou l'**Escargot** (−8 sur la vitesse
+  des ennemis) restent donc bien listés sous leur classe.
+- Un objet aux effets mixtes est trié effet par effet : un objet « +Élémentaire /
+  −PV max » reste listé sous Élémentaire, et disparaît de PV max.
+
+### Modifié
+- Conséquences visibles du correctif : les effectifs de chaque classe baissent, la
+  liste des classes proposées change à la marge (« Vitesse » cède sa place à
+  « Vol de vie ») et un objet dont plus aucun bonus ne relève des classes
+  proposées bascule sous « Autre ».
+
 ## [1.1.0] — 2026-07-19
 
 ### Modifié
