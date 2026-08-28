@@ -1,0 +1,43 @@
+[h1]🇬🇧 English[/h1]
+[b]v1.1.1 — The class filter now shows what [i]grants[/i] a stat, not what takes it away.[/b]
+
+Filtering the pool by "Ranged damage" is how you find the items that [b]give[/b] ranged damage. Until now the filter only looked at whether an item mentioned the stat at all — so an item costing you 10% ranged damage sat right next to the ones granting it.
+
+[h2]Fixed[/h2]
+[list]
+[*][b]A class now only lists what benefits you.[/b] An item that [i]reduces[/i] the selected stat no longer appears under it. Same for weapons that scale negatively on a stat.
+[*][b]Bonuses hiding behind a negative number are still listed.[/b] The filter follows the game's own reading — whether the tooltip shows the line in green or in red — instead of the raw number. The Coupon (−5 item price) and the Snail (−8 enemy speed) are bonuses, and they stay under their class.
+[*][b]Mixed items are sorted line by line.[/b] An item granting elemental damage at the cost of max HP stays under Elemental damage, and drops out of Max HP.
+[/list]
+
+[h2]Good to know[/h2]
+[list]
+[*]Each class holds fewer entries than before — that's the point: what's left is what actually grants the stat.
+[*]The class menu shifts by one entry: "Speed" makes way for "Lifesteal".
+[*]An item whose remaining bonuses fall outside the offered classes now shows under "Other". It is never lost — "All classes" and "Other" always cover the whole grid.
+[*]Nothing else changes: same screen, same exclusions, same shop behaviour.
+[/list]
+
+
+[hr][/hr]
+
+
+[h1]🇫🇷 Français[/h1]
+[b]v1.1.1 — Le filtre de classe affiche ce qui [i]donne[/i] une stat, plus ce qui l'enlève.[/b]
+
+Filtrer le pool sur « Dégâts à distance », c'est chercher les objets qui en [b]donnent[/b]. Jusqu'ici le filtre regardait seulement si l'objet mentionnait la stat — un objet qui vous coûtait 10 % de dégâts à distance se retrouvait donc juste à côté de ceux qui vous en offrent.
+
+[h2]Corrigé[/h2]
+[list]
+[*][b]Une classe ne liste plus que ce qui vous avantage.[/b] Un objet qui [i]retire[/i] la stat choisie n'apparaît plus sous cette classe. Idem pour les armes dont le scaling est négatif sur une stat.
+[*][b]Les bonus cachés derrière un nombre négatif restent listés.[/b] Le filtre suit la lecture du jeu lui-même — la ligne est-elle affichée en vert ou en rouge dans l'infobulle — et non le simple signe du nombre. Le Coupon (−5 sur le prix des objets) et l'Escargot (−8 sur la vitesse des ennemis) sont des bonus : ils restent sous leur classe.
+[*][b]Les objets mixtes sont triés ligne par ligne.[/b] Un objet qui donne des dégâts élémentaires au prix de PV max reste sous Dégâts élémentaires, et disparaît de PV max.
+[/list]
+
+[h2]Bon à savoir[/h2]
+[list]
+[*]Chaque classe contient moins d'éléments qu'avant — c'est le but : ce qui reste est ce qui donne vraiment la stat.
+[*]Le menu des classes change d'une entrée : « Vitesse » cède sa place à « Vol de vie ».
+[*]Un objet dont plus aucun bonus ne relève des classes proposées apparaît désormais sous « Autre ». Rien n'est perdu : « Toutes classes » et « Autre » couvrent toujours la totalité de la grille.
+[*]Rien d'autre ne change : même écran, mêmes exclusions, même comportement en boutique.
+[/list]
