@@ -25,6 +25,7 @@ func _init():
 	_test_pool_filter()
 	_test_owned_and_carried()
 	_test_store()
+	_test_class_key_signs()
 	print("=== %d tests, %d échec(s) ===" % [_count, _failures])
 	quit(_failures)
 
@@ -98,3 +99,33 @@ func _test_store():
 	_check(s.is_shop_draw_active() and s.current_shop_player() == 2, "store: begin_shop_draw")
 	s.end_shop_draw()
 	_check(not s.is_shop_draw_active() and s.current_shop_player() == -1, "store: end_shop_draw")
+
+
+# Signe d'une « classe » (stat) : une clé n'est retenue que si l'attribut est
+# POSITIF, c.-à-d. si le jeu afficherait l'effet comme un bonus. On reproduit
+# la résolution de Effect.get_sign (items/global/effect.gd).
+func _test_class_key_signs():
+	# POSITIVE explicite : le jeu l'annonce bonus même quand la valeur est
+	# négative (Coupon : items_price = -5 ; Escargot : enemy_speed = -8).
+	_check(PoolFilter.is_positive_sign(PoolFilter.SIGN_POSITIVE, -5), "signe: POSITIVE explicite retenu malgré une valeur négative")
+	_check(PoolFilter.is_positive_sign(PoolFilter.SIGN_POSITIVE, 2), "signe: POSITIVE explicite retenu")
+	# NEGATIVE explicite : malus, même annoncé avec une valeur positive.
+	_check(not PoolFilter.is_positive_sign(PoolFilter.SIGN_NEGATIVE, 5), "signe: NEGATIVE explicite écarté")
+	# NEUTRAL et OVERRIDE ne sont pas des bonus affichés.
+	_check(not PoolFilter.is_positive_sign(PoolFilter.SIGN_NEUTRAL, 5), "signe: NEUTRAL écarté")
+	_check(not PoolFilter.is_positive_sign(PoolFilter.SIGN_OVERRIDE, 35), "signe: OVERRIDE écarté")
+	# FROM_VALUE (défaut de très loin le plus courant) : le signe suit la valeur.
+	_check(PoolFilter.is_positive_sign(PoolFilter.SIGN_FROM_VALUE, 8), "signe: FROM_VALUE positif retenu")
+	_check(not PoolFilter.is_positive_sign(PoolFilter.SIGN_FROM_VALUE, -10), "signe: FROM_VALUE négatif écarté (le cas du -10 % dégâts à distance)")
+	_check(not PoolFilter.is_positive_sign(PoolFilter.SIGN_FROM_VALUE, 0), "signe: FROM_VALUE nul écarté")
+	# FROM_ARG : aucun cas dans les données du jeu ; repli sur la valeur.
+	_check(PoolFilter.is_positive_sign(PoolFilter.SIGN_FROM_ARG, 3), "signe: FROM_ARG positif retenu (repli)")
+	_check(not PoolFilter.is_positive_sign(PoolFilter.SIGN_FROM_ARG, -3), "signe: FROM_ARG négatif écarté (repli)")
+	# Signe inconnu (donnée moddée/inattendue) : on n'invente pas un bonus.
+	_check(not PoolFilter.is_positive_sign(42, 5), "signe: valeur d'enum inconnue écartée")
+
+	# Armes : pas de notion de signe, seul le scaling compte (4 armes lourdes
+	# du jeu ont un stat_attack_speed négatif).
+	_check(PoolFilter.is_positive_scaling(1.0), "scaling: positif retenu")
+	_check(not PoolFilter.is_positive_scaling(-0.5), "scaling: négatif écarté")
+	_check(not PoolFilter.is_positive_scaling(0.0), "scaling: nul écarté")
