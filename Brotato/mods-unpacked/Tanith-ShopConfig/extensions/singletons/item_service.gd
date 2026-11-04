@@ -27,11 +27,27 @@ func get_pool(item_tier: int, type: int) -> Array:
 			pool = PoolFilter.filter(pool, excluded)
 	return pool
 
+# Brotato 1.2 (DLC Primal Dread) : _get_rand_item_for_wave appelle update_pools()
+# JUSTE APRÈS get_pool(), et celui-ci injecte par push_back les objets
+# méca/mutant/évolution du set primal_dread selon l'évolution du joueur — donc
+# APRÈS notre filtre de get_pool. On re-filtre derrière le parent, EN PLACE : le
+# vanilla garde ses références à pool/backup_pool.
+# (Sans ça, le garde-fou de _get_rand_item_for_wave ci-dessous rattraperait
+# quand même l'objet exclu, mais par un remplacement tiré tous tiers confondus,
+# ce qui fausserait la répartition des raretés.)
+func update_pools(pool: Array, backup_pool: Array, player_index: int, item_tier: int, type: int) -> void:
+	.update_pools(pool, backup_pool, player_index, item_tier, type)
+	if not _shopconfig_store.is_shop_draw_active():
+		return
+	var excluded = _shopconfig_store.get_excluded(_shopconfig_store.current_shop_player())
+	PoolFilter.filter_in_place(pool, excluded)
+	PoolFilter.filter_in_place(backup_pool, excluded)
+
 # Garde-fou contre la fuite par le fallback vanilla.
 # _get_rand_item_for_wave (vanilla) retire de SON pool les éléments déjà dans le
 # shop (anti-doublon). Si le joueur a restreint la boutique à un seul élément
 # (ex. la bombe), le 2e slot vide le pool ET le backup, puis vanilla retombe sur
-# _tiers_data[tier][type] en accès DIRECT, NON filtré (item_service.gd:462),
+# _tiers_data[tier][type] en accès DIRECT, NON filtré (item_service.gd:680 en 1.2),
 # réintroduisant un élément EXCLU. get_pool ne peut pas l'intercepter (accès
 # direct). On enveloppe donc le tirage : si l'élément rendu est exclu, on le
 # remplace par un élément AUTORISÉ (doublon toléré, c'est le but d'une boutique

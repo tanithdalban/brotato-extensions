@@ -10,6 +10,18 @@ static func filter(candidates: Array, excluded_ids: Dictionary) -> Array:
 	return result
 
 
+# Variante EN PLACE de filter() : retire de `candidates` lui-même (même instance)
+# les éléments exclus. Nécessaire quand l'appelant garde une référence au
+# tableau (ex. ItemService.update_pools, qui remplit pool/backup_pool par effet
+# de bord) : une réaffectation serait invisible pour lui.
+static func filter_in_place(candidates: Array, excluded_ids: Dictionary) -> void:
+	if excluded_ids.empty():
+		return
+	for i in range(candidates.size() - 1, -1, -1):
+		if excluded_ids.has(candidates[i].my_id):
+			candidates.remove(i)
+
+
 # Ensemble {my_id: true} des ids que les cases AFFICHÉES d'un panneau peuvent
 # représenter : pour un objet, son `my_id` ; pour une arme, TOUS les my_id de sa
 # famille (un argument = une famille). Sert au calcul du carry-over (cf. carried).

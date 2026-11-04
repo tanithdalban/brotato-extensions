@@ -6,6 +6,19 @@ objets/armes pour qu'ils n'apparaissent jamais dans *sa propre* boutique de la r
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.1.2] — 2026-11-05
+
+Compatibilité avec **Brotato 1.2** (mise à jour du DLC **Primal Dread**).
+
+### Corrigé
+- **Les exclusions s'appliquent aux nouveaux objets de Primal Dread à leur juste
+  rareté.** Le jeu ajoute les objets méca, mutants et d'évolution à la boutique
+  *après* le filtre du mod. Un objet exclu n'y parvenait déjà pas — un garde-fou
+  le remplaçait — mais ce remplaçant était tiré **toutes raretés confondues**
+  (un objet légendaire pouvait surgir en début de partie). Ces objets sont
+  désormais filtrés à la source, et la boutique garde la répartition des raretés
+  du jeu.
+
 ## [1.1.1] — 2026-08-28
 
 ### Corrigé

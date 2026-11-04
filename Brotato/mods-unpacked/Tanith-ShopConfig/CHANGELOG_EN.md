@@ -6,6 +6,18 @@ never show up in *their own* shop for the run.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.1.2] — 2026-11-05
+
+Compatibility with **Brotato 1.2** (the **Primal Dread** DLC update).
+
+### Fixed
+- **Exclusions now apply to Primal Dread's new items at the right rarity.** The game
+  adds mecha, mutant and evolution items to the shop *after* the mod's filter. An
+  excluded item already never made it through — a safety net replaced it — but that
+  replacement was drawn **from every rarity at once** (a legendary item could show up
+  early in a run). These items are now filtered at the source, and the shop keeps the
+  game's rarity spread.
+
 ## [1.1.1] — 2026-08-28
 
 ### Fixed

@@ -62,6 +62,19 @@ func _test_pool_filter():
 	PoolFilter.filter(candidates, {"a": true})
 	_check(candidates.size() == 2, "pool_filter: n'altère pas l'entrée")
 
+	# filter_in_place : MÊME tableau modifié (le vanilla update_pools garde ses
+	# références à pool/backup_pool, une réaffectation serait perdue).
+	var arr = _items(["a", "b", "c", "b", "d"])
+	var same_ref = arr
+	PoolFilter.filter_in_place(arr, {"b": true, "d": true})
+	_check(_ids(same_ref) == ["a", "c"], "pool_filter: en place retire les exclus (doublons compris)")
+	var untouched = _items(["a", "b"])
+	PoolFilter.filter_in_place(untouched, {})
+	_check(_ids(untouched) == ["a", "b"], "pool_filter: en place, exclusions vides = inchangé")
+	var all_out = _items(["a", "b"])
+	PoolFilter.filter_in_place(all_out, {"a": true, "b": true})
+	_check(all_out.empty(), "pool_filter: en place, tout exclu = vide")
+
 
 func _test_owned_and_carried():
 	# owned_ids : objet -> {my_id} ; arme -> tous les ids de la famille.

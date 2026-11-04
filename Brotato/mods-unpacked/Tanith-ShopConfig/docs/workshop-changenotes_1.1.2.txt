@@ -1,0 +1,35 @@
+[h1]🇬🇧 English[/h1]
+[b]v1.1.2 — Exclusions apply to Primal Dread's new items at the right rarity.[/b]
+
+Brotato 1.2 (Primal Dread) adds mecha, mutant and evolution items to the shop [i]after[/i] the mod's filter has run. An excluded item already never reached your shop — a safety net caught it — but its replacement was drawn from every rarity at once.
+
+[h2]Fixed[/h2]
+[list]
+[*][b]Primal Dread items are now filtered at the source.[/b] An excluded mecha, mutant or evolution item is removed before the shop draws, so the shop keeps the game's usual rarity spread — no more surprise legendary early in a run.
+[/list]
+
+[h2]Good to know[/h2]
+[list]
+[*]Nothing else changes: same screen, same exclusions, same shop behaviour.
+[*]If the game disabled your mods after the update, turn them back on from the [b]Mods[/b] menu.
+[/list]
+
+
+[hr][/hr]
+
+
+[h1]🇫🇷 Français[/h1]
+[b]v1.1.2 — Les exclusions s'appliquent aux nouveaux objets de Primal Dread à leur juste rareté.[/b]
+
+Brotato 1.2 (Primal Dread) ajoute les objets méca, mutants et d'évolution à la boutique [i]après[/i] le passage du filtre du mod. Un objet exclu n'arrivait déjà jamais dans votre boutique — un garde-fou le rattrapait — mais son remplaçant était tiré toutes raretés confondues.
+
+[h2]Corrigé[/h2]
+[list]
+[*][b]Les objets de Primal Dread sont désormais filtrés à la source.[/b] Un objet méca, mutant ou d'évolution exclu est retiré avant le tirage : la boutique garde la répartition des raretés habituelle du jeu — plus de légendaire surprise en début de partie.
+[/list]
+
+[h2]Bon à savoir[/h2]
+[list]
+[*]Rien d'autre ne change : même écran, mêmes exclusions, même comportement en boutique.
+[*]Si le jeu a désactivé vos mods après la mise à jour, réactivez-les depuis le menu [b]Mods[/b].
+[/list]
