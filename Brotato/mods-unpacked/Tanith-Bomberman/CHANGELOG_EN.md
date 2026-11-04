@@ -7,6 +7,23 @@ elemental/engineering scaling.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [3.1.1] — 2026-11-05
+
+Compatibility with **Brotato 1.2** (the **Primal Dread** DLC update).
+
+### Fixed
+- **The game no longer crashes on launch with Bomberto.** Brotato 1.2 reorganised
+  its folders: the Troll Bomb's wake-up sound and the placed bomb's icon could no
+  longer be found, so the game crashed on startup and then disabled **every** mod on
+  the next launch.
+- **Bomberto and his bombs are registered again.** Brotato 1.2 now builds its
+  character and weapon lists on demand; the mod now hooks into them properly instead
+  of crashing while loading.
+
+### Changed
+- **Brotato 1.2 or later is required.** This version points to the game files' new
+  locations, which don't exist in 1.1 versions.
+
 ## [3.1.0] — 2026-08-26
 
 Elemental bombs finally behave correctly when the **Abyssal Terrors** DLC makes them

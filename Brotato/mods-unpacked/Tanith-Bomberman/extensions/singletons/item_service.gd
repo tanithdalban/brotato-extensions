@@ -130,9 +130,16 @@ func register_bomberman_content() -> void:
 		_register_bomb_weapon(path)
 
 	# Enregistrer le personnage Bomberman dans le pool de personnages.
+	# ⚠️ Toujours passer par get_characters()/get_weapons(), JAMAIS par le nom nu.
+	# Depuis Brotato 1.2, `characters`/`weapons`/`items` sont des propriétés
+	# `setget` paresseuses (caches `_characters`… reconstruits depuis
+	# update_data_list). En Godot 3, un accès nu depuis le script (ou une
+	# extension de celui-ci) CONTOURNE le getter et lit la variable brute, qui
+	# reste `null`. Le getter rend le tableau cache par référence : y ajouter
+	# persiste, le vanilla n'invalidant jamais ces caches.
 	var character = load(_BOMBERMAN_CHAR)
-	if character != null and not characters.has(character):
-		characters.append(character)
+	if character != null and not get_characters().has(character):
+		get_characters().append(character)
 		ModLog.info("perso enregistré: " + str(character.my_id))
 
 	# Icône ANIMÉE dans la sélection de perso : mèche -> explosion -> boucle.
@@ -161,8 +168,8 @@ func _register_bomb_weapon(path: String) -> void:
 	var skin = BombSkin.build_icon(element, get_color_from_tier(w.tier))
 	if skin != null:
 		w.icon = skin
-	if not weapons.has(w):
-		weapons.append(w)
+	if not get_weapons().has(w):
+		get_weapons().append(w)
 		ModLog.info("arme enregistrée: " + str(w.my_id))
 
 
@@ -208,7 +215,7 @@ func get_pool(item_tier: int, type: int) -> Array:
 func apply_item_effect_modifications(item: ItemParentData, player_index: int) -> ItemParentData:
 	var result = .apply_item_effect_modifications(item, player_index)
 	if result != null:
-		BombCurse.normalize(result, get_element_safe(weapons, result.my_id))
+		BombCurse.normalize(result, get_element_safe(get_weapons(), result.my_id))
 	return result
 
 

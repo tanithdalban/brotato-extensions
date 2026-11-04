@@ -1,0 +1,39 @@
+[h1]🇬🇧 English[/h1]
+[b]v3.1.1 — Compatible with Brotato 1.2 (Primal Dread).[/b]
+
+Brotato 1.2 reorganised the game's files. With the previous version of the mod, the game crashed on launch — and then switched off [b]every[/b] mod on the next start.
+
+[h2]Fixed[/h2]
+[list]
+[*][b]No more crash on launch.[/b] The Troll Bomb's wake-up sound and the placed bomb's icon are found again at their new location.
+[*][b]Bomberto and his bombs are registered again.[/b] Brotato 1.2 now builds its character and weapon lists on demand; the mod hooks into them properly.
+[/list]
+
+[h2]Good to know[/h2]
+[list]
+[*][b]Brotato 1.2 or later is required.[/b] This version points to the new file locations, which don't exist in 1.1 versions.
+[*]If the game disabled your mods after the update, turn them back on from the [b]Mods[/b] menu.
+[*]Nothing else changes: same character, same bombs, same balance.
+[/list]
+
+
+[hr][/hr]
+
+
+[h1]🇫🇷 Français[/h1]
+[b]v3.1.1 — Compatible avec Brotato 1.2 (Primal Dread).[/b]
+
+Brotato 1.2 a réorganisé les fichiers du jeu. Avec la version précédente du mod, le jeu plantait au lancement — puis désactivait [b]tous[/b] les mods au démarrage suivant.
+
+[h2]Corrigé[/h2]
+[list]
+[*][b]Plus de plantage au lancement.[/b] Le son de réveil de la Bombe Troll et l'icône de la bombe posée sont de nouveau trouvés à leur nouvel emplacement.
+[*][b]Bomberto et ses bombes sont de nouveau enregistrés.[/b] Brotato 1.2 construit désormais ses listes de personnages et d'armes à la demande ; le mod s'y inscrit correctement.
+[/list]
+
+[h2]Bon à savoir[/h2]
+[list]
+[*][b]Brotato 1.2 ou plus récent est requis.[/b] Cette version pointe vers les nouveaux emplacements des fichiers, absents des versions 1.1.
+[*]Si le jeu a désactivé vos mods après la mise à jour, réactivez-les depuis le menu [b]Mods[/b].
+[*]Rien d'autre ne change : même personnage, mêmes bombes, même équilibrage.
+[/list]

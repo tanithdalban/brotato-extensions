@@ -19,7 +19,7 @@ const TrollBombLogic = preload("res://mods-unpacked/Tanith-Bomberman/content/log
 const _FACE_PATH := "res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb/skins/troll_bomb_face.png"
 
 # Son d'alerte joué à l'éveil (phase télégraphe), préchargé.
-const WAKE_SOUND := preload("res://entities/units/enemies/boss/zombie_voice_general_emote_05.wav")
+const WAKE_SOUND := preload("res://entities/units/enemies/bosses/zombie_voice_general_emote_05.wav")
 
 # --- Paramètres réglables (calibrage final en jeu) ---
 const SPEED := 120.0            # ≈ vitesse de base d'un joueur, CONSTANTE

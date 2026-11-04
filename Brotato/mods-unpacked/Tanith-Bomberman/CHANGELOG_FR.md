@@ -7,6 +7,23 @@ et mise sur les dégâts d'explosion et le scaling élémentaire/ingénierie.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/).
 
+## [3.1.1] — 2026-11-05
+
+Compatibilité avec **Brotato 1.2** (mise à jour du DLC **Primal Dread**).
+
+### Corrigé
+- **Le jeu ne plante plus au lancement avec Bomberto.** Brotato 1.2 a réorganisé
+  ses dossiers : le son de réveil de la Bombe Troll et l'icône de la bombe posée
+  n'étaient plus trouvés, le jeu plantait au démarrage puis désactivait
+  **tous** les mods au lancement suivant.
+- **Bomberto et ses bombes sont de nouveau enregistrés.** Brotato 1.2 construit
+  désormais sa liste de personnages et d'armes à la demande ; le mod s'y inscrit
+  maintenant correctement, au lieu de planter au chargement.
+
+### Modifié
+- **Brotato 1.2 ou plus récent est requis.** Cette version pointe vers les
+  nouveaux emplacements des fichiers du jeu, absents des versions 1.1.
+
 ## [3.1.0] — 2026-08-26
 
 Les bombes élémentaires se comportent enfin correctement quand le DLC **Abyssal
