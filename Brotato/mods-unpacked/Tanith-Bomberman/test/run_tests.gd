@@ -44,6 +44,17 @@ class _StubWeapon:
 		stats = _StubStats.new(p_knockback)
 		type = p_type
 
+# Faux objets minimaux pour le versement des bombes dans les pools par tier
+# (ShopPool.weapons_to_add_to_tiers).
+class _StubTierWeapon:
+	var weapon_id_hash
+	var tier
+	var can_be_looted
+	func _init(p_hash, p_tier, p_can_be_looted = true):
+		weapon_id_hash = p_hash
+		tier = p_tier
+		can_be_looted = p_can_be_looted
+
 # Faux objets minimaux pour les tests purs de la malédiction. BombCurse.normalize
 # lit/écrit par duck-typing : ni WeaponData ni WeaponStats ne sont chargeables en
 # headless.
@@ -77,6 +88,7 @@ func _init():
 	_test_fuse_seconds()
 	_test_slot_phase_offset()
 	_test_keep_allowed_weapons()
+	_test_weapons_to_add_to_tiers()
 	_test_bomb_icon_background()
 	_test_bomb_skin_element()
 	_test_troll_should_wake()
@@ -126,6 +138,37 @@ func _test_slot_phase_offset():
 	_check(_approx(BombTiming.slot_phase_offset(2, 4, 60.0), 30.0), "phase: slot 2/4 sur 60 = 30")
 	_check(_approx(BombTiming.slot_phase_offset(0, 1, 60.0), 0.0), "phase: slot unique = 0")
 	_check(_approx(BombTiming.slot_phase_offset(3, 4, 0.0), 0.0), "phase: cooldown 0 => 0")
+
+
+# Brotato 1.2 : init_unlocked_pool() ne lit plus que les paquets de contenu, nos
+# bombes n'entrent plus dans les pools du magasin ; on les y reverse nous-mêmes,
+# avec les mêmes règles que le vanilla (lootable + débloquée).
+func _test_weapons_to_add_to_tiers():
+	var bomb_1 = _StubTierWeapon.new(101, 0)
+	var bomb_ice_4 = _StubTierWeapon.new(202, 3)
+	var locked = _StubTierWeapon.new(303, 1)
+	var not_lootable = _StubTierWeapon.new(101, 1, false)
+	var already = _StubTierWeapon.new(101, 2)
+	var pools = [[], [], [already], []]
+	var unlocked = [101, 202]
+
+	var added = ShopPool.weapons_to_add_to_tiers(
+		[bomb_1, bomb_ice_4, locked, not_lootable, already], unlocked, pools
+	)
+	_check(added.size() == 2, "tiers: verse 2 bombes sur 5 candidates")
+	_check(added.has(bomb_1) and added.has(bomb_ice_4), "tiers: bombes débloquées et lootables versées")
+	_check(not added.has(locked), "tiers: bombe verrouillée (défi non fait) écartée")
+	_check(not added.has(not_lootable), "tiers: arme non lootable écartée")
+	_check(not added.has(already), "tiers: déjà dans le pool de son tier => pas de doublon")
+	_check(added[0] == bomb_1 and added[1] == bomb_ice_4, "tiers: conserve l'ordre des candidates")
+	_check(pools[0].size() == 0 and pools[2].size() == 1, "tiers: n'altère pas les pools")
+
+	var twice = ShopPool.weapons_to_add_to_tiers([bomb_1, bomb_1], unlocked, pools)
+	_check(twice.size() == 1, "tiers: candidate en double => versée une fois")
+	var out_of_range = ShopPool.weapons_to_add_to_tiers([_StubTierWeapon.new(101, 7)], unlocked, pools)
+	_check(out_of_range.size() == 0, "tiers: tier hors bornes => ignorée")
+	_check(ShopPool.weapons_to_add_to_tiers([null], unlocked, pools).size() == 0, "tiers: null ignoré")
+	_check(ShopPool.weapons_to_add_to_tiers([], unlocked, pools).size() == 0, "tiers: aucune candidate => rien")
 
 
 func _test_keep_allowed_weapons():

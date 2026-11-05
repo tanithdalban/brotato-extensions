@@ -7,6 +7,19 @@ elemental/engineering scaling.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [3.1.2] — 2026-11-05
+
+Bombs are back in the shop on **Brotato 1.2**.
+
+### Fixed
+- **Bombs show up in the shop again.** Brotato 1.2 now fills the shop from its own
+  content packs, which the mod's bombs weren't part of. They could still be picked
+  as a starting weapon, but were never offered for sale, whatever the character.
+  Elemental bombs still require their unlock challenges.
+- **No more shop without a single weapon** for a Bomberto whose shop is limited to
+  bombs only (with the ShopConfig mod): with no bomb to offer, every weapon slot
+  was replaced by an item.
+
 ## [3.1.1] — 2026-11-05
 
 Compatibility with **Brotato 1.2** (the **Primal Dread** DLC update).

@@ -54,3 +54,32 @@ static func keep_allowed_weapons(pool: Array) -> Array:
 		if is_allowed(item):
 			result.push_back(item)
 	return result
+
+
+# --- Versement des bombes dans les pools du magasin (Brotato >= 1.2) ---
+#
+# Depuis la 1.2, ItemService.init_unlocked_pool() remplit les pools par tier à
+# partir des PAQUETS de contenu (jeu de base + mises à jour/DLC actifs), et non
+# plus de la liste `weapons` où le mod inscrit ses bombes : elles n'entraient
+# plus jamais en boutique. L'extension ItemService les reverse derrière le
+# parent ; cette fonction décide lesquelles, avec les règles du vanilla :
+# lootable (can_be_looted) ET débloquée (weapon_id_hash dans `unlocked`, ce qui
+# respecte le verrouillage des bombes élémentaires par défis).
+#
+# `tier_pools` : pools d'ARMES indexés par tier (_tiers_data[t][TierData.WEAPONS]).
+# Rend, dans l'ordre des candidates, les armes à verser : absentes du pool de
+# leur tier (pas de doublon si le jeu les y met un jour lui-même), tier dans les
+# bornes, chaque arme une seule fois. N'altère ni `candidates` ni `tier_pools`.
+static func weapons_to_add_to_tiers(candidates: Array, unlocked: Array, tier_pools: Array) -> Array:
+	var result := []
+	for weapon in candidates:
+		if weapon == null or not weapon.can_be_looted:
+			continue
+		if not unlocked.has(weapon.weapon_id_hash):
+			continue
+		if weapon.tier < 0 or weapon.tier >= tier_pools.size():
+			continue
+		if tier_pools[weapon.tier].has(weapon) or result.has(weapon):
+			continue
+		result.push_back(weapon)
+	return result
