@@ -28,6 +28,10 @@ var _shop_draw_player := -1
 # d'images ne coûterait que du temps de démarrage.
 var _bomberman_content_registered := false
 
+# Les 24 armes-bombes inscrites par register_bomberman_content(), dans l'ordre.
+# init_unlocked_pool() les reverse dans les pools du magasin (cf. sa doc).
+var _bomberman_bomb_weapons := []
+
 const _BOMB_WEAPONS := [
 	"res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb/bomb_1_data.tres",
 	"res://mods-unpacked/Tanith-Bomberman/content/weapons/bomb/bomb_2_data.tres",
@@ -168,9 +172,46 @@ func _register_bomb_weapon(path: String) -> void:
 	var skin = BombSkin.build_icon(element, get_color_from_tier(w.tier))
 	if skin != null:
 		w.icon = skin
+	if not _bomberman_bomb_weapons.has(w):
+		_bomberman_bomb_weapons.append(w)
 	if not get_weapons().has(w):
 		get_weapons().append(w)
 		ModLog.info("arme enregistrée: " + str(w.my_id))
+
+
+# --- Bombes dans les pools du magasin (Brotato >= 1.2) ---
+#
+# POURQUOI : en 1.1, init_unlocked_pool() remplissait les pools par tier
+# (_tiers_data, d'où le magasin, les caisses et get_pool tirent) en parcourant
+# `weapons` — où register_bomberman_content() inscrit nos bombes. Depuis la 1.2,
+# il parcourt les PAQUETS de contenu (base_game_item_set + mises à jour/DLC
+# actifs, item_service.gd:225-254) : nos bombes, inscrites seulement dans
+# get_weapons(), n'entraient plus jamais en boutique. Elles restaient visibles à
+# l'écran de choix d'arme (qui lit get_weapons()), d'où un bug discret : aucune
+# bombe en boutique, et une boutique SANS ARME pour un Bomberto restreint aux
+# bombes via ShopConfig.
+#
+# On laisse le parent reconstruire les pools (il les remet à zéro à chaque
+# appel), puis on y reverse nos bombes avec ses propres règles (lootable +
+# débloquée, cf. ShopPool.weapons_to_add_to_tiers). Pas d'ajout au paquet du jeu
+# de base : il alimente aussi d'autres écrans, et ce correctif reste borné au
+# magasin.
+func init_unlocked_pool() -> void:
+	.init_unlocked_pool()
+	_bomberman_add_bombs_to_tiers()
+
+
+func _bomberman_add_bombs_to_tiers() -> void:
+	var weapon_pools := []
+	for tier_data in _tiers_data:
+		weapon_pools.append(tier_data[TierData.WEAPONS])
+	var to_add = ShopPool.weapons_to_add_to_tiers(
+		_bomberman_bomb_weapons, ProgressData.weapons_unlocked, weapon_pools
+	)
+	for weapon in to_add:
+		_tiers_data[weapon.tier][TierData.ALL_ITEMS].push_back(weapon)
+		_tiers_data[weapon.tier][TierData.WEAPONS].push_back(weapon)
+	ModLog.info("bombes versées dans les pools du magasin : %d" % to_add.size())
 
 
 # --- Magasin « roster Bomberto : bombe + explosive + knockback mêlée » ---

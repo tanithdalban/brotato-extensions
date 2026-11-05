@@ -7,6 +7,20 @@ et mise sur les dégâts d'explosion et le scaling élémentaire/ingénierie.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/).
 
+## [3.1.2] — 2026-11-05
+
+Les bombes reviennent dans la boutique sous **Brotato 1.2**.
+
+### Corrigé
+- **Les bombes apparaissent de nouveau dans la boutique.** Brotato 1.2 remplit
+  désormais la boutique à partir de ses propres paquets de contenu : les bombes
+  du mod n'y entraient plus. Elles restaient choisissables comme arme de départ,
+  mais n'étaient plus jamais proposées à l'achat, quel que soit le personnage.
+  Les bombes élémentaires restent soumises à leurs défis de déblocage.
+- **Plus de boutique sans aucune arme** pour un Bomberto dont la boutique est
+  restreinte aux seules bombes (avec le mod ShopConfig) : faute de bombe à
+  proposer, toutes les cases d'arme étaient remplacées par des objets.
+
 ## [3.1.1] — 2026-11-05
 
 Compatibilité avec **Brotato 1.2** (mise à jour du DLC **Primal Dread**).

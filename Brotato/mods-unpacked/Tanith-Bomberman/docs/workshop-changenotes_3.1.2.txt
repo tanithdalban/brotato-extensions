@@ -1,0 +1,37 @@
+[h1]🇬🇧 English[/h1]
+[b]v3.1.2 — Bombs are back in the shop.[/b]
+
+Since Brotato 1.2, the game fills its shop from its own content packs, which the mod's bombs weren't part of. They could still be picked as a starting weapon, but were never offered for sale.
+
+[h2]Fixed[/h2]
+[list]
+[*][b]Bombs show up in the shop again[/b], whatever the character. Elemental bombs still require their unlock challenges.
+[*][b]No more shop without a single weapon[/b] for a Bomberto whose shop is limited to bombs only (with the ShopConfig mod).
+[/list]
+
+[h2]Good to know[/h2]
+[list]
+[*][b]Brotato 1.2 or later is still required.[/b]
+[*]Nothing else changes: same character, same bombs, same balance.
+[/list]
+
+
+[hr][/hr]
+
+
+[h1]🇫🇷 Français[/h1]
+[b]v3.1.2 — Les bombes reviennent dans la boutique.[/b]
+
+Depuis Brotato 1.2, le jeu remplit sa boutique à partir de ses propres paquets de contenu, dont les bombes du mod ne faisaient pas partie. Elles restaient choisissables comme arme de départ, mais n'étaient plus jamais proposées à l'achat.
+
+[h2]Corrigé[/h2]
+[list]
+[*][b]Les bombes apparaissent de nouveau dans la boutique[/b], quel que soit le personnage. Les bombes élémentaires restent soumises à leurs défis de déblocage.
+[*][b]Plus de boutique sans aucune arme[/b] pour un Bomberto dont la boutique est restreinte aux seules bombes (avec le mod ShopConfig).
+[/list]
+
+[h2]Bon à savoir[/h2]
+[list]
+[*][b]Brotato 1.2 ou plus récent reste requis.[/b]
+[*]Rien d'autre ne change : même personnage, mêmes bombes, même équilibrage.
+[/list]
