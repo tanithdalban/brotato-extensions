@@ -131,7 +131,8 @@ func shoot() -> void:
 # Cible du signal hit_something de l'explosion d'une bombe de GLACE (connecté par
 # bomb_entity). Applique une coupe de vitesse RÉELLE et NON CUMULATIVE à l'ennemi
 # touché (cf. bomb_ice_slow). Duck-typé : ne touche que des unités ayant
-# current_stats/max_stats (marche vanilla/DLC/autre mod, sans étendre enemy.gd).
+# current_stats/max_stats (marche vanilla/DLC/autre mod). Le gel est mémorisé sur
+# l'unité via l'extension unit.gd du mod quand elle est présente (survit à la brûlure).
 func on_ice_hit(thing_hit, _damage_dealt, slow_pct: float) -> void:
 	if not is_instance_valid(thing_hit):
 		return
@@ -139,11 +140,17 @@ func on_ice_hit(thing_hit, _damage_dealt, slow_pct: float) -> void:
 		return
 	if thing_hit.current_stats == null or thing_hit.max_stats == null:
 		return
-	thing_hit.current_stats.speed = BombIceSlow.apply(
-		thing_hit.current_stats.speed,
-		thing_hit.max_stats.speed,
-		slow_pct
-	)
+	# Avec l'extension unit.gd du mod : le gel est MÉMORISÉ sur l'ennemi et survit
+	# aux recalculs de vitesse du jeu (début/fin de brûlure…). Sinon (unité dont
+	# la classe ne passe pas par l'extension), coupe directe comme avant.
+	if thing_hit.has_method("bomberman_apply_ice_slow"):
+		thing_hit.bomberman_apply_ice_slow(slow_pct)
+	else:
+		thing_hit.current_stats.speed = BombIceSlow.apply(
+			thing_hit.current_stats.speed,
+			thing_hit.max_stats.speed,
+			slow_pct
+		)
 	# Feedback visuel du gel : contour bleu persistant (add_outline vient d'entity.gd).
 	# Se nettoie tout seul à la mort de l'ennemi ; dédoublonné par couleur (non cumulatif).
 	if thing_hit.has_method("add_outline"):

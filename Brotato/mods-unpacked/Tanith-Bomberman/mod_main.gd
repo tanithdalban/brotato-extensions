@@ -34,3 +34,5 @@ func _install_extensions() -> void:
 	# Reprise de run : restaure le slow de la Bombe de Glace, que WeaponStats.serialize()
 	# ne persiste pas (et réapplique la malédiction du DLC par-dessus).
 	ModLoaderMod.install_script_extension("res://mods-unpacked/Tanith-Bomberman/extensions/items/global/weapon_data.gd")
+	# Gel de la Bombe de Glace persistant malgré la brûlure (cf. l'extension).
+	ModLoaderMod.install_script_extension("res://mods-unpacked/Tanith-Bomberman/extensions/entities/units/unit/unit.gd")

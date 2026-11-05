@@ -7,6 +7,18 @@ elemental/engineering scaling.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [3.1.3] — 2026-11-05
+
+The Ice Bomb keeps its slow when the enemy is burning.
+
+### Fixed
+- **Fire no longer cancels the Ice Bomb's slow.** As soon as a frozen enemy started
+  or stopped burning — standard Bomb, Poison Bomb, incendiary weapons and items —
+  the game gave it back its full speed, while its blue outline stayed on. The ice
+  looked ineffective, especially next to the standard Bomb, which sets enemies on
+  fire. The slow now lasts until the enemy dies, including when some elites change
+  phase.
+
 ## [3.1.2] — 2026-11-05
 
 Bombs are back in the shop on **Brotato 1.2**.

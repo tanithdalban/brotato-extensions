@@ -9,7 +9,9 @@ extends Reference
 #
 # La coupe est écrite dans current_stats.speed (débuff RÉEL et durable, tant que
 # l'ennemi vit). Appliquée par BombWeapon.on_ice_hit via le signal hit_something
-# de l'explosion — AUCUNE extension de enemy.gd (cf. spec, section Glace).
+# de l'explosion. Depuis la 3.1.3, l'extension unit.gd du mod MÉMORISE le gel
+# (remember) et le réapplique après chaque recalcul de vitesse du jeu : sans
+# elle, la brûlure (Bombe normale, Poison) effaçait le gel.
 
 # Le .tres porte le slow % en NÉGATIF (champ speed_percent_modifier repurposé) ;
 # on renvoie sa magnitude.
@@ -23,3 +25,10 @@ static func apply(cur_speed: float, max_speed: float, slow_pct: float) -> float:
 		return cur_speed
 	var target := max_speed * (1.0 - slow_pct / 100.0)
 	return min(cur_speed, target)
+
+# Gel MÉMORISÉ sur l'ennemi (extension unit.gd) : on garde le plus fort reçu,
+# cohérent avec le modèle non cumulatif ci-dessus. Il est réappliqué par apply()
+# chaque fois que le jeu recalcule la vitesse (reset_speed_stat : début/fin de
+# brûlure, phases d'élite, boosts), sinon ces recalculs effaceraient le gel.
+static func remember(stored_pct: float, new_pct: float) -> float:
+	return max(stored_pct, new_pct)

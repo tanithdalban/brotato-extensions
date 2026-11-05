@@ -205,7 +205,8 @@ func _on_fuse_timeout() -> void:
 			_inst.connect("hit_something", _weapon, "on_weapon_hit_something", [null])
 	# Glace : coupe de vitesse réelle sur les ennemis touchés, via le signal
 	# public hit_something de l'explosion (émis même à 0 dégât, unit.gd:608) →
-	# notre BombWeapon (persistant). AUCUNE extension de enemy.gd. La connexion
+	# notre BombWeapon (persistant). Le gel est mémorisé par l'extension unit.gd
+	# du mod pour survivre aux recalculs de vitesse (brûlure). La connexion
 	# est nettoyée par PlayerExplosion.end_explosion (disconnect_all hit_something).
 	if _element == BombElement.ICE and _inst != null and is_instance_valid(_weapon) and _stats != null:
 		var slow_pct = BombIceSlow.slow_pct_for(_stats.speed_percent_modifier)
