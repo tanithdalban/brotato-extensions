@@ -7,6 +7,18 @@ et mise sur les dégâts d'explosion et le scaling élémentaire/ingénierie.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/).
 
+## [3.1.3] — 2026-11-05
+
+La Bombe de Glace garde son gel quand l'ennemi brûle.
+
+### Corrigé
+- **Le gel de la Bombe de Glace n'est plus effacé par le feu.** Dès qu'un ennemi
+  gelé commençait ou arrêtait de brûler — Bombe normale, Bombe de Poison, armes
+  et objets incendiaires —, le jeu lui rendait toute sa vitesse, alors que son
+  contour bleu restait affiché. La glace semblait inefficace, surtout avec la
+  Bombe normale, qui enflamme. Le gel tient désormais jusqu'à la mort de
+  l'ennemi, y compris quand certaines élites changent de phase.
+
 ## [3.1.2] — 2026-11-05
 
 Les bombes reviennent dans la boutique sous **Brotato 1.2**.

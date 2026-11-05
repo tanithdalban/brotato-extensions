@@ -1,0 +1,33 @@
+[h1]🇬🇧 English[/h1]
+[b]v3.1.3 — The Ice Bomb keeps its slow when the enemy is burning.[/b]
+
+[h2]Fixed[/h2]
+[list]
+[*][b]Fire no longer cancels the Ice Bomb's slow.[/b] As soon as a frozen enemy started or stopped burning — standard Bomb, Poison Bomb, incendiary weapons and items — it got its full speed back, while its blue outline stayed on. The ice looked ineffective, especially next to the standard Bomb, which sets enemies on fire.
+[*]The slow now lasts until the enemy dies, including when some elites change phase.
+[/list]
+
+[h2]Good to know[/h2]
+[list]
+[*][b]Brotato 1.2 or later is still required.[/b]
+[*]Slow values are unchanged: 30 / 45 / 60 / 75 % depending on the tier.
+[/list]
+
+
+[hr][/hr]
+
+
+[h1]🇫🇷 Français[/h1]
+[b]v3.1.3 — La Bombe de Glace garde son gel quand l'ennemi brûle.[/b]
+
+[h2]Corrigé[/h2]
+[list]
+[*][b]Le gel de la Bombe de Glace n'est plus effacé par le feu.[/b] Dès qu'un ennemi gelé commençait ou arrêtait de brûler — Bombe normale, Bombe de Poison, armes et objets incendiaires —, il retrouvait toute sa vitesse, alors que son contour bleu restait affiché. La glace semblait inefficace, surtout avec la Bombe normale, qui enflamme.
+[*]Le gel tient désormais jusqu'à la mort de l'ennemi, y compris quand certaines élites changent de phase.
+[/list]
+
+[h2]Bon à savoir[/h2]
+[list]
+[*][b]Brotato 1.2 ou plus récent reste requis.[/b]
+[*]Les valeurs de ralentissement ne changent pas : 30 / 45 / 60 / 75 % selon le tier.
+[/list]

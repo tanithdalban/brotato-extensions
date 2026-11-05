@@ -391,6 +391,20 @@ func _test_bomb_ice_slow():
 	# garde-fou max_speed 0 => inchangé.
 	_check(_approx(BombIceSlow.apply(42.0, 0.0, 50.0), 42.0), "ice: max_speed 0 => inchangé")
 
+	# remember : le gel mémorisé sur l'ennemi garde le plus fort (non cumulatif).
+	_check(_approx(BombIceSlow.remember(0.0, 30.0), 30.0), "ice: remember 1er gel = 30")
+	_check(_approx(BombIceSlow.remember(30.0, 60.0), 60.0), "ice: remember gel plus fort => 60")
+	_check(_approx(BombIceSlow.remember(60.0, 30.0), 60.0), "ice: remember gel plus faible => garde 60")
+	_check(_approx(BombIceSlow.remember(45.0, 45.0), 45.0), "ice: remember même gel => inchangé")
+
+	# Brûlure / phase d'élite : le jeu remet current_stats.speed à max_stats.speed
+	# (reset_speed_stat). Réappliquer le gel mémorisé redonne la cible.
+	var frozen = BombIceSlow.apply(100.0, 100.0, 45.0)
+	var after_reset = 100.0
+	_check(_approx(BombIceSlow.apply(after_reset, 100.0, 45.0), frozen), "ice: après remise à zéro, réapplication => même cible (55)")
+	# Le reset peut changer max_stats.speed (élite qui accélère) : cible recalculée sur le nouveau max.
+	_check(_approx(BombIceSlow.apply(150.0, 150.0, 45.0), 82.5), "ice: nouveau max 150 => cible 82.5")
+
 
 func _test_poison_fire():
 	# Marqueur de source : le weapon_id partagé des 4 tiers commence par weapon_bomb_poison.
